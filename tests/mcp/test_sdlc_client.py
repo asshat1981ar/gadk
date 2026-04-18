@@ -63,3 +63,38 @@ def test_submit_gate_decision_skipped_when_flag_off(monkeypatch: pytest.MonkeyPa
     monkeypatch.setattr(Config, "SDLC_MCP_ENABLED", False)
     out = sdlc_client.submit_gate_decision(task_id="t", verdict={"ready": True})
     assert out["status"] == "skipped"
+
+
+@pytest.mark.asyncio
+async def test_submit_gate_decision_tracks_pending_tasks(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """submit_gate_decision must add the created task to _pending_tasks
+    and remove it automatically via done_callback when it completes.
+    """
+    import asyncio as _asyncio
+
+    monkeypatch.setattr(sdlc_client.Config, "SDLC_MCP_ENABLED", True)
+
+    # Inject a fast-completing fake _invoke so the task finishes quickly.
+    async def _fast_invoke(tool_name: str, payload: dict) -> dict:
+        return {"status": "ok", "tool": tool_name}
+
+    monkeypatch.setattr(sdlc_client, "_invoke", _fast_invoke)
+
+    # Clear any leftover tasks from previous tests.
+    sdlc_client._pending_tasks.clear()
+
+    out = sdlc_client.submit_gate_decision(task_id="t-track", verdict={"ready": True})
+    assert out["status"] == "scheduled"
+
+    # The task must be tracked immediately after creation.
+    assert len(sdlc_client._pending_tasks) == 1
+
+    # Allow the event loop to run until the task completes.
+    await _asyncio.sleep(0.05)
+
+    # After completion the done_callback should have removed it.
+    assert len(sdlc_client._pending_tasks) == 0, (
+        "Task was not removed from _pending_tasks after completion."
+    )

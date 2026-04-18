@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import re
+import threading
 from pathlib import Path
 from typing import Any
 
@@ -175,6 +176,11 @@ def _resolve_embedder():
 #: meta table so it survives restarts.
 _doc_hashes: dict[str, str] = {}
 
+#: Lock serialising all reads and writes to ``_doc_hashes`` so concurrent
+#: async coroutines (e.g. two simultaneous ``retrieve_context`` calls in the
+#: same event loop) never race on the cache and trigger duplicate embeds.
+_doc_hashes_lock = threading.Lock()
+
 
 def _sha(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
@@ -213,7 +219,14 @@ def _sync_corpus_to_backend(
         doc_id = str(path.relative_to(resolved_root))
         seen_ids.add(doc_id)
         sha = _sha(text)
-        if backend_persists and _doc_hashes.get(doc_id) == sha:
+        # Atomically check and pre-mark under the lock so two coroutines
+        # racing on the same doc_id both see the updated hash and only one
+        # proceeds to the (expensive) upsert call.
+        with _doc_hashes_lock:
+            already_cached = backend_persists and _doc_hashes.get(doc_id) == sha
+            if not already_cached and backend_persists:
+                _doc_hashes[doc_id] = sha  # pre-mark to prevent duplicate embeds
+        if already_cached:
             # Unchanged since last call — skip the (costly) embed.
             continue
         backend.upsert(
@@ -221,8 +234,6 @@ def _sync_corpus_to_backend(
             text=text,
             metadata={"corpus": corpus_name, "path": doc_id},
         )
-        if backend_persists:
-            _doc_hashes[doc_id] = sha
 
     # Drop backend rows + cache entries whose source file disappeared so
     # stale embeddings don't get served in future queries. Only supported
@@ -241,7 +252,8 @@ def _sync_corpus_to_backend(
             in_scope = backend.known_doc_ids()
         for stale_id in in_scope - seen_ids:
             backend.delete(stale_id)
-            _doc_hashes.pop(stale_id, None)
+            with _doc_hashes_lock:
+                _doc_hashes.pop(stale_id, None)
 
     return len(seen_ids)
 

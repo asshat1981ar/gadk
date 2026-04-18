@@ -36,3 +36,5 @@ costs.jsonl
 coverage.xml
 .coverage
 .secrets.baseline
+# Advisory lock tokens for cross-process state serialisation
+*.json.lock
