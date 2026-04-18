@@ -22,9 +22,7 @@ async def _invoke_smithery_tool(server_id: str, tool_name: str, args: dict) -> s
     cmd = ["smithery", "tool", "call", f"{server_id}", tool_name, args_json]
 
     proc = await asyncio.create_subprocess_exec(
-        *cmd,
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.PIPE
+        *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
     )
     stdout, stderr = await proc.communicate()
 
@@ -47,6 +45,6 @@ async def call_smithery_tool(server_id: str, tool_name: str, args: dict) -> str:
     try:
         return await _invoke_smithery_tool(server_id, tool_name, args)
     except SmitheryCommandError as e:
-        return f"Smithery Error: {str(e)}"
+        return f"Smithery Error: {e!s}"
     except Exception as e:
-        return f"Bridge Error: {str(e)}"
+        return f"Bridge Error: {e!s}"

@@ -85,7 +85,9 @@ class WorkItem(BaseModel):
     payload: dict[str, Any] = Field(default_factory=dict)
     history: list[PhaseHistoryEntry] = Field(default_factory=list)
 
-    def record(self, to_phase: Phase, *, reason: str = "", evidence_refs: list[str] | None = None) -> None:
+    def record(
+        self, to_phase: Phase, *, reason: str = "", evidence_refs: list[str] | None = None
+    ) -> None:
         """Append a history entry; the caller is responsible for mutating ``phase``."""
         self.history.append(
             PhaseHistoryEntry(

@@ -20,14 +20,14 @@ import os
 import time
 
 from src.config import Config
-from src.observability.logger import configure_logging, get_logger, set_session_id, set_trace_id
+from src.observability.logger import configure_logging, get_logger, set_trace_id
 from src.observability.metrics import registry
 from src.planner import run_planner
 from src.state import StateManager
-from src.tools.dispatcher import register_tool
-from src.tools.filesystem import read_file, write_file, list_directory
-from src.tools.github_tool import read_repo_file, list_repo_contents, GitHubTool
 from src.tools.content_guards import is_low_value_content
+from src.tools.dispatcher import register_tool
+from src.tools.filesystem import list_directory, read_file, write_file
+from src.tools.github_tool import GitHubTool, list_repo_contents, read_repo_file
 from src.tools.web_search import search_web
 
 register_tool("search_web", search_web)
@@ -64,49 +64,72 @@ RPG_PIPELINE = [
         "title": "Compose Canvas Graphics Renderer",
         "priority": "HIGH",
         "description": "Tile-based sprite renderer using Jetpack Compose Canvas with bitmap caching",
-        "files": ["app/src/main/java/com/chimera/rpg/graphics/TileRenderer.kt", "app/src/main/java/com/chimera/rpg/graphics/SpriteSheet.kt"],
+        "files": [
+            "app/src/main/java/com/chimera/rpg/graphics/TileRenderer.kt",
+            "app/src/main/java/com/chimera/rpg/graphics/SpriteSheet.kt",
+        ],
     },
     {
         "id": "world",
         "title": "Procedural World Map System",
         "priority": "HIGH",
         "description": "2D tile map with procedural generation, collision detection, and camera follow",
-        "files": ["app/src/main/java/com/chimera/rpg/world/WorldMap.kt", "app/src/main/java/com/chimera/rpg/world/Tile.kt"],
+        "files": [
+            "app/src/main/java/com/chimera/rpg/world/WorldMap.kt",
+            "app/src/main/java/com/chimera/rpg/world/Tile.kt",
+        ],
     },
     {
         "id": "entities",
         "title": "Entity System — Player, NPCs, Enemies",
         "priority": "HIGH",
         "description": "Entity component system with stats (HP, MP, STR, AGI, INT), animations, and AI",
-        "files": ["app/src/main/java/com/chimera/rpg/entity/Entity.kt", "app/src/main/java/com/chimera/rpg/entity/Player.kt", "app/src/main/java/com/chimera/rpg/entity/NPC.kt"],
+        "files": [
+            "app/src/main/java/com/chimera/rpg/entity/Entity.kt",
+            "app/src/main/java/com/chimera/rpg/entity/Player.kt",
+            "app/src/main/java/com/chimera/rpg/entity/NPC.kt",
+        ],
     },
     {
         "id": "combat",
         "title": "Turn-Based Combat System",
         "priority": "HIGH",
         "description": "Combat manager with attack, defend, spell, item actions and turn queue",
-        "files": ["app/src/main/java/com/chimera/rpg/combat/CombatSystem.kt", "app/src/main/java/com/chimera/rpg/combat/CombatAction.kt"],
+        "files": [
+            "app/src/main/java/com/chimera/rpg/combat/CombatSystem.kt",
+            "app/src/main/java/com/chimera/rpg/combat/CombatAction.kt",
+        ],
     },
     {
         "id": "ui",
         "title": "RPG UI — HUD, Inventory, Dialogue",
         "priority": "MEDIUM",
         "description": "Compose UI overlays: health/mana bars, inventory grid, dialogue boxes, quest log",
-        "files": ["app/src/main/java/com/chimera/rpg/ui/HUD.kt", "app/src/main/java/com/chimera/rpg/ui/InventoryUI.kt", "app/src/main/java/com/chimera/rpg/ui/DialogueBox.kt"],
+        "files": [
+            "app/src/main/java/com/chimera/rpg/ui/HUD.kt",
+            "app/src/main/java/com/chimera/rpg/ui/InventoryUI.kt",
+            "app/src/main/java/com/chimera/rpg/ui/DialogueBox.kt",
+        ],
     },
     {
         "id": "save",
         "title": "Save/Load Game State",
         "priority": "MEDIUM",
         "description": "DataStore-based serialization for player progress, world state, and settings",
-        "files": ["app/src/main/java/com/chimera/rpg/save/SaveManager.kt", "app/src/main/java/com/chimera/rpg/save/GameState.kt"],
+        "files": [
+            "app/src/main/java/com/chimera/rpg/save/SaveManager.kt",
+            "app/src/main/java/com/chimera/rpg/save/GameState.kt",
+        ],
     },
     {
         "id": "main",
         "title": "MainActivity + Navigation + Polish",
         "priority": "MEDIUM",
         "description": "MainActivity with Compose setContent, splash screen, main menu, settings screen",
-        "files": ["app/src/main/java/com/chimera/rpg/MainActivity.kt", "app/src/main/java/com/chimera/rpg/ui/MainMenu.kt"],
+        "files": [
+            "app/src/main/java/com/chimera/rpg/MainActivity.kt",
+            "app/src/main/java/com/chimera/rpg/ui/MainMenu.kt",
+        ],
     },
 ]
 
@@ -171,12 +194,15 @@ class AndroidRPGBuilder:
 
         # Wait briefly for any async file writes
         await asyncio.sleep(1.0)
-        
+
         # Check for newly written files in the staged directory
         staged_dir = "src/staged_agents"
         os.makedirs(staged_dir, exist_ok=True)
-        staged = [f for f in os.listdir(staged_dir)
-                  if os.path.getmtime(os.path.join(staged_dir, f)) > build_start - 2]
+        staged = [
+            f
+            for f in os.listdir(staged_dir)
+            if os.path.getmtime(os.path.join(staged_dir, f)) > build_start - 2
+        ]
 
         if staged:
             logger.info(f"Built {len(staged)} files for {cid}: {staged}")
@@ -192,6 +218,7 @@ class AndroidRPGBuilder:
 
         # Post-process code blocks
         import re
+
         blocks = re.findall(r"```kotlin\n(.*?)\n```", result, re.DOTALL)
         if blocks:
             fname = f"rpg_{cid}.kt"
@@ -206,7 +233,11 @@ class AndroidRPGBuilder:
 
     async def _review(self, artifact: str, spec: dict) -> str:
         """Critic reviews the component."""
-        code = read_file(f"src/staged_agents/{artifact}") if os.path.exists(f"src/staged_agents/{artifact}") else ""
+        code = (
+            read_file(f"src/staged_agents/{artifact}")
+            if os.path.exists(f"src/staged_agents/{artifact}")
+            else ""
+        )
         prompt = (
             f"Review this Kotlin RPG component: {spec['title']}\n\n"
             f"```kotlin\n{code[:2000]}\n```\n\n"
@@ -224,7 +255,11 @@ class AndroidRPGBuilder:
         """Push to GitHub branch and open PR."""
         cid = spec["id"]
         branch = f"{BRANCH_PREFIX}/{cid}-{int(time.time())}"
-        code = read_file(f"src/staged_agents/{artifact}") if os.path.exists(f"src/staged_agents/{artifact}") else ""
+        code = (
+            read_file(f"src/staged_agents/{artifact}")
+            if os.path.exists(f"src/staged_agents/{artifact}")
+            else ""
+        )
 
         # Empty-content guard: don't commit+PR a stub. This prevents the
         # "Turn-Based Combat System" case where the RPG engine generated an
@@ -276,9 +311,9 @@ class AndroidRPGBuilder:
                 continue
 
             set_trace_id(f"rpg-build-{idx}")
-            logger.info(f"\n{'='*50}")
+            logger.info(f"\n{'=' * 50}")
             logger.info(f"Step {idx}/{len(RPG_PIPELINE)}: {spec['title']}")
-            logger.info(f"{'='*50}")
+            logger.info(f"{'=' * 50}")
 
             try:
                 artifact = await self._build_component(spec)
@@ -291,13 +326,13 @@ class AndroidRPGBuilder:
                 self.completed += 1
                 logger.info(f"✅ {spec['title']} delivered: {pr_url}")
 
-            except Exception as e:
+            except Exception:
                 logger.exception(f"❌ Failed to build {spec['title']}")
                 self.failed += 1
 
             registry.record_tool_call("rpg.component", 0.0)
 
-        logger.info(f"\n=== RPG PIPELINE COMPLETE ===")
+        logger.info("\n=== RPG PIPELINE COMPLETE ===")
         logger.info(f"Completed: {self.completed} | Failed: {self.failed}")
 
 
@@ -305,7 +340,7 @@ async def main():
     try:
         builder = AndroidRPGBuilder()
         await builder.run_pipeline()
-    except Exception as e:
+    except Exception:
         logger.exception("Fatal error in RPG pipeline")
 
 

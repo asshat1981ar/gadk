@@ -31,9 +31,7 @@ def test_draft_architecture_note_returns_validated_dict() -> None:
 
 def test_draft_architecture_note_rejects_empty_fields() -> None:
     with pytest.raises(ValidationError):
-        draft_architecture_note(
-            task_id="", title="x", context="x", decision="x"
-        )
+        draft_architecture_note(task_id="", title="x", context="x", decision="x")
 
 
 def test_architecture_note_markdown_contains_all_sections() -> None:
@@ -47,7 +45,14 @@ def test_architecture_note_markdown_contains_all_sections() -> None:
         touched_paths=["a.py"],
     )
     md = note.as_markdown()
-    for section in ("# Test", "## Context", "## Decision", "## Alternatives", "## Consequences", "## Touched paths"):
+    for section in (
+        "# Test",
+        "## Context",
+        "## Decision",
+        "## Alternatives",
+        "## Consequences",
+        "## Touched paths",
+    ):
         assert section in md
 
 

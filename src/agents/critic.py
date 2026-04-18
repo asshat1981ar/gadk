@@ -1,11 +1,12 @@
 from google.adk.agents import Agent
+
 from src.config import Config
-from src.tools.sandbox_executor import execute_python_code
-from src.tools.dispatcher import batch_execute
-from src.tools.filesystem import read_file, list_directory
-from src.tools.github_tool import read_repo_file, list_repo_contents
 from src.services.agent_decisions import normalize_review_verdict
 from src.services.workflow_graphs import GraphDecision, ReviewLoopState, run_review_rework_cycle
+from src.tools.dispatcher import batch_execute
+from src.tools.filesystem import list_directory, read_file
+from src.tools.github_tool import list_repo_contents, read_repo_file
+from src.tools.sandbox_executor import execute_python_code
 
 if Config.TEST_MODE:
     from src.testing.mock_llm import MockLiteLlm as LiteLlm
@@ -30,7 +31,7 @@ async def evaluate(staged_path: str) -> dict:
         return {"status": "FAIL", "reason": "Not a python file"}
 
     try:
-        with open(staged_path, "r") as f:
+        with open(staged_path) as f:
             code = f.read()
 
         result = await execute_python_code(code)
@@ -45,6 +46,7 @@ async def evaluate(staged_path: str) -> dict:
 
 async def review_pr(pr_number: int) -> dict:
     from src.tools.github_tool import GitHubTool
+
     gh = GitHubTool()
     # In a real implementation, fetch PR diff and analyze
     # For now, submit an automated review
@@ -100,7 +102,7 @@ critic_agent = Agent(
     description="Reviews code and staged tools for safety and quality",
     instruction="""You are the Critic of the Cognitive Foundry.
 Your job is to review code and staged tools for safety and quality.
-Use the batch_execute tool to run multiple validation tests or code snippets in parallel 
+Use the batch_execute tool to run multiple validation tests or code snippets in parallel
 using 'tool_name': 'execute_python_code'.
 Alternatively, use the evaluate tool to run a single staged Python file in a sandbox.
 Use create_review_verdict to emit a typed review verdict (pass/retry/block).

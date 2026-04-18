@@ -118,15 +118,22 @@ def test_gate_exception_is_converted_to_failure(sm: StateManager) -> None:
 def test_decide_rework_maps_review_statuses(sm: StateManager) -> None:
     controller = PhaseController(state_manager=sm)
     item = WorkItem(id="t1", phase=Phase.REVIEW)
-    assert controller.decide_rework(
-        item, builder_attempts=0, review_status="pass", latest_summary=""
-    ) == "stop"
-    assert controller.decide_rework(
-        item, builder_attempts=0, review_status="retry", latest_summary="", max_retries=2
-    ) == "builder"
-    assert controller.decide_rework(
-        item, builder_attempts=5, review_status="retry", latest_summary="", max_retries=2
-    ) == "critic_stop"
+    assert (
+        controller.decide_rework(item, builder_attempts=0, review_status="pass", latest_summary="")
+        == "stop"
+    )
+    assert (
+        controller.decide_rework(
+            item, builder_attempts=0, review_status="retry", latest_summary="", max_retries=2
+        )
+        == "builder"
+    )
+    assert (
+        controller.decide_rework(
+            item, builder_attempts=5, review_status="retry", latest_summary="", max_retries=2
+        )
+        == "critic_stop"
+    )
 
 
 def test_review_rework_edge_is_allowed(sm: StateManager) -> None:

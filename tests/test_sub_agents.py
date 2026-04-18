@@ -1,14 +1,20 @@
-import pytest
-from src.agents.orchestrator import orchestrator_agent
-from src.agents.ideator import ideator_agent
 from src.agents.builder import builder_agent
 from src.agents.critic import critic_agent
-from src.agents.pulse import pulse_agent
 from src.agents.finops import finops_agent
+from src.agents.ideator import ideator_agent
+from src.agents.orchestrator import orchestrator_agent
+from src.agents.pulse import pulse_agent
 
 
 def test_all_agents_are_adk_agents():
-    for agent in [orchestrator_agent, ideator_agent, builder_agent, critic_agent, pulse_agent, finops_agent]:
+    for agent in [
+        orchestrator_agent,
+        ideator_agent,
+        builder_agent,
+        critic_agent,
+        pulse_agent,
+        finops_agent,
+    ]:
         assert hasattr(agent, "name")
         assert hasattr(agent, "instruction")
 

@@ -40,7 +40,7 @@ class _StubRepo:
     def __init__(self, *, raise_on: str | None = None) -> None:
         self._raise_on = raise_on
 
-    def create_issue(self, title: str, body: str):  # noqa: D401
+    def create_issue(self, title: str, body: str):
         if self._raise_on == "create":
             raise ConnectionError("network down")
 

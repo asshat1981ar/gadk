@@ -1,8 +1,6 @@
 import json
 import logging
 
-import pytest
-
 from src.observability.logger import (
     configure_logging,
     get_logger,

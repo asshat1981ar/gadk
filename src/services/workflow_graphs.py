@@ -21,7 +21,7 @@ from src.config import Config
 LANGGRAPH_AVAILABLE: bool = False
 if Config.LANGGRAPH_ENABLED:
     try:
-        from langgraph.graph import StateGraph  # type: ignore[import]
+        from langgraph.graph import StateGraph  # type: ignore[import]  # noqa: F401
 
         LANGGRAPH_AVAILABLE = True
     except ImportError:
@@ -93,16 +93,14 @@ def _review_rework_decision(state: ReviewLoopState, max_retries: int) -> GraphDe
 # ---------------------------------------------------------------------------
 
 
-def _run_review_rework_via_langgraph(
-    state: ReviewLoopState, max_retries: int
-) -> GraphDecision:
+def _run_review_rework_via_langgraph(state: ReviewLoopState, max_retries: int) -> GraphDecision:
     """Thin LangGraph wrapper — applies the same decision rule through a
     single-node StateGraph.
 
     LangGraph is subordinate here: it only runs the transition function;
     ADK still owns sessions, routing, and the outer execution lifecycle.
     """
-    from langgraph.graph import StateGraph  # type: ignore[import]  # noqa: PLC0415
+    from langgraph.graph import StateGraph  # type: ignore[import]
 
     def review_node(s: dict) -> dict:
         decision = _review_rework_decision(
@@ -173,9 +171,7 @@ def run_autonomous_retry(
     if state.last_status == "success":
         return GraphDecision(next_step="stop", reason="autonomous campaign succeeded")
     if state.last_status == "stop":
-        return GraphDecision(
-            next_step="stop", reason="stop requested by upstream controller"
-        )
+        return GraphDecision(next_step="stop", reason="stop requested by upstream controller")
     if state.cycle_attempts < max_cycles:
         return GraphDecision(
             next_step="retry",

@@ -1,31 +1,29 @@
 import asyncio
 import os
-import time
 
 from google.adk.runners import Runner
-from src.services.session_store import SQLiteSessionService
 from google.genai import types
 
 from src.agents.orchestrator import orchestrator_agent
 from src.capabilities.contracts import CapabilityRequest
-from src.config import Config
 from src.services.retrieval_context import (
     PLANNING_RETRIEVAL_CAPABILITY,
     RetrievalQuery,
     retrieve_context,
     retrieve_planning_context,
 )
+from src.services.session_store import SQLiteSessionService
 from src.tools.dispatcher import (
     _register_capability,
     execute_capability,
     register_runtime_capabilities,
     register_tool,
 )
-from src.tools.web_search import search_web
+from src.tools.filesystem import list_directory, read_file, write_file
+from src.tools.github_tool import list_repo_contents, read_repo_file
 from src.tools.sandbox_executor import execute_python_code
 from src.tools.smithery_bridge import call_smithery_tool
-from src.tools.filesystem import read_file, write_file, list_directory
-from src.tools.github_tool import read_repo_file, list_repo_contents
+from src.tools.web_search import search_web
 
 # Register core tools for the Multiplexed Dispatcher
 register_runtime_capabilities()
@@ -55,6 +53,7 @@ _register_capability(
 
 try:
     from src.testing.test_tools import delay_tool
+
     register_tool("delay_tool", delay_tool)
 except ImportError:
     pass
@@ -66,12 +65,37 @@ from src.cli.swarm_ctl import (
     is_shutdown_requested,
     write_pid,
 )
+from src.config import Config
 from src.observability.adk_callbacks import ObservabilityCallback
 from src.observability.logger import configure_logging, get_logger, set_session_id, set_trace_id
+from src.services import self_prompt as _self_prompt
 from src.state import StateManager
 
 logger = get_logger("main")
-configure_logging(level=os.getenv("LOG_LEVEL", "INFO").upper(), json_format=os.getenv("JSON_LOGS", "true").lower() == "true")
+configure_logging(
+    level=os.getenv("LOG_LEVEL", "INFO").upper(),
+    json_format=os.getenv("JSON_LOGS", "true").lower() == "true",
+)
+
+
+async def _self_prompt_tick(sm: StateManager, *, interval_sec: float = 60.0) -> None:
+    """Opt-in background coroutine that runs the self-prompt loop periodically.
+
+    Exits cleanly when the shutdown sentinel or the self-prompt off-switch
+    appears so it never blocks teardown. Default cadence is a minute — tight
+    enough to pick up new gap signals, loose enough that rate-limited writes
+    stay bounded.
+    """
+    if not Config.SELF_PROMPT_ENABLED:
+        return
+    logger.info("self_prompt.tick: enabled, interval=%.1fs", interval_sec)
+    while not is_shutdown_requested() and not _self_prompt.off_switch_active():
+        try:
+            _self_prompt.run_once(sm=sm)
+        except Exception:
+            logger.exception("self_prompt.tick: run_once crashed; continuing")
+        await asyncio.sleep(interval_sec)
+    logger.info("self_prompt.tick: stopped (shutdown or off-switch)")
 
 
 async def process_prompt(runner, session, user_query: str) -> None:
@@ -79,20 +103,14 @@ async def process_prompt(runner, session, user_query: str) -> None:
     content = types.Content(role="user", parts=[types.Part(text=user_query)])
     logger.info(f"Processing prompt: {user_query}", extra={"session_id": session.id})
 
-    events = runner.run_async(
-        session_id=session.id,
-        user_id="swarm_admin",
-        new_message=content
-    )
+    events = runner.run_async(session_id=session.id, user_id="swarm_admin", new_message=content)
 
     try:
         async for event in events:
             if hasattr(event, "content") and event.content and event.content.parts:
                 text = event.content.parts[0].text
                 if text:
-                    logger.info(
-                        f"Swarm response: {text}", extra={"session_id": session.id}
-                    )
+                    logger.info(f"Swarm response: {text}", extra={"session_id": session.id})
     except Exception as e:
         logger.exception("Error during swarm execution")
         if "AttributeError" not in str(e):
@@ -159,19 +177,19 @@ async def main():
         session_service = SQLiteSessionService(db_path="sessions.db")
 
         # 2. Create a session for the swarm
-        session = await session_service.create_session(user_id="swarm_admin", app_name="CognitiveFoundry")
+        session = await session_service.create_session(
+            user_id="swarm_admin", app_name="CognitiveFoundry"
+        )
 
         # Set observability context
-        trace_id = os.getenv("TRACE_ID") or str(__import__('uuid').uuid4())
+        trace_id = os.getenv("TRACE_ID") or str(__import__("uuid").uuid4())
         set_trace_id(trace_id)
         set_session_id(session.id)
         logger.info("Cognitive Foundry Swarm Active", extra={"session_id": session.id})
 
         # 3. Initialize the Runner with the Orchestrator
         runner = Runner(
-            agent=orchestrator_agent,
-            app_name="CognitiveFoundry",
-            session_service=session_service
+            agent=orchestrator_agent, app_name="CognitiveFoundry", session_service=session_service
         )
         runner.callbacks = [ObservabilityCallback()]
 
@@ -185,10 +203,17 @@ async def main():
         autonomous = os.getenv("AUTONOMOUS_MODE", "false").lower() == "true"
 
         if autonomous:
-            logger.info(
-                "Running in autonomous loop mode. Use `swarm_cli stop` to exit."
-            )
-            await run_swarm_loop(session_service, session, runner)
+            logger.info("Running in autonomous loop mode. Use `swarm_cli stop` to exit.")
+            sm = StateManager()
+            self_prompt_task = asyncio.create_task(_self_prompt_tick(sm))
+            try:
+                await run_swarm_loop(session_service, session, runner)
+            finally:
+                self_prompt_task.cancel()
+                try:
+                    await self_prompt_task
+                except (asyncio.CancelledError, Exception):
+                    pass
         else:
             await run_single(session_service, session, runner)
 

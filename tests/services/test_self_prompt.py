@@ -24,9 +24,7 @@ def sm(tmp_path: Path) -> StateManager:
 
 
 def _write_coverage(path: Path, files: list[tuple[str, float]]) -> None:
-    classes = "".join(
-        f'<class filename="{name}" line-rate="{rate}"/>' for name, rate in files
-    )
+    classes = "".join(f'<class filename="{name}" line-rate="{rate}"/>' for name, rate in files)
     path.write_text(f'<?xml version="1.0" ?><coverage>{classes}</coverage>')
 
 
@@ -55,8 +53,10 @@ def test_collect_backlog_signals_filters_by_age(tmp_path: Path) -> None:
     old = (now - timedelta(hours=24)).isoformat()
     fresh = now.isoformat()
     q.write_text(
-        json.dumps({"timestamp": old, "user_id": "a", "prompt": "old one"}) + "\n"
-        + json.dumps({"timestamp": fresh, "user_id": "b", "prompt": "fresh one"}) + "\n"
+        json.dumps({"timestamp": old, "user_id": "a", "prompt": "old one"})
+        + "\n"
+        + json.dumps({"timestamp": fresh, "user_id": "b", "prompt": "fresh one"})
+        + "\n"
     )
     signals = sp.collect_backlog_signals(q, max_age_hours=12.0)
     assert len(signals) == 1
@@ -97,17 +97,25 @@ def test_dispatch_writes_prompts_and_respects_limiter(sm: StateManager, tmp_path
     assert lines[0]["self_prompt"]["intent"] == "a"
 
 
-def test_off_switch_blocks_run_once(sm: StateManager, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_off_switch_blocks_run_once(
+    sm: StateManager, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     monkeypatch.setattr(Config, "SELF_PROMPT_ENABLED", True)
     monkeypatch.chdir(tmp_path)
     (tmp_path / sp.SELF_PROMPT_OFF_SENTINEL).write_text("stop")
-    written = sp.run_once(sm=sm, coverage_xml=tmp_path / "none.xml", queue_path=tmp_path / "q.jsonl")
+    written = sp.run_once(
+        sm=sm, coverage_xml=tmp_path / "none.xml", queue_path=tmp_path / "q.jsonl"
+    )
     assert written == []
 
 
-def test_run_once_disabled_by_default(sm: StateManager, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_run_once_disabled_by_default(
+    sm: StateManager, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     monkeypatch.setattr(Config, "SELF_PROMPT_ENABLED", False)
-    written = sp.run_once(sm=sm, coverage_xml=tmp_path / "none.xml", queue_path=tmp_path / "q.jsonl")
+    written = sp.run_once(
+        sm=sm, coverage_xml=tmp_path / "none.xml", queue_path=tmp_path / "q.jsonl"
+    )
     assert written == []
 
 

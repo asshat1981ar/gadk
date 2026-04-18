@@ -4,8 +4,9 @@ import json
 import os
 import time
 from collections import defaultdict
-from dataclasses import dataclass, field, asdict
-from typing import Callable, Any, Dict, List
+from collections.abc import Callable
+from dataclasses import asdict, dataclass
+from typing import Any
 
 
 @dataclass
@@ -29,12 +30,14 @@ class ToolMetrics:
 class MetricsRegistry:
     def __init__(self, filename: str = "metrics.jsonl") -> None:
         self.filename = filename
-        self._agent_metrics: Dict[str, AgentMetrics] = defaultdict(AgentMetrics)
-        self._tool_metrics: Dict[str, ToolMetrics] = defaultdict(ToolMetrics)
-        self._token_usage: Dict[str, int] = defaultdict(int)
+        self._agent_metrics: dict[str, AgentMetrics] = defaultdict(AgentMetrics)
+        self._tool_metrics: dict[str, ToolMetrics] = defaultdict(ToolMetrics)
+        self._token_usage: dict[str, int] = defaultdict(int)
         self._load()
 
-    def record_agent_call(self, agent_name: str, duration: float, error: Exception | None = None) -> None:
+    def record_agent_call(
+        self, agent_name: str, duration: float, error: Exception | None = None
+    ) -> None:
         m = self._agent_metrics[agent_name]
         m.calls_total += 1
         m.duration_seconds_sum += duration
@@ -44,7 +47,9 @@ class MetricsRegistry:
             m.last_error = str(error)
         self._persist()
 
-    def record_tool_call(self, tool_name: str, duration: float, error: Exception | None = None) -> None:
+    def record_tool_call(
+        self, tool_name: str, duration: float, error: Exception | None = None
+    ) -> None:
         m = self._tool_metrics[tool_name]
         m.calls_total += 1
         m.duration_seconds_sum += duration
@@ -58,7 +63,7 @@ class MetricsRegistry:
         self._token_usage[agent_name] += tokens
         self._persist()
 
-    def get_summary(self) -> Dict[str, Any]:
+    def get_summary(self) -> dict[str, Any]:
         def avg_duration(m: AgentMetrics | ToolMetrics) -> float:
             if m.duration_seconds_count == 0:
                 return 0.0
@@ -106,7 +111,7 @@ class MetricsRegistry:
         if not os.path.exists(self.filename):
             return
         try:
-            with open(self.filename, "r") as f:
+            with open(self.filename) as f:
                 payload = json.load(f)
             for name, data in payload.get("agents", {}).items():
                 self._agent_metrics[name] = AgentMetrics(**data)
@@ -124,6 +129,7 @@ registry = MetricsRegistry()
 
 def agent_timer(agent_name: str) -> Callable:
     """Decorator to time agent method calls."""
+
     def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
         async def async_wrapper(*args: Any, **kwargs: Any) -> Any:
@@ -154,11 +160,13 @@ def agent_timer(agent_name: str) -> Callable:
         if asyncio.iscoroutinefunction(func):
             return async_wrapper
         return sync_wrapper
+
     return decorator
 
 
 def tool_timer(tool_name: str) -> Callable:
     """Decorator to time tool method calls."""
+
     def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
         async def async_wrapper(*args: Any, **kwargs: Any) -> Any:
@@ -189,4 +197,5 @@ def tool_timer(tool_name: str) -> Callable:
         if asyncio.iscoroutinefunction(func):
             return async_wrapper
         return sync_wrapper
+
     return decorator

@@ -126,9 +126,7 @@ def collect_event_log_signals(sm: StateManager, *, limit: int = 50) -> list[GapS
     return signals
 
 
-def collect_backlog_signals(
-    queue_path: Path, *, max_age_hours: float = 12.0
-) -> list[GapSignal]:
+def collect_backlog_signals(queue_path: Path, *, max_age_hours: float = 12.0) -> list[GapSignal]:
     """Surface stale prompts in the queue so the swarm notices its own backlog."""
     if not queue_path.exists():
         return []
@@ -248,7 +246,9 @@ def dispatch(
     accepted: list[SelfPrompt] = []
     for prompt in prompts:
         if not rate_limiter.try_consume():
-            logger.info("self_prompt: rate cap reached; deferring %d prompts", len(prompts) - len(accepted))
+            logger.info(
+                "self_prompt: rate cap reached; deferring %d prompts", len(prompts) - len(accepted)
+            )
             break
         entry = {
             "timestamp": datetime.now(UTC).isoformat(),
@@ -264,10 +264,7 @@ def dispatch(
 
 def off_switch_active() -> bool:
     """True if any off-switch sentinel is present in the working directory."""
-    return (
-        os.path.exists(".swarm_shutdown")
-        or os.path.exists(SELF_PROMPT_OFF_SENTINEL)
-    )
+    return os.path.exists(".swarm_shutdown") or os.path.exists(SELF_PROMPT_OFF_SENTINEL)
 
 
 def run_once(
