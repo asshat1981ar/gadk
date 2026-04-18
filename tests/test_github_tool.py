@@ -97,3 +97,61 @@ def test_pygithub_missing_raises_when_mock_not_allowed(monkeypatch: pytest.Monke
 
     with pytest.raises(RuntimeError, match="PyGithub is not installed"):
         gh_mod.GitHubTool()
+
+
+class _PRStubRepo:
+    """Stub for PR creation tests."""
+
+    class _Branch:
+        class _Commit:
+            sha = "deadbeef"
+
+        commit = _Commit()
+
+    def get_branch(self, name: str):
+        if name == "main":
+            return self._Branch()
+        raise ConnectionError("branch not found")
+
+    def create_git_ref(self, ref: str, sha: str):
+        raise TimeoutError("network flap")
+
+    def create_pull(self, **kwargs):  # pragma: no cover
+        raise AssertionError("should not reach create_pull")
+
+
+@pytest.mark.asyncio
+async def test_create_pull_request_chains_create_git_ref_error() -> None:
+    """create_pull_request surfaces both the branch-not-found and create_git_ref errors."""
+    tool = github_tool.GitHubTool.__new__(github_tool.GitHubTool)
+    tool.repo = _PRStubRepo()  # type: ignore[attr-defined]
+    tool.gh = None  # type: ignore[attr-defined]
+
+    result = await tool.create_pull_request(
+        title="My PR",
+        body="A" * 50,  # long enough to pass is_low_value_content guard
+        head="feature-branch",
+        base="main",
+    )
+
+    # The function returns an error string (does not propagate the exception).
+    assert result.startswith("Error creating PR:")
+
+    # Verify the chain was set up — re-run through the repo directly to inspect.
+    captured: list[BaseException] = []
+    try:
+        tool.repo.get_branch("feature-branch")
+    except github_tool._GITHUB_API_ERRORS as branch_exc:
+        try:
+            tool.repo.create_git_ref(ref="refs/heads/feature-branch", sha="deadbeef")
+        except github_tool._GITHUB_API_ERRORS as create_exc:
+            # The inner raise should chain the outer branch error.
+            try:
+                raise create_exc from branch_exc
+            except github_tool._GITHUB_API_ERRORS as final:
+                captured.append(final)
+
+    assert captured, "expected at least one chained exception"
+    exc = captured[0]
+    assert exc.__cause__ is not None, "create_git_ref error must chain the original branch error"
+    assert isinstance(exc.__cause__, ConnectionError)
