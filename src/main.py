@@ -39,9 +39,22 @@ register_tool("list_repo_contents", list_repo_contents)
 register_tool("retrieve_planning_context", retrieve_planning_context)
 
 
-def _planning_retrieval_handler(request: CapabilityRequest) -> dict[str, object]:
+async def _planning_retrieval_handler(request: CapabilityRequest) -> dict[str, object]:
+    """Async capability handler for `planning.retrieve_context`.
+
+    `retrieve_context` is synchronous and, in vector mode, blocks on
+    `litellm.embedding` for seconds per query. Dispatch it through
+    `asyncio.to_thread` so the swarm event loop stays responsive —
+    `_self_prompt_tick`, the dequeue loop, and other async agent tools
+    continue making progress while the embedding call is in flight.
+
+    `CapabilityService._execute_passthrough_capability` checks
+    `inspect.isawaitable(output)` and awaits when the handler returns
+    a coroutine, so this change is invisible to the capability
+    plumbing.
+    """
     query = RetrievalQuery.model_validate(request.arguments)
-    return retrieve_context(query)
+    return await asyncio.to_thread(retrieve_context, query)
 
 
 _register_capability(
