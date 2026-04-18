@@ -33,6 +33,8 @@ events.jsonl
 state.json.bak
 events.jsonl.bak
 costs.jsonl
+metrics.jsonl
+test_metrics.jsonl
 coverage.xml
 .coverage
 .secrets.baseline
