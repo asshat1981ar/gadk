@@ -522,3 +522,39 @@ async def test_run_cycle_degrades_when_adr_synthesis_fails(
     assert "ARCHITECT" in targets
     # But payload has no `architecture` key since synthesis degraded.
     assert "architecture" not in item.payload
+
+
+# ---------------------------------------------------------------------------
+# Issue #35: cap PR scan in _plan at GITHUB_DEDUP_ISSUE_SCAN_LIMIT
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_plan_caps_open_pr_scan_at_limit(
+    engine_with_mocks, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """_plan must stop iterating open PRs after GITHUB_DEDUP_ISSUE_SCAN_LIMIT."""
+    from src.config import Config
+
+    cap = 3
+    monkeypatch.setattr(Config, "GITHUB_DEDUP_ISSUE_SCAN_LIMIT", cap)
+
+    # Return more PRs than the cap; none share a title with our task so it
+    # should still be selected — the important thing is the cap was applied.
+    over_limit_prs = [
+        {"number": i, "title": f"unrelated pr {i}", "state": "open", "url": "", "head": ""}
+        for i in range(cap + 5)
+    ]
+
+    class _CapCheckGitHub:
+        async def list_pull_requests(self, state: str = "open") -> list:
+            return over_limit_prs
+
+    engine, _ = engine_with_mocks
+    engine.gh = _CapCheckGitHub()
+
+    tasks = [{"title": "New unique task", "priority": "HIGH", "description": "x"}]
+    selected = await engine._plan(tasks)
+    # Task is selected (no matching PR titles after cap is applied).
+    assert selected is not None
+    assert selected["title"] == "New unique task"

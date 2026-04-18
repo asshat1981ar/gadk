@@ -241,9 +241,13 @@ class AutonomousSDLCEngine:
         priority_order = {"HIGH": 0, "MEDIUM": 1, "LOW": 2}
         tasks.sort(key=lambda t: priority_order.get(t.get("priority", "LOW"), 2))
 
-        # Check existing open PRs to avoid duplicates
+        # Check existing open PRs to avoid duplicates (capped to limit memory usage)
         try:
             open_prs = await self.gh.list_pull_requests(state="open")
+            cap = Config.GITHUB_DEDUP_ISSUE_SCAN_LIMIT
+            if len(open_prs) > cap:
+                logger.warning("github.open_pr_scan_capped limit=%d total=%d", cap, len(open_prs))
+                open_prs = open_prs[:cap]
             open_titles = {p["title"].lower() for p in open_prs}
         except (ConnectionError, TimeoutError, KeyError, TypeError) as exc:
             logger.warning("open-PR scan failed; proceeding without dedup: %s", exc)

@@ -216,9 +216,14 @@ class GitHubTool(Tool):
             # Ensure branch exists; if not, create it from base
             try:
                 self.repo.get_branch(head)
-            except _GITHUB_API_ERRORS:
+            except _GITHUB_API_ERRORS as branch_exc:
                 default_branch = self.repo.get_branch(base)
-                self.repo.create_git_ref(ref=f"refs/heads/{head}", sha=default_branch.commit.sha)
+                try:
+                    self.repo.create_git_ref(
+                        ref=f"refs/heads/{head}", sha=default_branch.commit.sha
+                    )
+                except _GITHUB_API_ERRORS as create_exc:
+                    raise create_exc from branch_exc
             pr = self.repo.create_pull(title=title, body=clean_body, head=head, base=base)
             return pr.html_url
         except _GITHUB_API_ERRORS as exc:

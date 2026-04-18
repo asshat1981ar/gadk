@@ -249,7 +249,7 @@ def test_self_prompt_write_appends_to_queue(
 
     monkeypatch.setattr(Config, "SELF_PROMPT_ENABLED", True)
     monkeypatch.setattr(Config, "SELF_PROMPT_MAX_PER_HOUR", 10)
-    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr("src.services.self_prompt.off_switch_active", lambda **_kw: False)
 
     rc, out = _run(
         capsys,

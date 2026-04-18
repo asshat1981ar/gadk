@@ -21,7 +21,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import os
 from collections import deque
 from collections.abc import Iterable
 from dataclasses import dataclass, field
@@ -266,9 +265,14 @@ def dispatch(
     return accepted
 
 
-def off_switch_active() -> bool:
-    """True if any off-switch sentinel is present in the working directory."""
-    return os.path.exists(".swarm_shutdown") or os.path.exists(SELF_PROMPT_OFF_SENTINEL)
+def off_switch_active(cwd: Path | None = None) -> bool:
+    """True if any off-switch sentinel is present in *cwd* (or the process working directory).
+
+    Pass an explicit *cwd* to avoid dependence on the process working directory,
+    which makes callers safe to test without ``monkeypatch.chdir``.
+    """
+    base = cwd if cwd is not None else Path(".")
+    return (base / ".swarm_shutdown").exists() or (base / SELF_PROMPT_OFF_SENTINEL).exists()
 
 
 def run_once(
@@ -276,16 +280,20 @@ def run_once(
     sm: StateManager,
     coverage_xml: Path = Path("coverage.xml"),
     queue_path: Path = Path("prompt_queue.jsonl"),
+    cwd: Path | None = None,
 ) -> list[SelfPrompt]:
     """Single pass — collect → synthesize → dispatch.
 
     Respects ``Config.SELF_PROMPT_ENABLED`` (default False) and the off-switch.
     Safe to invoke from both CLI dry-runs and the main loop.
+
+    Pass *cwd* to override the directory checked for off-switch sentinel files;
+    defaults to the process working directory.
     """
     if not getattr(Config, "SELF_PROMPT_ENABLED", False):
         logger.info("self_prompt: disabled via Config.SELF_PROMPT_ENABLED")
         return []
-    if off_switch_active():
+    if off_switch_active(cwd=cwd):
         logger.info("self_prompt: off-switch sentinel present; skipping pass")
         return []
 

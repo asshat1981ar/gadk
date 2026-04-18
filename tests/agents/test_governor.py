@@ -80,11 +80,12 @@ def test_register_external_gate_skipped_when_flag_off(monkeypatch: pytest.Monkey
 def test_register_external_gate_skipped_when_client_missing(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    import sys
+
     monkeypatch.setattr(Config, "SDLC_MCP_ENABLED", True)
-    import sys as _sys
 
     # Ensure the client module is not resolvable.
-    _sys.modules.pop("src.mcp.sdlc_client", None)
+    monkeypatch.delitem(sys.modules, "src.mcp.sdlc_client", raising=False)
     # Make the import fail cleanly.
     orig_import = (
         __builtins__["__import__"] if isinstance(__builtins__, dict) else __builtins__.__import__

@@ -51,6 +51,121 @@ class _StubRepo:
     def get_issues(self, state: str = "open"):
         return []
 
+    def get_branch(self, name: str):
+        if self._raise_on == "get_branch":
+            raise ConnectionError("branch not found")
+
+        class _Branch:
+            class commit:
+                sha = "abc123"
+
+        return _Branch()
+
+    def create_git_ref(self, ref: str, sha: str):
+        if self._raise_on == "create_git_ref":
+            raise TimeoutError("network timeout creating ref")
+
+    def create_pull(self, title: str, body: str, head: str, base: str):
+        class _PR:
+            html_url = "https://example/pull/1"
+
+        return _PR()
+
+
+# ---------------------------------------------------------------------------
+# Issue #35: create_pull_request error chaining
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_create_pull_request_chains_inner_error_as_cause() -> None:
+    """When get_branch raises then create_git_ref fails, __cause__ carries the original error."""
+
+    class _TwoStageRepo:
+        """get_branch(head) raises; get_branch(base) succeeds; create_git_ref raises."""
+
+        def get_branch(self, name: str):
+            if name != "main":
+                raise ConnectionError("branch not found")
+
+            class _Branch:
+                class commit:
+                    sha = "abc123"
+
+            return _Branch()
+
+        def create_git_ref(self, ref: str, sha: str):
+            raise TimeoutError("network timeout creating ref")
+
+        def create_pull(self, title, body, head, base):
+            raise AssertionError("should not reach create_pull")  # pragma: no cover
+
+    tool = github_tool.GitHubTool.__new__(github_tool.GitHubTool)
+    tool.repo = _TwoStageRepo()  # type: ignore[attr-defined]
+    tool.gh = None  # type: ignore[attr-defined]
+
+    result = await tool.create_pull_request(
+        title="Test PR",
+        body="some body text that is long enough to pass the low-value guard check",
+        head="my-branch",
+    )
+    # Should return an error string (not raise), but the inner cause should be chained.
+    assert result.startswith("Error creating PR:")
+
+
+@pytest.mark.asyncio
+async def test_create_pull_request_error_cause_is_original_branch_error() -> None:
+    """__cause__ on create_git_ref failure is the branch-lookup exception."""
+    captured_exc: list[BaseException] = []
+
+    class _ChainCheckRepo:
+        def get_branch(self, name: str):
+            if name != "main":
+                raise ConnectionError("original branch error")
+
+            class _Branch:
+                class commit:
+                    sha = "abc123"
+
+            return _Branch()
+
+        def create_git_ref(self, ref: str, sha: str):
+            raise TimeoutError("create ref failed")
+
+        def create_pull(self, title, body, head, base):
+            raise AssertionError("should not reach create_pull")  # pragma: no cover
+
+    tool = github_tool.GitHubTool.__new__(github_tool.GitHubTool)
+    tool.repo = _ChainCheckRepo()  # type: ignore[attr-defined]
+    tool.gh = None  # type: ignore[attr-defined]
+
+    # Patch the logger.error to capture the exc_info
+    import logging
+
+    class _CapHandler(logging.Handler):
+        def emit(self, record: logging.LogRecord) -> None:
+            if record.exc_info and record.exc_info[1]:
+                captured_exc.append(record.exc_info[1])
+
+    handler = _CapHandler()
+    import src.tools.github_tool as _gh_mod
+
+    _gh_mod.logger.addHandler(handler)  # type: ignore[attr-defined]
+    try:
+        result = await tool.create_pull_request(
+            title="Test PR",
+            body="some body text that is long enough to pass the low-value guard check",
+            head="my-branch",
+        )
+        assert result.startswith("Error creating PR:")
+        assert captured_exc, "expected logger.error to emit with exc_info"
+        # The chained __cause__ must be the original branch error
+        outer_exc = captured_exc[0]
+        assert isinstance(outer_exc.__cause__, ConnectionError)
+        assert "original branch error" in str(outer_exc.__cause__)
+    finally:
+        _gh_mod.logger.removeHandler(handler)  # type: ignore[attr-defined]
+
 
 @pytest.mark.asyncio
 async def test_create_issue_returns_error_string_on_api_failure(
