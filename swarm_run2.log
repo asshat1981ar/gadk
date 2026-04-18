@@ -1,0 +1,24 @@
+/home/westonaaron675/gadk/venv/lib/python3.11/site-packages/google/adk/features/_feature_decorator.py:72: UserWarning: [EXPERIMENTAL] feature FeatureName.PLUGGABLE_AUTH is enabled.
+  check_feature_enabled()
+{"timestamp": "2026-04-17T22:18:35.162447+00:00", "level": "INFO", "logger": "main", "message": "Cognitive Foundry Swarm Active", "trace_id": "368af3ee-8fb8-4bdd-aa19-9f834f14d194", "session_id": "aaf93ba0-a79e-4379-88d5-440159522d82", "task_id": "", "agent": "", "tool": ""}
+--- Cognitive Foundry Swarm Active ---
+Session ID: aaf93ba0-a79e-4379-88d5-440159522d82
+{"timestamp": "2026-04-17T22:18:35.163107+00:00", "level": "INFO", "logger": "main", "message": "Processing queued prompt from cli_user: Scan the Cognitive Foundry codebase locally. Read src/main.py and list src/ directory. Identify a missing feature and create a task. Then delegate to Builder to implement it.", "trace_id": "368af3ee-8fb8-4bdd-aa19-9f834f14d194", "session_id": "aaf93ba0-a79e-4379-88d5-440159522d82", "task_id": "", "agent": "", "tool": ""}
+[Queued] cli_user: Scan the Cognitive Foundry codebase locally. Read src/main.py and list src/ directory. Identify a missing feature and create a task. Then delegate to Builder to implement it.
+{"timestamp": "2026-04-17T22:18:35.163447+00:00", "level": "INFO", "logger": "main", "message": "Processing prompt: Scan the Cognitive Foundry codebase locally. Read src/main.py and list src/ directory. Identify a missing feature and create a task. Then delegate to Builder to implement it.", "trace_id": "368af3ee-8fb8-4bdd-aa19-9f834f14d194", "session_id": "aaf93ba0-a79e-4379-88d5-440159522d82", "task_id": "", "agent": "", "tool": ""}
+[92m17:18:37 - LiteLLM:INFO[0m: utils.py:4011 - 
+LiteLLM completion() model= gpt-4o; provider = openai
+{"timestamp": "2026-04-17T22:18:37.329582+00:00", "level": "INFO", "logger": "LiteLLM", "message": "\nLiteLLM completion() model= gpt-4o; provider = openai", "trace_id": "368af3ee-8fb8-4bdd-aa19-9f834f14d194", "session_id": "aaf93ba0-a79e-4379-88d5-440159522d82", "task_id": "", "agent": "", "tool": ""}
+[92m17:18:40 - LiteLLM:INFO[0m: utils.py:4011 - 
+LiteLLM completion() model= gpt-4o; provider = openai
+{"timestamp": "2026-04-17T22:18:40.887245+00:00", "level": "INFO", "logger": "LiteLLM", "message": "\nLiteLLM completion() model= gpt-4o; provider = openai", "trace_id": "368af3ee-8fb8-4bdd-aa19-9f834f14d194", "session_id": "aaf93ba0-a79e-4379-88d5-440159522d82", "task_id": "", "agent": "", "tool": ""}
+Swarm: It seems that we encountered an error while trying to access the codebase. I am unable to perform the operations locally. If you have access to the codebase, you could provide the contents of `src/main.py` and the directory listing. Alternatively, you could perform these steps yourself:
+
+1. **Read** the contents of `src/main.py` yourself.
+2. **List** the contents of the `src` directory.
+3. **Identify** any missing feature based on your analysis.
+4. I can assist in creating a structured task for implementing the missing feature.
+
+Let me know if you'd like to proceed with any specific part.
+{"timestamp": "2026-04-17T22:18:42.784455+00:00", "level": "INFO", "logger": "main", "message": "Swarm response: It seems that we encountered an error while trying to access the codebase. I am unable to perform the operations locally. If you have access to the codebase, you could provide the contents of `src/main.py` and the directory listing. Alternatively, you could perform these steps yourself:\n\n1. **Read** the contents of `src/main.py` yourself.\n2. **List** the contents of the `src` directory.\n3. **Identify** any missing feature based on your analysis.\n4. I can assist in creating a structured task for implementing the missing feature.\n\nLet me know if you'd like to proceed with any specific part.", "trace_id": "368af3ee-8fb8-4bdd-aa19-9f834f14d194", "session_id": "aaf93ba0-a79e-4379-88d5-440159522d82", "task_id": "", "agent": "", "tool": ""}
+{"timestamp": "2026-04-17T22:18:42.785111+00:00", "level": "INFO", "logger": "main", "message": "Swarm exited cleanly.", "trace_id": "368af3ee-8fb8-4bdd-aa19-9f834f14d194", "session_id": "aaf93ba0-a79e-4379-88d5-440159522d82", "task_id": "", "agent": "", "tool": ""}

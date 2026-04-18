@@ -1,0 +1,67 @@
+from types import SimpleNamespace
+from unittest.mock import AsyncMock
+
+import pytest
+from tenacity import wait_none
+
+import src.planner as planner
+
+
+def _mock_response(content: str):
+    return SimpleNamespace(
+        choices=[
+            SimpleNamespace(
+                message=SimpleNamespace(
+                    content=content,
+                    tool_calls=None,
+                )
+            )
+        ]
+    )
+
+
+def test_repair_and_validate_tool_json_recovers_nearly_valid_json():
+    raw = '{"action":"tool_call","tool_name":"read_file","args":{"path":"src/main.py",}}'
+
+    parsed = planner.repair_and_validate_tool_json(raw)
+
+    assert isinstance(parsed, planner.PlannerToolCall)
+    assert parsed.tool_name == "read_file"
+    assert parsed.args["path"] == "src/main.py"
+
+
+def test_repair_and_validate_tool_json_rejects_unknown_tool_name():
+    raw = '{"action":"tool_call","tool_name":"unknown","args":{"path":"src/main.py"}}'
+
+    parsed = planner.repair_and_validate_tool_json(raw)
+
+    assert parsed is None
+
+
+def test_parse_tool_calls_repairs_canonical_json_blocks():
+    raw = '```json\n{"action":"tool_call","tool_name":"read_file","args":{"path":"src/main.py",}}\n```'
+
+    calls = planner._parse_tool_calls(raw)
+
+    assert calls == [{"tool_name": "read_file", "args": {"path": "src/main.py"}}]
+
+
+@pytest.mark.asyncio
+async def test_llm_turn_retries_empty_response(monkeypatch):
+    monkeypatch.setattr(planner, "_PLANNER_RETRY_WAIT", wait_none())
+    mocked_completion = AsyncMock(
+        side_effect=[
+            _mock_response(""),
+            _mock_response("final response"),
+        ]
+    )
+    monkeypatch.setattr(planner, "acompletion", mocked_completion)
+
+    content = await planner._llm_turn(
+        messages=[{"role": "user", "content": "hello"}],
+        model="test-model",
+        retries=1,
+    )
+
+    assert content == "final response"
+    assert mocked_completion.await_count == 2

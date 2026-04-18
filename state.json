@@ -1,0 +1,266 @@
+{
+  "chimera-ideation-1776465607": {
+    "title": "Chimera codebase ideation",
+    "status": "COMPLETED",
+    "source": "ChimeraIdeation",
+    "description": "# Chimera Repository - Top Issues and Tasks\n\n## Issue 1: Missing Standard Source Directory Structure\n\n**Description:**\nThe `src/` directory is empty, while source code resides directly in module direc",
+    "review": "No staged files to review."
+  },
+  "chimera-ideation-1776465661": {
+    "title": "Chimera codebase ideation",
+    "status": "COMPLETED",
+    "source": "ChimeraIdeation",
+    "description": "No task spec written by Ideator.",
+    "review": "No staged files to review."
+  },
+  "chimera-ideation-1776465723": {
+    "title": "Chimera codebase ideation",
+    "status": "COMPLETED",
+    "source": "ChimeraIdeation",
+    "description": "# Chimera Project - Top 3 Issues\n\n## Issue 1: Missing Security Configuration for API Keys\n**Description:** The build configuration exposes sensitive plugin configurations but lacks security measures f",
+    "review": "No staged files to review."
+  },
+  "chimera-ideation-1776465794": {
+    "title": "Chimera codebase ideation",
+    "status": "COMPLETED",
+    "source": "ChimeraIdeation",
+    "description": "# Chimera Project - Critical Tasks\n\n## Task 1: Configure Detekt Security Rules\n**Title**: Configure Detekt Static Analysis with Security Rules\n**Description**: The detekt plugin is currently applied w",
+    "review": "No staged files to review."
+  },
+  "chimera-ideation-1776465855": {
+    "title": "Chimera codebase ideation",
+    "status": "COMPLETED",
+    "source": "ChimeraIdeation",
+    "description": "# Chimera Repository - Top 3 Issues and Action Tasks\n\n## Issue 1: Build Configuration Lacks Version Catalog (Critical Security/Quality)\n- **Description**: The project uses `build.gradle.kts` but lacks",
+    "review": "**Review of `chimera_secrets_scanner.py`**\n\n**What\u2019s good**\n- Clear purpose and documentation string with usage examples.\n- Well-structured code using `dataclass`, `Enum`, and typed hints.\n- Layered s"
+  },
+  "sdlc-": {
+    "action": "read_repo_file",
+    "args": {
+      "path": "core-data/src/main/kotlin/com/chimera/data/ChimeraPreferences.kt"
+    },
+    "task_id": "sdlc-",
+    "status": "IN_PROGRESS",
+    "agent": "Builder"
+  },
+  "sdlc-missing-network-security-configuration": {
+    "status": "DELIVERED",
+    "artifact": "src/staged_agents/chimera_secrets_scanner.py",
+    "branch": "bot/sdlc-missing-network-security-configuration",
+    "pr_url": "Error creating PR: Reference already exists: 422 {\"message\": \"Reference already exists\", \"documentation_url\": \"https://docs.github.com/rest/git/refs#create-a-reference\", \"status\": \"422\"}",
+    "issue_url": "https://github.com/asshat1981ar/project-chimera/issues/136",
+    "review": "```json\n[{\"action\": \"tool_call\", \"tool_name\": \"list_directory\", \"arguments\": {\"path\": \"src\"}}]\n```"
+  },
+  "sdlc-security-audit-project-chimera": {
+    "title": "Security audit project-chimera",
+    "priority": "HIGH",
+    "description": "Run security scanner on repo",
+    "file_hint": "build.gradle.kts",
+    "task_id": "sdlc-security-audit-project-chimera",
+    "status": "IN_PROGRESS",
+    "agent": "Builder"
+  },
+  "sdlc-add-github-actions-ci/cd-pipeline": {
+    "status": "DELIVERED",
+    "artifact": "src/staged_agents/cicd_pipeline.py",
+    "branch": "bot/sdlc-add-github-actions-ci/cd-pipeline-1776467165",
+    "pr_url": "https://github.com/asshat1981ar/project-chimera/pull/140",
+    "issue_url": "https://github.com/asshat1981ar/project-chimera/issues/141",
+    "review": "Review saved to src/review.txt."
+  },
+  "sdlc-add-unit-test-suite-with-junit5-and-mock": {
+    "status": "DELIVERED",
+    "artifact": "src/staged_agents/npc_simulation_test.kt",
+    "branch": "bot/sdlc-add-unit-test-suite-with-junit5-and-mock-1776483806",
+    "pr_url": "https://github.com/asshat1981ar/project-chimera/pull/160",
+    "issue_url": "https://github.com/asshat1981ar/project-chimera/issues/161",
+    "review": "## 1) What\u2019s good\n- The test class is well-structured with `@BeforeEach`, `@AfterEach`, and clear test method names.\n- MockK is properly initialized with relaxed mocks, reducing boilerplate.\n- Tests c"
+  },
+  "sdlc-missing-repository-abstraction-layer-for": {
+    "title": "Missing Repository Abstraction Layer for API Data Sources",
+    "priority": "HIGH",
+    "description": "The project has excellent core simulation and domain layers, with data/repositories handling persistence and API calls. However, there's no centralized repository abstraction that decouples data sources (Room, API) from use cases. This forces use cases to directly manage data source coordination, violating the Repository pattern and making testing and data source switching harder. Adding a repository layer would provide a clean API for data operations and enable proper caching strategies.",
+    "file_hint": "Should be added in core-data module alongside existing repository implementations",
+    "task_id": "sdlc-missing-repository-abstraction-layer-for",
+    "status": "IN_PROGRESS",
+    "agent": "Builder"
+  },
+  "sdlc-add-dependency-injection-with-koin": {
+    "status": "DELIVERED",
+    "artifact": "src/staged_agents/repository_abstraction_layer.py",
+    "branch": "bot/sdlc-add-dependency-injection-with-koin-1776467852",
+    "pr_url": "https://github.com/asshat1981ar/project-chimera/pull/144",
+    "issue_url": "https://github.com/asshat1981ar/project-chimera/issues/145",
+    "review": "```json\n{\"action\": \"read_file\", \"arguments\": {\"path\": \"src/review.txt\"}}\n```"
+  },
+  "sdlc-add-jetpack-navigation-component": {
+    "status": "DELIVERED",
+    "artifact": "src/staged_agents/repository_abstraction_layer.py",
+    "branch": "bot/sdlc-add-jetpack-navigation-component-1776468127",
+    "pr_url": "https://github.com/asshat1981ar/project-chimera/pull/146",
+    "issue_url": "https://github.com/asshat1981ar/project-chimera/issues/147",
+    "review": "Review completed and saved to src/review.txt."
+  },
+  "sdlc-add-room-database-layer": {
+    "status": "DELIVERED",
+    "artifact": "src/staged_agents/com_chimera_data_db_RoomDatabase.kt",
+    "branch": "bot/sdlc-add-room-database-layer-1776468312",
+    "pr_url": "https://github.com/asshat1981ar/project-chimera/pull/148",
+    "issue_url": "https://github.com/asshat1981ar/project-chimera/issues/149",
+    "review": "```json\n{\"action\": \"read_file\", \"tool_args\": {\"path\": \"src/\"}}\n```"
+  },
+  "sdlc-add-github-actions-ci-pipeline": {
+    "status": "DELIVERED",
+    "artifact": "src/staged_agents/chimera_ci_pipeline.kt",
+    "branch": "bot/sdlc-add-github-actions-ci-pipeline-1776468394",
+    "pr_url": "https://github.com/asshat1981ar/project-chimera/pull/150",
+    "issue_url": "https://github.com/asshat1981ar/project-chimera/issues/151",
+    "review": "```json\n{\"action\": \"list_directory\", \"arguments\": {\"path\": \"src\"}}\n```"
+  },
+  "sdlc-authentication-and-authorization-system": {
+    "status": "DELIVERED",
+    "artifact": "src/staged_agents/sdlc-authentication-and-authorization-system.kt",
+    "branch": "bot/sdlc-authentication-and-authorization-system-1776468554",
+    "pr_url": "https://github.com/asshat1981ar/project-chimera/pull/152",
+    "issue_url": "https://github.com/asshat1981ar/project-chimera/issues/153",
+    "review": "1) What\u2019s good  \n- Solid structure: sealed Result return type, singleton via double-checked locking, clear data classes for sessions/accounts/NPC states, role-based permission model.  \n- Security hygi"
+  },
+  "sdlc-deterministic-save-state-replay-/-time-t": {
+    "status": "DELIVERED",
+    "artifact": "src/staged_agents/TimeTravel.kt",
+    "branch": "bot/sdlc-deterministic-save-state-replay-/-time-t-1776468818",
+    "pr_url": "https://github.com/asshat1981ar/project-chimera/pull/154",
+    "issue_url": "https://github.com/asshat1981ar/project-chimera/issues/155",
+    "review": "```json\n[{\"action\": \"write_file\", \"args\": {\"path\": \"src/review.md\", \"content\": \"## 1) What's good\\n- Clear deterministic design (hash-based integrity, replay, branch/undo-redo).\\n- Full session persis"
+  },
+  "sdlc-dependency-injection-framework": {
+    "status": "FAILED",
+    "reason": "no artifact"
+  },
+  "sdlc-analytics-and-crash-reporting-integratio": {
+    "status": "FAILED",
+    "reason": "no artifact"
+  },
+  "sdlc-deterministic-event-scheduler-for-narrat": {
+    "title": "Deterministic Event Scheduler for Narrative Progression",
+    "priority": "HIGH",
+    "description": "The project lacks a centralized, deterministic scheduler for time-based story events and NPC behavioral ticks, risking race conditions and nondeterminism in narrative progression as feature modules grow. A scheduling engine would ensure consistent simulation outcomes across devices and enable reliable testing.",
+    "file_hint": "app/src/main/java/.../scheduling/EventScheduler.kt (or chimera-core/scheduling/EventScheduler.kt)",
+    "task_id": "sdlc-deterministic-event-scheduler-for-narrat",
+    "status": "IN_PROGRESS",
+    "agent": "Builder"
+  },
+  "sdlc-analytics-and-logging-infrastructure": {
+    "status": "DELIVERED",
+    "artifact": "src/staged_agents/AnalyticsLoggingInfrastructure.kt",
+    "branch": "bot/sdlc-analytics-and-logging-infrastructure-1776469694",
+    "pr_url": "https://github.com/asshat1981ar/project-chimera/pull/156",
+    "issue_url": "https://github.com/asshat1981ar/project-chimera/issues/157",
+    "review": "The provided content is a Kotlin-style file but is saved without a `.kt` extension (e.g., `main.py`). Below is a concise review focused on safety, style, and correctness.\n\n1) What's good\n- Clear, stru"
+  },
+  "rpg-scaffold": {
+    "status": "IN_PROGRESS",
+    "id": "scaffold",
+    "title": "Android RPG Project Scaffold",
+    "priority": "HIGH",
+    "description": "Initialize Android project with build.gradle.kts, manifest, and Compose dependencies",
+    "files": [
+      "build.gradle.kts",
+      "settings.gradle.kts",
+      "AndroidManifest.xml"
+    ]
+  },
+  "rpg-core-engine": {
+    "status": "FAILED"
+  },
+  "rpg-graphics": {
+    "status": "FAILED"
+  },
+  "rpg-world": {
+    "status": "FAILED"
+  },
+  "rpg-entities": {
+    "status": "FAILED"
+  },
+  "rpg-combat": {
+    "status": "FAILED"
+  },
+  "rpg-ui": {
+    "status": "FAILED"
+  },
+  "rpg-save": {
+    "status": "IN_PROGRESS",
+    "id": "save",
+    "title": "Save/Load Game State",
+    "priority": "MEDIUM",
+    "description": "DataStore-based serialization for player progress, world state, and settings",
+    "files": [
+      "app/src/main/java/com/chimera/rpg/save/SaveManager.kt",
+      "app/src/main/java/com/chimera/rpg/save/GameState.kt"
+    ]
+  },
+  "rpg-main": {
+    "status": "FAILED"
+  },
+  "sdlc-fix-missing-validation-in-fallback-dialo": {
+    "status": "FAILED",
+    "reason": "no artifact"
+  },
+  "sdlc-add-category-filtering-to-inventory-ui": {
+    "status": "DELIVERED",
+    "artifact": "src/staged_agents/InventoryCategory.kt",
+    "branch": "bot/sdlc-add-category-filtering-to-inventory-ui-1776484608",
+    "pr_url": "https://github.com/asshat1981ar/project-chimera/pull/162",
+    "issue_url": "https://github.com/asshat1981ar/project-chimera/issues/163",
+    "review": "1) Good: Clear enum structure, sensible categories including an ALL option, standard naming convention.\n\n2) Missing: Translations/display labels, documentation for usage, helper methods (e.g., filteri"
+  },
+  "sdlc-missing-input-validation-and-error-handl": {
+    "status": "DELIVERED",
+    "artifact": "src/staged_agents/sdlc-missing-input-validation-and-error-handl.kt",
+    "branch": "bot/sdlc-missing-input-validation-and-error-handl-1776485535",
+    "pr_url": "https://github.com/asshat1981ar/project-chimera/pull/166",
+    "issue_url": "https://github.com/asshat1981ar/project-chimera/issues/167",
+    "review": "```json\n[{\"action\": \"list_repo_contents\", \"tool_args\": {\"path\": \"src\"}}]\n```"
+  },
+  "sdlc-add-architectural-documentation-to-core-": {
+    "status": "DELIVERED",
+    "artifact": "src/staged_agents/sdlc-add-architectural-documentation-to-core-.md",
+    "branch": "bot/sdlc-add-architectural-documentation-to-core--1776486791",
+    "pr_url": "https://github.com/asshat1981ar/project-chimera/pull/168",
+    "issue_url": "https://github.com/asshat1981ar/project-chimera/issues/169",
+    "review": "1) What's good  \n- Clear separation of concerns: each engine is assigned a single responsibility.  \n- Emphasis on pure, deterministic functions and zero Android dependencies improves testability and p"
+  },
+  "sdlc-missing-input-validation-and-sanitizatio": {
+    "status": "DELIVERED",
+    "artifact": "src/staged_agents/sdlc-missing-input-validation-and-sanitizatio.kt",
+    "branch": "bot/sdlc-missing-input-validation-and-sanitizatio-1776485240",
+    "pr_url": "https://github.com/asshat1981ar/project-chimera/pull/164",
+    "issue_url": "https://github.com/asshat1981ar/project-chimera/issues/165",
+    "review": "```json\n[\n  {\"action\": \"list_repo_contents\", \"args\": {\"path\": \"src\"}}\n]\n```"
+  },
+  "sdlc-missing-input-validation-in-core-integra": {
+    "status": "FAILED",
+    "reason": "no artifact"
+  },
+  "sdlc-missing-api-documentation-and-usage-exam": {
+    "status": "FAILED",
+    "reason": "no artifact"
+  },
+  "sdlc-missing-input-validation-layer": {
+    "status": "FAILED",
+    "reason": "no artifact"
+  },
+  "sdlc-missing-validation-layer-for-api-integra": {
+    "status": "FAILED",
+    "reason": "no artifact"
+  },
+  "sdlc-missing-input-validation-in-core-api-end": {
+    "title": "Missing Input Validation in Core API Endpoints",
+    "priority": "HIGH",
+    "description": "The project appears to lack comprehensive input validation in its core API endpoints, which could lead to security vulnerabilities and system instability. A refactor is needed to implement centralized validation logic using a schema-based approach (e.g., Pydantic or similar) to ensure all incoming data is properly sanitized and validated before processing.",
+    "file_hint": "src/api/endpoints.py or similar main API file",
+    "task_id": "sdlc-missing-input-validation-in-core-api-end",
+    "status": "IN_PROGRESS",
+    "agent": "Builder"
+  }
+}

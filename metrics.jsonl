@@ -1,0 +1,13 @@
+{
+  "agents": {},
+  "tools": {
+    "GitHubTool": {
+      "calls_total": 5,
+      "errors_total": 0,
+      "duration_seconds_sum": 0.08844288100954145,
+      "duration_seconds_count": 5,
+      "last_error": ""
+    }
+  },
+  "token_usage": {}
+}

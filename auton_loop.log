@@ -1,0 +1,121 @@
+/home/westonaaron675/gadk/venv/lib/python3.11/site-packages/google/adk/features/_feature_decorator.py:72: UserWarning: [EXPERIMENTAL] feature FeatureName.PLUGGABLE_AUTH is enabled.
+  check_feature_enabled()
+{"timestamp": "2026-04-17T22:23:36.837636+00:00", "level": "INFO", "logger": "main", "message": "Cognitive Foundry Swarm Active", "trace_id": "547b0d54-a3f3-4555-91d0-d68a6ca009fa", "session_id": "3ea3116b-f49c-4afe-bd53-6a3f471070a7", "task_id": "", "agent": "", "tool": ""}
+--- Cognitive Foundry Swarm Active ---
+Session ID: 3ea3116b-f49c-4afe-bd53-6a3f471070a7
+Running in autonomous loop mode. Press Ctrl+C or run 'swarm stop' to exit.
+{"timestamp": "2026-04-17T22:23:36.838096+00:00", "level": "INFO", "logger": "main", "message": "Processing prompt: Start the proactive ideation loop for 'Generative AI'.", "trace_id": "547b0d54-a3f3-4555-91d0-d68a6ca009fa", "session_id": "3ea3116b-f49c-4afe-bd53-6a3f471070a7", "task_id": "", "agent": "", "tool": ""}
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+[92m17:23:38 - LiteLLM:INFO[0m: utils.py:4011 - 
+LiteLLM completion() model= elephant-alpha; provider = openrouter
+{"timestamp": "2026-04-17T22:23:38.888391+00:00", "level": "INFO", "logger": "LiteLLM", "message": "\nLiteLLM completion() model= elephant-alpha; provider = openrouter", "trace_id": "547b0d54-a3f3-4555-91d0-d68a6ca009fa", "session_id": "3ea3116b-f49c-4afe-bd53-6a3f471070a7", "task_id": "", "agent": "", "tool": ""}
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+Swarm: I'll start the proactive ideation loop for "Generative AI" by transferring this to the Ideator agent, which is specifically designed to scout technical trends and plan autonomous tasks.
+{"timestamp": "2026-04-17T22:23:40.027242+00:00", "level": "INFO", "logger": "main", "message": "Swarm response: I'll start the proactive ideation loop for \"Generative AI\" by transferring this to the Ideator agent, which is specifically designed to scout technical trends and plan autonomous tasks.", "trace_id": "547b0d54-a3f3-4555-91d0-d68a6ca009fa", "session_id": "3ea3116b-f49c-4afe-bd53-6a3f471070a7", "task_id": "", "agent": "", "tool": ""}
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+[92m17:23:40 - LiteLLM:INFO[0m: utils.py:4011 - 
+LiteLLM completion() model= elephant-alpha; provider = openrouter
+{"timestamp": "2026-04-17T22:23:40.081966+00:00", "level": "INFO", "logger": "LiteLLM", "message": "\nLiteLLM completion() model= elephant-alpha; provider = openrouter", "trace_id": "547b0d54-a3f3-4555-91d0-d68a6ca009fa", "session_id": "3ea3116b-f49c-4afe-bd53-6a3f471070a7", "task_id": "", "agent": "", "tool": ""}
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+Swarm: The task has been transferred to me. I'll now execute the proactive ideation loop for "Generative AI" by first researching the latest trends and then analyzing the codebase.
+{"timestamp": "2026-04-17T22:23:41.222023+00:00", "level": "INFO", "logger": "main", "message": "Swarm response: The task has been transferred to me. I'll now execute the proactive ideation loop for \"Generative AI\" by first researching the latest trends and then analyzing the codebase.", "trace_id": "547b0d54-a3f3-4555-91d0-d68a6ca009fa", "session_id": "3ea3116b-f49c-4afe-bd53-6a3f471070a7", "task_id": "", "agent": "", "tool": ""}
+/home/westonaaron675/gadk/src/tools/web_search.py:12: RuntimeWarning: This package (`duckduckgo_search`) has been renamed to `ddgs`! Use `pip install ddgs` instead.
+  with DDGS() as ddgs:
+{"timestamp": "2026-04-17T22:23:41.441854+00:00", "level": "INFO", "logger": "primp", "message": "response: https://www.bing.com/search?q=latest+generative+AI+trends+2024 200", "trace_id": "547b0d54-a3f3-4555-91d0-d68a6ca009fa", "session_id": "3ea3116b-f49c-4afe-bd53-6a3f471070a7", "task_id": "", "agent": "", "tool": ""}
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+[92m17:23:41 - LiteLLM:INFO[0m: utils.py:4011 - 
+LiteLLM completion() model= elephant-alpha; provider = openrouter
+{"timestamp": "2026-04-17T22:23:41.512175+00:00", "level": "INFO", "logger": "LiteLLM", "message": "\nLiteLLM completion() model= elephant-alpha; provider = openrouter", "trace_id": "547b0d54-a3f3-4555-91d0-d68a6ca009fa", "session_id": "3ea3116b-f49c-4afe-bd53-6a3f471070a7", "task_id": "", "agent": "", "tool": ""}
+/home/westonaaron675/gadk/src/tools/web_search.py:12: RuntimeWarning: This package (`duckduckgo_search`) has been renamed to `ddgs`! Use `pip install ddgs` instead.
+  with DDGS() as ddgs:
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+{"timestamp": "2026-04-17T22:23:42.456936+00:00", "level": "INFO", "logger": "primp", "message": "response: https://www.bing.com/search?q=generative+AI+best+practices+patterns+2024 200", "trace_id": "547b0d54-a3f3-4555-91d0-d68a6ca009fa", "session_id": "3ea3116b-f49c-4afe-bd53-6a3f471070a7", "task_id": "", "agent": "", "tool": ""}
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+[92m17:23:42 - LiteLLM:INFO[0m: utils.py:4011 - 
+LiteLLM completion() model= elephant-alpha; provider = openrouter
+{"timestamp": "2026-04-17T22:23:42.533885+00:00", "level": "INFO", "logger": "LiteLLM", "message": "\nLiteLLM completion() model= elephant-alpha; provider = openrouter", "trace_id": "547b0d54-a3f3-4555-91d0-d68a6ca009fa", "session_id": "3ea3116b-f49c-4afe-bd53-6a3f471070a7", "task_id": "", "agent": "", "tool": ""}
+/home/westonaaron675/gadk/src/tools/web_search.py:12: RuntimeWarning: This package (`duckduckgo_search`) has been renamed to `ddgs`! Use `pip install ddgs` instead.
+  with DDGS() as ddgs:
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+{"timestamp": "2026-04-17T22:23:43.428299+00:00", "level": "INFO", "logger": "primp", "message": "response: https://www.bing.com/search?q=generative+AI+implementation+security+performance 200", "trace_id": "547b0d54-a3f3-4555-91d0-d68a6ca009fa", "session_id": "3ea3116b-f49c-4afe-bd53-6a3f471070a7", "task_id": "", "agent": "", "tool": ""}
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+[92m17:23:43 - LiteLLM:INFO[0m: utils.py:4011 - 
+LiteLLM completion() model= elephant-alpha; provider = openrouter
+{"timestamp": "2026-04-17T22:23:43.529083+00:00", "level": "INFO", "logger": "LiteLLM", "message": "\nLiteLLM completion() model= elephant-alpha; provider = openrouter", "trace_id": "547b0d54-a3f3-4555-91d0-d68a6ca009fa", "session_id": "3ea3116b-f49c-4afe-bd53-6a3f471070a7", "task_id": "", "agent": "", "tool": ""}
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+{"timestamp": "2026-04-17T22:23:43.976669+00:00", "level": "INFO", "logger": "main", "message": "Injected prompt from cli_user: Scan the Cognitive Foundry codebase. Read src/main.py, list src/agents/, identify one missing feature, create a task, then delegate to Builder to implement it as a new tool.", "trace_id": "547b0d54-a3f3-4555-91d0-d68a6ca009fa", "session_id": "3ea3116b-f49c-4afe-bd53-6a3f471070a7", "task_id": "", "agent": "", "tool": ""}
+[Injected] cli_user: Scan the Cognitive Foundry codebase. Read src/main.py, list src/agents/, identify one missing feature, create a task, then delegate to Builder to implement it as a new tool.
+{"timestamp": "2026-04-17T22:23:43.976872+00:00", "level": "INFO", "logger": "main", "message": "Processing prompt: Scan the Cognitive Foundry codebase. Read src/main.py, list src/agents/, identify one missing feature, create a task, then delegate to Builder to implement it as a new tool.", "trace_id": "547b0d54-a3f3-4555-91d0-d68a6ca009fa", "session_id": "3ea3116b-f49c-4afe-bd53-6a3f471070a7", "task_id": "", "agent": "", "tool": ""}
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+[92m17:23:44 - LiteLLM:INFO[0m: utils.py:4011 - 
+LiteLLM completion() model= elephant-alpha; provider = openrouter
+{"timestamp": "2026-04-17T22:23:44.006848+00:00", "level": "INFO", "logger": "LiteLLM", "message": "\nLiteLLM completion() model= elephant-alpha; provider = openrouter", "trace_id": "547b0d54-a3f3-4555-91d0-d68a6ca009fa", "session_id": "3ea3116b-f49c-4afe-bd53-6a3f471070a7", "task_id": "", "agent": "", "tool": ""}
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+[92m17:23:44 - LiteLLM:INFO[0m: utils.py:4011 - 
+LiteLLM completion() model= elephant-alpha; provider = openrouter
+{"timestamp": "2026-04-17T22:23:44.805084+00:00", "level": "INFO", "logger": "LiteLLM", "message": "\nLiteLLM completion() model= elephant-alpha; provider = openrouter", "trace_id": "547b0d54-a3f3-4555-91d0-d68a6ca009fa", "session_id": "3ea3116b-f49c-4afe-bd53-6a3f471070a7", "task_id": "", "agent": "", "tool": ""}
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+[92m17:23:45 - LiteLLM:INFO[0m: utils.py:4011 - 
+LiteLLM completion() model= elephant-alpha; provider = openrouter
+{"timestamp": "2026-04-17T22:23:45.936779+00:00", "level": "INFO", "logger": "LiteLLM", "message": "\nLiteLLM completion() model= elephant-alpha; provider = openrouter", "trace_id": "547b0d54-a3f3-4555-91d0-d68a6ca009fa", "session_id": "3ea3116b-f49c-4afe-bd53-6a3f471070a7", "task_id": "", "agent": "", "tool": ""}
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+[92m17:23:46 - LiteLLM:INFO[0m: utils.py:4011 - 
+LiteLLM completion() model= elephant-alpha; provider = openrouter
+{"timestamp": "2026-04-17T22:23:46.934548+00:00", "level": "INFO", "logger": "LiteLLM", "message": "\nLiteLLM completion() model= elephant-alpha; provider = openrouter", "trace_id": "547b0d54-a3f3-4555-91d0-d68a6ca009fa", "session_id": "3ea3116b-f49c-4afe-bd53-6a3f471070a7", "task_id": "", "agent": "", "tool": ""}
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+[92m17:23:47 - LiteLLM:INFO[0m: utils.py:4011 - 
+LiteLLM completion() model= elephant-alpha; provider = openrouter
+{"timestamp": "2026-04-17T22:23:47.843452+00:00", "level": "INFO", "logger": "LiteLLM", "message": "\nLiteLLM completion() model= elephant-alpha; provider = openrouter", "trace_id": "547b0d54-a3f3-4555-91d0-d68a6ca009fa", "session_id": "3ea3116b-f49c-4afe-bd53-6a3f471070a7", "task_id": "", "agent": "", "tool": ""}
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+{"timestamp": "2026-04-17T22:24:12.411429+00:00", "level": "INFO", "logger": "main", "message": "Shutdown sentinel detected. Exiting swarm loop.", "trace_id": "547b0d54-a3f3-4555-91d0-d68a6ca009fa", "session_id": "3ea3116b-f49c-4afe-bd53-6a3f471070a7", "task_id": "", "agent": "", "tool": ""}
+Shutdown requested. Exiting...
+{"timestamp": "2026-04-17T22:24:12.411635+00:00", "level": "INFO", "logger": "main", "message": "Swarm exited cleanly.", "trace_id": "547b0d54-a3f3-4555-91d0-d68a6ca009fa", "session_id": "3ea3116b-f49c-4afe-bd53-6a3f471070a7", "task_id": "", "agent": "", "tool": ""}
+/usr/lib/python3.11/asyncio/selector_events.py:843: ResourceWarning: unclosed transport <_SelectorSocketTransport fd=7>
+  _warn(f"unclosed transport {self!r}", ResourceWarning, source=self)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/usr/lib/python3.11/asyncio/sslproto.py:119: ResourceWarning: unclosed transport <asyncio._SSLProtocolTransport object>
+  _warnings.warn(
