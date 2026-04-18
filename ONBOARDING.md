@@ -22,11 +22,18 @@ Top MCP Servers:
 - [ ] gadk — https://github.com/asshat1981ar/gadk
 
 ### MCP Servers to Activate
-- [ ] github — GitHub PRs, issues, reviews, CI status, branch management. The team leans on this heavily (~45 calls/session average). Authenticate via the GitHub MCP server in Claude Code settings; a personal access token with `repo` scope is usually enough.
+- [ ] github — GitHub PRs, issues, reviews, CI status, branch management. The team leans on this heavily (~45 calls/session average). Authenticate via the GitHub MCP server in Claude Code settings. Prefer a **fine-grained personal access token** scoped to this repo with the minimum permissions the workflow needs:
+  - **Contents**: Read + Write (clone, push, create branches)
+  - **Pull requests**: Read + Write (open, review, merge)
+  - **Issues**: Read + Write (open, comment, label)
+  - **Actions**: Read (CI status)
+  - **Metadata**: Read (always required)
+
+  If you must use a classic token, scope it to `repo` + `workflow` only — avoid broad scopes like `admin:org`.
 
 ### Skills to Know About
-- [/mcp__github__AssignCodingAgent](#) — Assigns GitHub Copilot's coding agent to an issue so it opens a draft PR. The team uses this to fan out well-scoped refactor/cleanup work in parallel (Copilot handles the mechanical change, a human reviews + merges).
-- [/loop](#) — Iterates on a task until it's done (handy for PR review cycles, CI-failure fixes, and multi-step stabilization sweeps).
+- `/mcp__github__AssignCodingAgent` — Assigns GitHub Copilot's coding agent to an issue so it opens a draft PR. The team uses this to fan out well-scoped refactor/cleanup work in parallel (Copilot handles the mechanical change, a human reviews + merges).
+- `/loop` — Iterates on a task until it's done (handy for PR review cycles, CI-failure fixes, and multi-step stabilization sweeps).
 
 ## Team Tips
 
