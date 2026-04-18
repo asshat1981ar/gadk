@@ -23,7 +23,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Protocol, runtime_checkable
@@ -241,10 +241,29 @@ class SqliteVecBackend:
             self._conn.execute(f"DELETE FROM {self._INDEX_TABLE} WHERE rowid = ?", (rowid,))
             self._conn.execute(f"DELETE FROM {self._META_TABLE} WHERE rowid = ?", (rowid,))
 
-    def known_doc_ids(self) -> set[str]:
-        """Return every ``doc_id`` currently indexed."""
-        rows = self._conn.execute(f"SELECT doc_id FROM {self._META_TABLE}").fetchall()
-        return {row[0] for row in rows}
+    def known_doc_ids(self, *, corpora: Iterable[str] | None = None) -> set[str]:
+        """Return every ``doc_id`` currently indexed.
+
+        When ``corpora`` is provided, returns only docs whose stored
+        metadata ``corpus`` key is in that iterable. Used by the
+        retrieval-context sync loop to scope stale-doc cleanup so it
+        never touches docs belonging to corpora that weren't part of
+        the current request.
+        """
+        rows = self._conn.execute(f"SELECT doc_id, metadata FROM {self._META_TABLE}").fetchall()
+        if corpora is None:
+            return {row[0] for row in rows}
+        wanted = {c.strip().lower() for c in corpora}
+        ids: set[str] = set()
+        for doc_id, raw in rows:
+            try:
+                meta = json.loads(raw or "{}")
+            except (TypeError, ValueError):
+                continue
+            corpus = str(meta.get("corpus", "")).strip().lower()
+            if corpus in wanted:
+                ids.add(doc_id)
+        return ids
 
     def query(self, text: str, top_k: int = 3) -> list[SearchHit]:
         if top_k <= 0:

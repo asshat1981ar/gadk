@@ -17,7 +17,13 @@ def test_settings_reads_defaults_without_env(monkeypatch):
 
     assert settings.openrouter_model == "openrouter/elephant-alpha"
     assert settings.llm_timeout == 30
-    assert settings.fallback_models[0] == "openai/gpt-4o"
+    # _default_fallback_models prefixes the chain with ``openrouter/`` so
+    # LiteLLM routes through the OpenRouter-compatible endpoint rather
+    # than the provider-native one (which would 404 on /chat/completions).
+    assert settings.fallback_models[0] == "openrouter/openai/gpt-4o"
+    # And every entry must carry the prefix — any unprefixed entry means
+    # the defensive fix in `_default_fallback_models` regressed.
+    assert all(model.startswith("openrouter/") for model in settings.fallback_models)
 
 
 def test_settings_parses_boolean_flags(monkeypatch):

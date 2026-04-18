@@ -180,9 +180,9 @@ def test_recall_at_k_on_small_corpus(backend: SqliteVecBackend) -> None:
 
     hits = backend.query("vector embedding retrieval", top_k=5)
     assert hits
-    assert hits[0].doc_id == "memory", (
-        f"expected memory to rank first, got {[h.doc_id for h in hits]}"
-    )
+    assert (
+        hits[0].doc_id == "memory"
+    ), f"expected memory to rank first, got {[h.doc_id for h in hits]}"
 
 
 def test_hit_metadata_exposes_distance(backend: SqliteVecBackend) -> None:
