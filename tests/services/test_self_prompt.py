@@ -101,10 +101,12 @@ def test_off_switch_blocks_run_once(
     sm: StateManager, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     monkeypatch.setattr(Config, "SELF_PROMPT_ENABLED", True)
-    monkeypatch.chdir(tmp_path)
     (tmp_path / sp.SELF_PROMPT_OFF_SENTINEL).write_text("stop")
     written = sp.run_once(
-        sm=sm, coverage_xml=tmp_path / "none.xml", queue_path=tmp_path / "q.jsonl"
+        sm=sm,
+        coverage_xml=tmp_path / "none.xml",
+        queue_path=tmp_path / "q.jsonl",
+        sentinel_dir=tmp_path,
     )
     assert written == []
 
@@ -124,11 +126,10 @@ def test_run_once_happy_path(
 ) -> None:
     monkeypatch.setattr(Config, "SELF_PROMPT_ENABLED", True)
     monkeypatch.setattr(Config, "SELF_PROMPT_MAX_PER_HOUR", 10)
-    monkeypatch.chdir(tmp_path)
     cov = tmp_path / "coverage.xml"
     _write_coverage(cov, [("src/low.py", 0.10)])
     q = tmp_path / "q.jsonl"
-    written = sp.run_once(sm=sm, coverage_xml=cov, queue_path=q)
+    written = sp.run_once(sm=sm, coverage_xml=cov, queue_path=q, sentinel_dir=tmp_path)
     assert len(written) == 1
     assert written[0].phase is Phase.IMPLEMENT
     # dedup window persisted in state

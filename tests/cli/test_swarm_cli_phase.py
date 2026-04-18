@@ -249,7 +249,6 @@ def test_self_prompt_write_appends_to_queue(
 
     monkeypatch.setattr(Config, "SELF_PROMPT_ENABLED", True)
     monkeypatch.setattr(Config, "SELF_PROMPT_MAX_PER_HOUR", 10)
-    monkeypatch.chdir(tmp_path)
 
     rc, out = _run(
         capsys,
@@ -259,6 +258,8 @@ def test_self_prompt_write_appends_to_queue(
         str(coverage),
         "--queue-file",
         str(queue),
+        "--sentinel-dir",
+        str(tmp_path),
         "--state-file",
         str(state),
         "--events-file",

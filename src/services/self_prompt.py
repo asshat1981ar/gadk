@@ -21,7 +21,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import os
 from collections import deque
 from collections.abc import Iterable
 from dataclasses import dataclass, field
@@ -266,9 +265,10 @@ def dispatch(
     return accepted
 
 
-def off_switch_active() -> bool:
-    """True if any off-switch sentinel is present in the working directory."""
-    return os.path.exists(".swarm_shutdown") or os.path.exists(SELF_PROMPT_OFF_SENTINEL)
+def off_switch_active(base_dir: Path | None = None) -> bool:
+    """True if any off-switch sentinel is present in *base_dir* (defaults to CWD)."""
+    d = base_dir or Path(".")
+    return (d / ".swarm_shutdown").exists() or (d / SELF_PROMPT_OFF_SENTINEL).exists()
 
 
 def run_once(
@@ -276,6 +276,7 @@ def run_once(
     sm: StateManager,
     coverage_xml: Path = Path("coverage.xml"),
     queue_path: Path = Path("prompt_queue.jsonl"),
+    sentinel_dir: Path | None = None,
 ) -> list[SelfPrompt]:
     """Single pass — collect → synthesize → dispatch.
 
@@ -285,7 +286,7 @@ def run_once(
     if not getattr(Config, "SELF_PROMPT_ENABLED", False):
         logger.info("self_prompt: disabled via Config.SELF_PROMPT_ENABLED")
         return []
-    if off_switch_active():
+    if off_switch_active(sentinel_dir):
         logger.info("self_prompt: off-switch sentinel present; skipping pass")
         return []
 

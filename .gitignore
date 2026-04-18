@@ -34,5 +34,6 @@ state.json.bak
 events.jsonl.bak
 costs.jsonl
 coverage.xml
+metrics.jsonl
 .coverage
 .secrets.baseline

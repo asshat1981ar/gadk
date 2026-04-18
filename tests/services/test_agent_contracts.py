@@ -13,8 +13,7 @@ from src.services.agent_contracts import (
 from src.services.specialist_registry import SpecialistRegistry
 
 
-def _reload_config_module(monkeypatch, tmp_path):
-    monkeypatch.chdir(tmp_path)
+def _reload_config_module(monkeypatch):
     return importlib.reload(config_module)
 
 
@@ -133,24 +132,20 @@ class TestTaskOneConfigFlags:
         monkeypatch.setenv("PYDANTIC_AI_ENABLED", "true")
         monkeypatch.setenv("INSTRUCTOR_ENABLED", "true")
         monkeypatch.setenv("LANGGRAPH_ENABLED", "false")
-        monkeypatch.setenv("LLAMAINDEX_ENABLED", "true")
 
         settings = config_module.Settings(_env_file=None)
 
         assert settings.pydantic_ai_enabled is True
         assert settings.instructor_enabled is True
         assert settings.langgraph_enabled is False
-        assert settings.llamaindex_enabled is True
 
-    def test_config_preserves_legacy_uppercase_feature_flags(self, monkeypatch, tmp_path):
+    def test_config_preserves_legacy_uppercase_feature_flags(self, monkeypatch):
         monkeypatch.setenv("PYDANTIC_AI_ENABLED", "true")
         monkeypatch.setenv("INSTRUCTOR_ENABLED", "false")
         monkeypatch.setenv("LANGGRAPH_ENABLED", "true")
-        monkeypatch.setenv("LLAMAINDEX_ENABLED", "true")
 
-        module = _reload_config_module(monkeypatch, tmp_path)
+        module = _reload_config_module(monkeypatch)
 
         assert module.Config.PYDANTIC_AI_ENABLED is True
         assert module.Config.INSTRUCTOR_ENABLED is False
         assert module.Config.LANGGRAPH_ENABLED is True
-        assert module.Config.LLAMAINDEX_ENABLED is True

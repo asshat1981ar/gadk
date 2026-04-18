@@ -160,6 +160,43 @@ def test_autonomous_retry_returns_typed_decision():
     assert isinstance(result, GraphDecision)
 
 
+# ---------------------------------------------------------------------------
+# Config.LANGGRAPH_ENABLED True-branch coverage
+# ---------------------------------------------------------------------------
+
+
+def test_langgraph_enabled_true_attempts_import(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Config.LANGGRAPH_ENABLED=True causes the module to attempt the LangGraph import.
+
+    When the flag is True the module-level conditional block is entered.
+    ``LANGGRAPH_AVAILABLE`` becomes True if the library is installed and
+    False otherwise — both outcomes confirm the True branch ran.
+    """
+    import importlib
+    import sys
+
+    import src.config as config_mod
+    import src.services.workflow_graphs as wg_mod
+
+    try:
+        import langgraph  # noqa: F401
+
+        langgraph_installed = True
+    except ImportError:
+        langgraph_installed = False
+
+    monkeypatch.setattr(config_mod.Config, "LANGGRAPH_ENABLED", True)
+    monkeypatch.delitem(sys.modules, "src.services.workflow_graphs", raising=False)
+
+    reloaded = importlib.import_module("src.services.workflow_graphs")
+
+    # If langgraph is installed the flag should be True; if not, False.
+    assert reloaded.LANGGRAPH_AVAILABLE is langgraph_installed
+
+    # Restore original module so subsequent tests stay clean.
+    monkeypatch.setitem(sys.modules, "src.services.workflow_graphs", wg_mod)
+
+
 def test_autonomous_retry_reason_includes_attempt_count():
     state = AutonomousRetryState(cycle_attempts=2, last_status="retry")
     result = run_autonomous_retry(state, max_cycles=5)

@@ -522,3 +522,47 @@ async def test_run_cycle_degrades_when_adr_synthesis_fails(
     assert "ARCHITECT" in targets
     # But payload has no `architecture` key since synthesis degraded.
     assert "architecture" not in item.payload
+
+
+# ---------------------------------------------------------------------------
+# Config.INSTRUCTOR_ENABLED True-branch coverage
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_instructor_enabled_routes_review_through_run_planner_structured(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Config.INSTRUCTOR_ENABLED=True routes _review through run_planner_structured."""
+    from src import autonomous_sdlc as mod
+    from src.services.agent_contracts import ReviewVerdict
+
+    monkeypatch.setattr(mod.Config, "INSTRUCTOR_ENABLED", True)
+
+    structured_calls: list[dict] = []
+
+    async def _fake_structured(*, user_prompt: str, system_prompt: str, response_model):
+        structured_calls.append({"user_prompt": user_prompt, "response_model": response_model})
+        return ReviewVerdict(status="pass", summary="lgtm")
+
+    monkeypatch.setattr(mod, "run_planner_structured", _fake_structured)
+    monkeypatch.setattr(mod, "read_file", lambda _: "def foo(): pass")
+
+    sm = StateManager(
+        storage_type="json",
+        filename=str(tmp_path / "state.json"),
+        event_filename=str(tmp_path / "events.jsonl"),
+    )
+    engine = mod.AutonomousSDLCEngine.__new__(mod.AutonomousSDLCEngine)
+    engine.sm = sm
+    engine.gh = _FakeGitHub()
+    engine.controller = PhaseController(state_manager=sm)
+    engine.cycle = 0
+    engine.tasks_completed = 0
+    engine.tasks_failed = 0
+
+    review = await engine._review("src/staged_agents/foo.py", {"title": "Test task"})
+
+    assert len(structured_calls) == 1
+    assert structured_calls[0]["response_model"] is ReviewVerdict
+    assert "pass" in review
