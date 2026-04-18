@@ -109,8 +109,10 @@ class Settings(BaseSettings):
     gate_subprocess_timeout_sec: float = Field(default=120.0, gt=0.0)
     github_dedup_issue_scan_limit: int = Field(default=100, gt=0)
 
-    # Planner safety: cap the maximum content bytes the write_file fallback
-    # walker may scan to avoid O(n) scans on pathologically large LLM outputs.
+    # Planner safety: cap the maximum content bytes used for code-block
+    # scanning, both as a text-level guard that can skip all scans for
+    # pathologically large LLM outputs and as a per-block limit for the
+    # write_file fallback walker.
     planner_max_content_bytes: int = Field(default=500_000, gt=0)
 
 
