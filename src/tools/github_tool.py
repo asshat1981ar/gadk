@@ -104,11 +104,9 @@ class GitHubTool(Tool):
         if _PYGITHUB_AVAILABLE:
             _gh_cls = Github
         else:  # pragma: no cover — branch depends on environment
-            _s = get_settings()
-            if _s.github_mock_allowed or _s.test_mode:
-                from src.testing.github_mocks import Github as _mock_gh  # type: ignore[assignment]
-
-                _gh_cls = _mock_gh
+            settings = get_settings()
+            if settings.github_mock_allowed or settings.test_mode:
+                from src.testing.github_mocks import Github as _gh_cls  # type: ignore[assignment]
             else:
                 raise RuntimeError(
                     "PyGithub is not installed but GITHUB_MOCK_ALLOWED is False. "
