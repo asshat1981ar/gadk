@@ -1,0 +1,32 @@
+# Secrets
+.env
+.env.local
+*.secret
+*.pem
+*.key
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+.pytest_cache/
+*.egg-info/
+dist/
+build/
+
+# IDE / OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# --- gadk runtime artifacts (churn on every swarm run) ---
+sessions.db
+swarm.pid
+.swarm_shutdown
+.swarm_history
+prompt_queue.jsonl
+state.json.bak
+events.jsonl.bak
