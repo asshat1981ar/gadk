@@ -47,10 +47,16 @@ class TestSwarmCtl:
         assert len(peeked) == 2
         assert peeked[0]["prompt"] == "Hello swarm"
 
-        # Dequeue should clear
+        # Dequeue should clear the contents. We now truncate in place
+        # (rather than unlink) because `os.remove` on an open handle
+        # raises PermissionError on Windows and `dequeue_prompts` must
+        # hold the fcntl lock across read + clear. The file itself may
+        # or may not exist after dequeue depending on platform quirks,
+        # but if it exists it must be empty.
         dequeued = dequeue_prompts()
         assert len(dequeued) == 2
-        assert not os.path.exists("prompt_queue.jsonl")
+        if os.path.exists("prompt_queue.jsonl"):
+            assert os.path.getsize("prompt_queue.jsonl") == 0
 
         # Empty dequeue
         assert dequeue_prompts() == []

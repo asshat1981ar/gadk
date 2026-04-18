@@ -62,20 +62,58 @@ def locked_file(path: str, mode: str) -> Generator[IO, None, None]:
     on-disk state is consistent before the lock is released. Read-only
     modes skip the flush.
 
+    Subtle race avoidance:
+
+    - Truncating modes (``"w"``, ``"w+"``) are rewritten internally as
+      ``"r+"`` (or ``"w+"`` if the file doesn't yet exist) so the file
+      is **not** truncated before the lock is held. The truncate happens
+      after ``flock`` acquires, inside the critical section — otherwise a
+      sibling process holding the lock would have its in-progress data
+      blown away by the open() call.
+    - Flush + fsync now runs inside a ``finally`` after ``yield`` so a
+      caller exception can't bypass the durability step and leave
+      buffered writes visible to the next lock holder. Harmless no-op
+      when nothing was written.
+
     On platforms without ``fcntl`` the lock is a no-op; see module
     docstring.
     """
     _warn_once_if_unavailable(path)
-    f = open(path, mode)  # noqa: SIM115 — context manager yields the handle
+
+    write_mode = any(ch in mode for ch in ("w", "a", "+"))
+    truncate_after_lock = False
+    effective_mode = mode
+    if mode == "w":
+        # `open(path, "w")` truncates *before* the lock is acquired.
+        # Defer the truncate until we're inside the critical section.
+        effective_mode = "r+" if os.path.exists(path) else "w+"
+        truncate_after_lock = True
+    elif mode == "w+":
+        effective_mode = "r+" if os.path.exists(path) else "w+"
+        truncate_after_lock = True
+
+    f = open(path, effective_mode)  # noqa: SIM115 — context manager yields the handle
     try:
         if _FLOCK_AVAILABLE:
             _fcntl.flock(f, _fcntl.LOCK_EX)
         try:
+            if truncate_after_lock:
+                f.seek(0)
+                f.truncate()
             yield f
-            if any(ch in mode for ch in ("w", "a", "+")):
-                f.flush()
-                os.fsync(f.fileno())
         finally:
+            # Flush + fsync *before* releasing the lock — even on
+            # exception paths. Ensures the next lock holder never
+            # observes partially-buffered writes from us.
+            if write_mode:
+                try:
+                    f.flush()
+                    os.fsync(f.fileno())
+                except (OSError, ValueError):
+                    # fsync on a read-mode fd or a closed fd is harmless
+                    # to ignore; re-raising would mask the original
+                    # exception that got us into this finally block.
+                    pass
             if _FLOCK_AVAILABLE:
                 _fcntl.flock(f, _fcntl.LOCK_UN)
     finally:

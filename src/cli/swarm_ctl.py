@@ -64,15 +64,17 @@ def enqueue_prompt(prompt: str, user_id: str = "cli_user") -> None:
 def dequeue_prompts() -> list[dict]:
     """Read all queued prompts and clear the file in one locked operation.
 
-    Must hold the queue lock across read + ``os.remove`` so a concurrent
-    enqueue (from the self-prompt background thread) can't land in a
-    file we're about to unlink and silently lose the prompt.
+    Uses ``r+`` + in-place truncate instead of read-then-unlink because
+    Windows raises ``PermissionError`` on ``os.remove`` of an open file
+    (and our fcntl lock is a no-op there, so the race against concurrent
+    enqueuers is real). Truncating in place keeps the file's inode
+    stable so the advisory lock still serializes enqueuers correctly.
     """
     if not os.path.exists(QUEUE_PATH):
         return []
     entries: list[dict] = []
     try:
-        with locked_file(QUEUE_PATH, "r") as f:
+        with locked_file(QUEUE_PATH, "r+") as f:
             for line in f:
                 line = line.strip()
                 if line:
@@ -80,12 +82,10 @@ def dequeue_prompts() -> list[dict]:
                         entries.append(json.loads(line))
                     except json.JSONDecodeError:
                         continue
-            # Still under the exclusive lock — any blocked enqueuer waits
-            # and opens a fresh file once we release.
-            try:
-                os.remove(QUEUE_PATH)
-            except FileNotFoundError:
-                pass
+            # Still under the exclusive lock — any blocked enqueuer
+            # waits and sees an empty file after we return.
+            f.seek(0)
+            f.truncate()
     except FileNotFoundError:
         return []
     return entries
