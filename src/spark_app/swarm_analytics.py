@@ -78,8 +78,10 @@ def load_tasks(spark: SparkSession, path: str):
 def load_metrics(spark: SparkSession, path: str):
     """Return a Spark DataFrame of agent/tool metrics from *metrics.jsonl*.
 
-    metrics.jsonl is a single JSON object (not line-delimited); rows are
-    produced for every agent and tool entry found within it.
+    Despite the ``.jsonl`` extension the runtime writes this file as a single
+    JSON object (not line-delimited), re-serialising the entire registry on
+    every update.  Rows are produced for every agent and tool entry found
+    within the top-level ``"agents"`` and ``"tools"`` dicts.
     """
     raw: dict = _load_json_file(path)
     rows = []
@@ -211,13 +213,19 @@ def _print_df(df, columns: list[str] | None = None, limit: int = 20) -> None:
     if not rows:
         print("  (no data)")
         return
-    widths = [max(len(c), max((len(str(row[c] if c in row.__fields__ else "")) for row in rows), default=0)) for c in col_names]
+
+    def _cell(row, col: str) -> str:
+        return str(row[col]) if col in row.__fields__ else ""
+
+    widths = [
+        max(len(col), max((len(_cell(row, col)) for row in rows), default=0))
+        for col in col_names
+    ]
     fmt = "  " + "  ".join(f"{{:<{w}}}" for w in widths)
     print(fmt.format(*col_names))
     print("  " + "  ".join("-" * w for w in widths))
     for row in rows:
-        vals = [str(row[c] if c in row.__fields__ else "") for c in col_names]
-        print(fmt.format(*vals))
+        print(fmt.format(*[_cell(row, col) for col in col_names]))
 
 
 def print_report(event_stats, task_stats, metric_stats) -> None:
@@ -278,13 +286,19 @@ def print_report(event_stats, task_stats, metric_stats) -> None:
 # Entry point
 # ---------------------------------------------------------------------------
 
+# Maximum number of parent directories to search when locating project-root
+# data files.  The spark_app package lives at src/spark_app/, so two levels up
+# reaches the project root; six gives comfortable headroom for unusual layouts.
+_MAX_DIR_LEVELS = 6
+
+
 def _resolve_path(arg: str | None, default_name: str) -> str:
     """Resolve a data-file path, defaulting to project root."""
     if arg:
         return arg
     # Walk up from this file until we find the project root (contains src/)
     here = os.path.dirname(__file__)
-    for _ in range(6):
+    for _ in range(_MAX_DIR_LEVELS):
         candidate = os.path.join(here, default_name)
         if os.path.exists(candidate):
             return candidate
