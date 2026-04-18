@@ -67,34 +67,35 @@ class LiteLLMEmbedder:
     def model(self) -> str:
         return self._model
 
-    def __call__(self, texts: Sequence[str]) -> list[list[float]]:
-        texts = list(texts or [])
-        if not texts:
-            return []
+    # -- shared sync/async flow helpers ---------------------------------
 
-        # Pre-call quota check on the rough estimate. If this trips, we
-        # raise before spending any LiteLLM-side tokens; the actual
-        # consumption from the response supersedes the estimate below.
+    def _precheck(self, texts: list[str]) -> int:
+        """Validate + reserve token budget. Returns the pre-call estimate."""
         pre_estimate = estimate_tokens(texts)
         try:
             self._quota.check(pre_estimate)
         except EmbedQuotaExceeded as exc:
             raise VectorBackendUnavailable(f"embed quota exceeded: {exc}") from exc
+        return pre_estimate
 
+    def _import_litellm(self):
         try:
             import litellm  # local import: heavy dep, env-dependent
         except ImportError as exc:  # pragma: no cover — depends on env
             raise VectorBackendUnavailable(
                 f"litellm not installed; cannot produce embeddings: {exc}"
             ) from exc
+        return litellm
 
-        try:
-            response = litellm.embedding(model=self._model, input=texts)
-        except Exception as exc:  # noqa: BLE001 — external SDK surface
-            logger.error("litellm.embedding failed: %s", exc, exc_info=True)
-            raise VectorBackendUnavailable(f"embedding call failed: {exc}") from exc
+    def _parse_and_record(self, response, pre_estimate: int) -> list[list[float]]:
+        """Extract vectors from the LiteLLM response envelope and update
+        the quota with actual usage (falling back to the pre-call estimate
+        if the provider didn't surface a usage block).
 
-        # Extract vectors. LiteLLM normalizes to OpenAI-shape:
+        Shared by both ``__call__`` and ``aembed`` so the two paths can't
+        drift on response-shape handling or token accounting.
+        """
+        # LiteLLM normalizes to OpenAI-shape:
         # {"data": [{"embedding": [...]}, ...], "usage": {...}}
         try:
             data = response["data"]  # type: ignore[index]
@@ -116,6 +117,56 @@ class LiteLLMEmbedder:
             pass
         self._quota.record(used)
         return vectors
+
+    # -- public sync + async entrypoints --------------------------------
+
+    def __call__(self, texts: Sequence[str]) -> list[list[float]]:
+        """Synchronous embed — canonical Embedder-protocol entrypoint.
+
+        Blocks the caller until the LiteLLM call returns. If you're in an
+        async context and can't afford to block the event loop, prefer
+        :meth:`aembed` (native async via ``litellm.aembedding``) or wrap
+        this call with ``asyncio.to_thread`` at the caller.
+        """
+        texts = list(texts or [])
+        if not texts:
+            return []
+
+        pre_estimate = self._precheck(texts)
+        litellm = self._import_litellm()
+
+        try:
+            response = litellm.embedding(model=self._model, input=texts)
+        except Exception as exc:  # noqa: BLE001 — external SDK surface
+            logger.error("litellm.embedding failed: %s", exc, exc_info=True)
+            raise VectorBackendUnavailable(f"embedding call failed: {exc}") from exc
+
+        return self._parse_and_record(response, pre_estimate)
+
+    async def aembed(self, texts: Sequence[str]) -> list[list[float]]:
+        """Native async embed via ``litellm.aembedding``.
+
+        Same quota accounting and failure semantics as :meth:`__call__`
+        — the difference is this one doesn't block the event loop while
+        the HTTP round-trip is in flight. Intended for future callers
+        that run inside an async handler and want to avoid the
+        ``asyncio.to_thread`` hop; Phase 3c currently routes through
+        the thread-pool wrapper in ``_planning_retrieval_handler``.
+        """
+        texts = list(texts or [])
+        if not texts:
+            return []
+
+        pre_estimate = self._precheck(texts)
+        litellm = self._import_litellm()
+
+        try:
+            response = await litellm.aembedding(model=self._model, input=texts)
+        except Exception as exc:  # noqa: BLE001 — external SDK surface
+            logger.error("litellm.aembedding failed: %s", exc, exc_info=True)
+            raise VectorBackendUnavailable(f"embedding call failed: {exc}") from exc
+
+        return self._parse_and_record(response, pre_estimate)
 
 
 def build_default_embedder(
