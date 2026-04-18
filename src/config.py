@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import os
-import re
 from functools import lru_cache
 from typing import Literal
+from urllib.parse import urlparse
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -63,7 +63,8 @@ class Settings(BaseSettings):
     @field_validator("openrouter_api_base")
     @classmethod
     def _validate_openrouter_api_base(cls, v: str) -> str:
-        if not re.match(r"^https?://", v):
+        parsed = urlparse(v)
+        if parsed.scheme not in {"http", "https"} or not parsed.netloc:
             raise ValueError(f"openrouter_api_base must be a valid HTTP or HTTPS URL, got: {v!r}")
         return v
 
