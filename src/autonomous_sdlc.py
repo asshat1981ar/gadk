@@ -338,7 +338,12 @@ class AutonomousSDLCEngine:
             paths = [f"src/staged_agents/{f}" for f in staged]
             paths.sort(key=lambda p: os.path.getmtime(p), reverse=True)
             latest = paths[0]
-            logger.info(f"Builder produced: {latest}")
+            build_duration_sec = round(time.time() - build_start, 3)
+            logger.info(
+                "Builder produced: %s",
+                latest,
+                extra={"build_duration_sec": build_duration_sec, "artifact": latest},
+            )
             self.sm.set_task(task_id, {"status": "BUILT", "artifact": latest}, agent="Builder")
             return latest
 

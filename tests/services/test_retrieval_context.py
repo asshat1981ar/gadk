@@ -64,6 +64,16 @@ class TestRetrievalContext:
         with pytest.raises(ValueError, match="Unsupported retrieval corpus"):
             RetrievalQuery(query="planner contracts", corpus=["issues"])
 
+    def test_retrieve_context_empty_corpus_returns_empty(self, tmp_path: Path):
+        """An empty tmp_path (no corpus files) must return sources=[] without errors."""
+        result = retrieve_context(
+            RetrievalQuery(query="anything", corpus=["specs", "plans", "history"]),
+            repo_root=tmp_path,
+        )
+
+        assert result["sources"] == []
+        assert set(result["corpus"]) == {"specs", "plans", "history"}
+
     @pytest.mark.asyncio
     async def test_retrieve_planning_context_uses_capability_layer(self, monkeypatch):
         captured: dict[str, object] = {}
