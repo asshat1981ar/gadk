@@ -1,9 +1,0 @@
-<resources>
-    <string name="app_name">RPG_Android</string>
-    <string name="welcome_message">Welcome to the Realm of Chimera</string>
-    <string name="start_adventure">Begin Adventure</string>
-    <string name="health">Health</string>
-    <string name="mana">Mana</string>
-    <string name="level">Level</string>
-    <string name="experience">Experience</string>
-</resources>

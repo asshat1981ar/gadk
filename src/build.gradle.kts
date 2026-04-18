@@ -1,1 +1,0 @@
-plugins {\n    kotlin(\"jvm\") version \"1.9.0\"\n}\n\nrepositories {\n    mavenCentral()\n}\n\ndependencies {\n    testImplementation(\"org.junit.jupiter:junit-jupiter:5.10.0\")\n    testImplementation(\"io.mockk:mockk:1.13.5\")\n}\n\ntasks.test {\n    useJUnitPlatform()\n}"}}
