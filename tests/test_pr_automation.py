@@ -33,7 +33,12 @@ def test_read_repo_file_retries_transient_content_errors(monkeypatch):
         def get_contents(self, path, ref=None):
             self.calls += 1
             if self.calls == 1:
-                raise RuntimeError("temporary github error")
+                # Must be a member of `_GITHUB_API_ERRORS` so the narrow
+                # catch in `_get_contents_with_retry` wraps it into
+                # `GitHubRetryableError` for tenacity. A plain
+                # `RuntimeError` would no longer qualify (it's a real
+                # bug, not a transient API hiccup).
+                raise ConnectionError("temporary github error")
             return FakeContent()
 
     gh = GitHubTool()

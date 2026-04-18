@@ -24,6 +24,9 @@ jobs:
         with:
           python-version: "3.11"
           cache: pip
+      # Ruff version kept in sync with `pyproject.toml` [dev] extra and
+      # `.pre-commit-config.yaml` to prevent formatter-output drift
+      # between CI and local development.
       - run: pip install ruff==0.5.7
       - run: ruff check src tests
       - run: ruff format --check src tests

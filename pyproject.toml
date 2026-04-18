@@ -8,7 +8,12 @@ license = { text = "Proprietary" }
 
 [project.optional-dependencies]
 dev = [
-    "ruff>=0.5",
+    # Pin ruff to the CI version so `ruff format` output matches between
+    # local and CI. A loose `>=0.5` will otherwise pick up whatever
+    # minor/major is current, whose formatter can disagree with the
+    # CI-pinned version and produce spurious lint-gate failures.
+    # Keep this in sync with `.github/workflows/ci.yml`.
+    "ruff==0.5.7",
     "mypy>=1.10",
     "pip-audit>=2.7",
     "bandit>=1.7",
