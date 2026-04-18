@@ -39,3 +39,5 @@ coverage.xml
 # Metrics snapshots — rewritten by every swarm / e2e test run.
 metrics.jsonl
 test_metrics.jsonl
+# Advisory lock tokens for cross-process state serialisation
+*.json.lock
