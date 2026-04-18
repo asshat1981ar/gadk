@@ -48,6 +48,10 @@ jobs:
       fail-fast: false
       matrix:
         python-version: ["3.11", "3.12"]
+    env:
+      # `src.*` imports resolve via the repo root; conftest.py at the root
+      # also sets GITHUB_MOCK_ALLOWED and TEST_MODE for the test environment.
+      PYTHONPATH: "."
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -58,6 +62,10 @@ jobs:
       - run: pip install coverage[toml] pytest pytest-asyncio
       - run: coverage run -m pytest -q
       - run: coverage xml
+      # Soft coverage floor: keep it low to unblock CI while we add agent
+      # and CLI tests incrementally. Raised as the phase-gate milestones
+      # land (see plan: Phase 5 targets 65% global, 80% changed-files).
+      - run: coverage report --fail-under=35
       - uses: actions/upload-artifact@v4
         if: matrix.python-version == '3.11'
         with:

@@ -65,14 +65,37 @@ from src.cli.swarm_ctl import (
     is_shutdown_requested,
     write_pid,
 )
+from src.config import Config
 from src.observability.adk_callbacks import ObservabilityCallback
 from src.observability.logger import configure_logging, get_logger, set_session_id, set_trace_id
+from src.services import self_prompt as _self_prompt
+from src.state import StateManager
 
 logger = get_logger("main")
 configure_logging(
     level=os.getenv("LOG_LEVEL", "INFO").upper(),
     json_format=os.getenv("JSON_LOGS", "true").lower() == "true",
 )
+
+
+async def _self_prompt_tick(sm: StateManager, *, interval_sec: float = 60.0) -> None:
+    """Opt-in background coroutine that runs the self-prompt loop periodically.
+
+    Exits cleanly when the shutdown sentinel or the self-prompt off-switch
+    appears so it never blocks teardown. Default cadence is a minute — tight
+    enough to pick up new gap signals, loose enough that rate-limited writes
+    stay bounded.
+    """
+    if not Config.SELF_PROMPT_ENABLED:
+        return
+    logger.info("self_prompt.tick: enabled, interval=%.1fs", interval_sec)
+    while not is_shutdown_requested() and not _self_prompt.off_switch_active():
+        try:
+            _self_prompt.run_once(sm=sm)
+        except Exception:
+            logger.exception("self_prompt.tick: run_once crashed; continuing")
+        await asyncio.sleep(interval_sec)
+    logger.info("self_prompt.tick: stopped (shutdown or off-switch)")
 
 
 async def process_prompt(runner, session, user_query: str) -> None:
@@ -181,7 +204,16 @@ async def main():
 
         if autonomous:
             logger.info("Running in autonomous loop mode. Use `swarm_cli stop` to exit.")
-            await run_swarm_loop(session_service, session, runner)
+            sm = StateManager()
+            self_prompt_task = asyncio.create_task(_self_prompt_tick(sm))
+            try:
+                await run_swarm_loop(session_service, session, runner)
+            finally:
+                self_prompt_task.cancel()
+                try:
+                    await self_prompt_task
+                except (asyncio.CancelledError, Exception):
+                    pass
         else:
             await run_single(session_service, session, runner)
 
