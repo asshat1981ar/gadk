@@ -35,6 +35,7 @@ def _slugify_task_id(prefix: str, title: str, max_len: int = 40) -> str:
     return task_id
 
 
+from src.agents.architect import draft_architecture_note
 from src.agents.governor import register_external_gate
 from src.config import Config
 from src.observability.logger import configure_logging, get_logger, set_trace_id
@@ -66,6 +67,53 @@ CYCLE_SLEEP_SEC = int(os.getenv("CYCLE_SLEEP_SEC", "30"))
 SHUTDOWN_FILE = os.getenv("SHUTDOWN_FILE", ".shutdown_sdlc")
 TASKS_FILE = "docs/sdlc_tasks.json"
 MAX_REVIEW_RETRIES = int(os.getenv("MAX_REVIEW_RETRIES", "2"))
+
+
+def _architecture_note_from_task(task: dict) -> dict | None:
+    """Synthesize a minimal ADR payload from an Ideator-produced task.
+
+    No LLM call — the ADR is derived from task fields already in hand.
+    Captures the Ideator→Builder handoff in structured form so
+    ``events.jsonl`` carries an auditable rationale for every
+    ARCHITECT transition. A future iteration can swap this for a real
+    Architect-agent LLM roundtrip; the `draft_architecture_note`
+    signature already matches.
+
+    Returns ``None`` if validation fails (e.g., missing required
+    fields) so the caller can degrade to a forced-skip rather than
+    halting the cycle.
+    """
+    try:
+        title = (task.get("title") or "").strip()
+        description = (task.get("description") or "").strip()
+        priority = (task.get("priority") or "MEDIUM").strip().upper()
+        file_hint = (task.get("file_hint") or "").strip()
+
+        if not title or not description:
+            return None
+
+        touched = [file_hint] if file_hint else []
+        consequences = [
+            f"Priority: {priority}",
+            "Implemented by the Builder agent; delivered through the autonomous SDLC loop.",
+        ]
+
+        return draft_architecture_note(
+            task_id=task["task_id"],
+            title=title,
+            context=description,
+            decision="Implement as specified by the Ideator; no additional architectural divergence.",
+            consequences=consequences,
+            alternatives=["Defer: leave the gap unaddressed for the next discovery cycle."],
+            touched_paths=touched,
+        )
+    except Exception as exc:  # pydantic.ValidationError + anything else
+        logger.warning(
+            "architecture.note.degraded task=%s reason=%s",
+            task.get("task_id"),
+            exc,
+        )
+        return None
 
 
 def _extract_review_status(review_text: str) -> str:
@@ -101,12 +149,16 @@ class AutonomousSDLCEngine:
     audit. The discovery + delivery logic is unchanged; only the
     orchestration around it is now observable.
 
-    The `ARCHITECT` phase is bypassed with `force=True` for now — the
-    Architect agent isn't wired into autonomous runs, and running an
-    architecture-note draft would double LLM cost per cycle without
-    improving the outcome. A future cycle can unblock this by wiring
-    `src.agents.architect.draft_architecture_note` before the IMPLEMENT
-    transition.
+    The `ARCHITECT` phase produces a minimal ADR from task fields via
+    :func:`_architecture_note_from_task` — no extra LLM call. The ADR
+    captures the Ideator→Builder handoff in structured form so every
+    transition in ``events.jsonl`` carries an auditable rationale. If
+    the ADR synthesis fails (missing task fields, pydantic validation
+    error), the transition degrades to a forced-skip with a structured
+    warning; the cycle continues rather than halting on the audit
+    surface. A future iteration can replace the synthesis with a real
+    Architect-agent LLM call; the signature already matches
+    :func:`src.agents.architect.draft_architecture_note`.
     """
 
     def __init__(
@@ -458,11 +510,23 @@ class AutonomousSDLCEngine:
         item: WorkItem = ensure_work_item(self.sm, task["task_id"], phase=Phase.PLAN)
         item.payload["task"] = task
 
-        # PLAN → ARCHITECT. Forced skip: Architect agent isn't wired
-        # into autonomous runs yet (see class docstring).
-        self.controller.advance(
-            item, Phase.ARCHITECT, reason="auto-skip: architect agent not wired", force=True
-        )
+        # PLAN → ARCHITECT. Build a minimal ADR from task fields (no
+        # extra LLM call) so every autonomous transition carries a
+        # structured rationale. If synthesis fails (malformed task,
+        # missing fields) we degrade to a forced skip with a
+        # `architecture.note.degraded` warning — the cycle continues
+        # rather than halting on what is meant to be an audit surface.
+        adr = _architecture_note_from_task(task)
+        if adr is not None:
+            item.payload["architecture"] = adr
+            self.controller.advance(item, Phase.ARCHITECT, reason=f"ADR drafted: {adr['title']}")
+        else:
+            self.controller.advance(
+                item,
+                Phase.ARCHITECT,
+                reason="auto-skip: ADR synthesis unavailable",
+                force=True,
+            )
 
         # ARCHITECT → IMPLEMENT (build).
         artifact = await self._build(task)

@@ -378,3 +378,147 @@ def test_legacy_modules_are_deleted() -> None:
     ):
         with pytest.raises(ModuleNotFoundError):
             importlib.import_module(modname)
+
+
+# ---------------------------------------------------------------------------
+# Batch F: ARCHITECT-phase ADR synthesis
+# ---------------------------------------------------------------------------
+
+
+def test_architecture_note_from_task_produces_valid_adr() -> None:
+    """Happy path: task with title + description + priority yields a
+    populated ADR payload with the expected audit fields."""
+    from src.autonomous_sdlc import _architecture_note_from_task
+
+    adr = _architecture_note_from_task(
+        {
+            "task_id": "sdlc-add-x",
+            "title": "Add X to Y",
+            "description": "The X feature is missing from Y.",
+            "priority": "HIGH",
+            "file_hint": "src/y.py",
+        }
+    )
+    assert adr is not None
+    assert adr["title"] == "Add X to Y"
+    assert "X feature is missing" in adr["context"]
+    assert any("HIGH" in c for c in adr["consequences"])
+    assert adr["touched_paths"] == ["src/y.py"]
+    assert adr["alternatives_considered"]
+
+
+def test_architecture_note_from_task_returns_none_when_missing_fields() -> None:
+    """Degraded path: tasks that lack the minimum fields for an ADR
+    are rejected, so the caller can degrade to a forced-skip rather
+    than halt the cycle with a pydantic ValidationError."""
+    from src.autonomous_sdlc import _architecture_note_from_task
+
+    # Missing title
+    assert _architecture_note_from_task({"task_id": "x", "description": "d"}) is None
+    # Missing description
+    assert _architecture_note_from_task({"task_id": "x", "title": "t"}) is None
+    # Blank title and description
+    assert _architecture_note_from_task({"task_id": "x", "title": "", "description": ""}) is None
+
+
+@pytest.mark.asyncio
+async def test_run_cycle_stores_adr_in_payload(
+    engine_with_mocks, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The ARCHITECT transition stashes the synthesized ADR on the
+    WorkItem so the audit trail ties each PR back to its rationale."""
+    engine, _ = engine_with_mocks
+
+    async def _discover() -> list[dict]:
+        return [
+            {
+                "title": "Add retries",
+                "priority": "HIGH",
+                "description": "dispatch needs retries",
+                "file_hint": "src/tools/dispatcher.py",
+            }
+        ]
+
+    async def _plan(tasks: list) -> dict:
+        return {
+            "task_id": "sdlc-retries",
+            "title": "Add retries",
+            "priority": "HIGH",
+            "description": "dispatch needs retries",
+            "file_hint": "src/tools/dispatcher.py",
+        }
+
+    async def _build(task: dict) -> str:
+        return "src/staged_agents/retries.py"
+
+    async def _review(artifact: str, task: dict) -> str:
+        return "Status: pass"
+
+    async def _deliver(artifact: str, task: dict, review: str) -> str:
+        return "https://example/pr/1"
+
+    for name, fn in {
+        "_discover": _discover,
+        "_plan": _plan,
+        "_build": _build,
+        "_review": _review,
+        "_deliver": _deliver,
+    }.items():
+        monkeypatch.setattr(engine, name, fn)
+
+    result = await engine.run_cycle()
+    assert result is True
+
+    item = load_work_item(engine.sm, "sdlc-retries")
+    assert item is not None
+    assert "architecture" in item.payload
+    assert item.payload["architecture"]["title"] == "Add retries"
+    assert item.payload["architecture"]["touched_paths"] == ["src/tools/dispatcher.py"]
+
+
+@pytest.mark.asyncio
+async def test_run_cycle_degrades_when_adr_synthesis_fails(
+    engine_with_mocks, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A task with missing description should force-skip ARCHITECT
+    (emits the degraded warning) but still advance the cycle. The
+    skip must still emit a `phase.transition` event so the audit
+    trail shows the ARCHITECT step happened."""
+    engine, events_file = engine_with_mocks
+
+    async def _discover() -> list[dict]:
+        return [{"title": "X", "priority": "HIGH"}]  # no description
+
+    async def _plan(tasks: list) -> dict:
+        # task_id present, title present, description MISSING → ADR fails
+        return {"task_id": "sdlc-no-desc", "title": "X", "priority": "HIGH"}
+
+    async def _build(task: dict) -> str:
+        return "src/staged_agents/x.py"
+
+    async def _review(artifact: str, task: dict) -> str:
+        return "Status: pass"
+
+    async def _deliver(artifact: str, task: dict, review: str) -> str:
+        return "https://example/pr/2"
+
+    for name, fn in {
+        "_discover": _discover,
+        "_plan": _plan,
+        "_build": _build,
+        "_review": _review,
+        "_deliver": _deliver,
+    }.items():
+        monkeypatch.setattr(engine, name, fn)
+
+    result = await engine.run_cycle()
+    assert result is True  # cycle completes despite ADR synthesis failure
+
+    item = load_work_item(engine.sm, "sdlc-no-desc")
+    assert item is not None
+    # ARCHITECT transition still fired (forced skip).
+    events = _read_events(events_file)
+    targets = [e.get("to_phase") for e in events if e.get("action") == "phase.transition"]
+    assert "ARCHITECT" in targets
+    # But payload has no `architecture` key since synthesis degraded.
+    assert "architecture" not in item.payload
