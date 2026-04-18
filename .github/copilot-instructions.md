@@ -15,7 +15,7 @@ Use targeted `pytest` paths by default. A bare `pytest` also collects `test_llm.
 
 ## High-level architecture
 
-This repo is primarily a Python "Cognitive Foundry" swarm built on Google ADK, with a separate Kotlin/Gradle game subtree living under the same top-level `src/` directory. Treat `src/` as mixed-purpose: Python runtime modules sit directly under `src/*.py`, while the game code lives under `src/main/java/com/chimera/rpg/...`.
+This repo is a Python "Cognitive Foundry" swarm built on Google ADK. It targets a separate Kotlin/Android game repo (`asshat1981ar/project-chimera`) remotely via the GitHub API — see `src/tools/github_tool.py`. `src/` is Python-only: runtime modules, agents, tools, observability, CLI.
 
 The Python runtime starts in `src/main.py`. That module loads env config, registers tool functions, creates the ADK `Runner`, wraps it with `ObservabilityCallback`, and processes queued prompts. The queue/control plane is file-based: `src/cli/swarm_ctl.py` manages `.swarm_shutdown`, `prompt_queue.jsonl`, and `swarm.pid`; `src/state.py` persists task state to `state.json` and appends audit events to `events.jsonl`; `src/services/session_store.py` wraps ADK's SQLite session service for `sessions.db`; and `src/observability/` provides structured logging plus persisted metrics in `metrics.jsonl`.
 
