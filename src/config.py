@@ -71,6 +71,11 @@ class Settings(BaseSettings):
     # Phase 5 external SDLC MCP integration
     sdlc_mcp_enabled: bool = False
 
+    # Phase 3 retrieval memory
+    retrieval_backend: str = "keyword"  # "keyword" | "vector"
+    embed_model: str = "openrouter/openai/text-embedding-3-small"
+    embed_daily_token_cap: int = 200_000
+
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
@@ -107,6 +112,9 @@ class Config:
     SELF_PROMPT_ENABLED = _settings.self_prompt_enabled
     SELF_PROMPT_MAX_PER_HOUR = _settings.self_prompt_max_per_hour
     SDLC_MCP_ENABLED = _settings.sdlc_mcp_enabled
+    RETRIEVAL_BACKEND = _settings.retrieval_backend
+    EMBED_MODEL = _settings.embed_model
+    EMBED_DAILY_TOKEN_CAP = _settings.embed_daily_token_cap
 
 
 __all__ = ["Config", "Settings", "get_settings"]
