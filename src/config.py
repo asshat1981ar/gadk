@@ -49,6 +49,12 @@ class Settings(BaseSettings):
     llamaindex_enabled: bool = False
     token_quota_per_task: int = 50000
 
+    langfuse_enabled: bool = False
+    helicone_enabled: bool = False
+    agentops_enabled: bool = False
+    mlflow_enabled: bool = False
+    sentry_dsn: str | None = None
+
     openrouter_api_key: str | None = None
     openrouter_api_base: str = "https://openrouter.ai/api/v1"
     openrouter_model: str = "openrouter/elephant-alpha"
@@ -99,6 +105,11 @@ class Config:
     LANGGRAPH_ENABLED = _settings.langgraph_enabled
     LLAMAINDEX_ENABLED = _settings.llamaindex_enabled
     TOKEN_QUOTA_PER_TASK = _settings.token_quota_per_task
+    LANGFUSE_ENABLED = _settings.langfuse_enabled
+    HELICONE_ENABLED = _settings.helicone_enabled
+    AGENTOPS_ENABLED = _settings.agentops_enabled
+    MLFLOW_ENABLED = _settings.mlflow_enabled
+    SENTRY_DSN = _settings.sentry_dsn
     OPENROUTER_API_KEY = _settings.openrouter_api_key
     OPENROUTER_API_BASE = _settings.openrouter_api_base
     OPENROUTER_MODEL = _settings.openrouter_model

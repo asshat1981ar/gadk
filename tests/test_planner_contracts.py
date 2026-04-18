@@ -65,3 +65,44 @@ async def test_llm_turn_retries_empty_response(monkeypatch):
 
     assert content == "final response"
     assert mocked_completion.await_count == 2
+
+
+@pytest.mark.asyncio
+async def test_run_planner_finalizes_after_terminal_tool_call(monkeypatch):
+    mocked_turn = AsyncMock(
+        side_effect=[
+            '```json\n{"action": "read_file", "arguments": {"path": "README.md"}}\n```',
+            "Final summary after reading the file.",
+        ]
+    )
+    mocked_execute = AsyncMock(
+        return_value={
+            "status": "success",
+            "tool_name": "read_file",
+            "output": "README contents",
+        }
+    )
+
+    monkeypatch.setattr(planner, "_llm_turn", mocked_turn)
+    monkeypatch.setattr(planner, "_execute_tool_call", mocked_execute)
+
+    result = await planner.run_planner(
+        user_prompt="Inspect the README and summarize it.",
+        system_prompt="You are a helpful assistant.",
+        max_iterations=1,
+    )
+
+    assert result == "Final summary after reading the file."
+    assert mocked_execute.await_count == 1
+    assert mocked_turn.await_count == 2
+
+
+@pytest.mark.asyncio
+async def test_run_planner_with_zero_iterations_returns_empty_string():
+    result = await planner.run_planner(
+        user_prompt="Do nothing.",
+        system_prompt="You are a helpful assistant.",
+        max_iterations=0,
+    )
+
+    assert result == ""

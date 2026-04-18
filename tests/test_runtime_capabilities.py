@@ -3,6 +3,7 @@ from unittest.mock import patch
 
 import pytest
 
+import src.main as main_module
 from src.tools.dispatcher import batch_execute, execute_capability
 
 
@@ -68,6 +69,48 @@ class TestRuntimeCapabilities:
                 },
             }
         ]
+
+    @pytest.mark.asyncio
+    async def test_planning_retrieval_capability_offloads_retrieve_context(self, monkeypatch):
+        retrieve_calls: list[object] = []
+        to_thread_calls: list[tuple[object, object]] = []
+
+        expected_payload = {
+            "query": "planner contracts",
+            "corpus": ["specs"],
+            "sources": [{"path": "docs/superpowers/specs/spec-a.md", "corpus": "specs"}],
+        }
+
+        def fake_retrieve_context(query: object) -> dict[str, object]:
+            retrieve_calls.append(query)
+            return expected_payload
+
+        async def fake_to_thread(func: object, query: object) -> dict[str, object]:
+            assert retrieve_calls == []
+            to_thread_calls.append((func, query))
+            return func(query)
+
+        monkeypatch.setattr(main_module, "retrieve_context", fake_retrieve_context)
+        monkeypatch.setattr(main_module.asyncio, "to_thread", fake_to_thread)
+
+        result = await execute_capability(
+            main_module.PLANNING_RETRIEVAL_CAPABILITY,
+            query="planner contracts",
+            corpus=["specs"],
+        )
+
+        assert len(to_thread_calls) == 1
+        func, query = to_thread_calls[0]
+        assert func is fake_retrieve_context
+        assert query == main_module.RetrievalQuery(query="planner contracts", corpus=["specs"])
+        assert retrieve_calls == [query]
+        assert result == {
+            "status": "success",
+            "payload": expected_payload,
+            "error": None,
+            "source_backend": "retrieval",
+            "retryable": False,
+        }
 
     def test_orchestrator_instruction_prefers_capabilities(self):
         orchestrator_source = Path("src/agents/orchestrator.py").read_text(encoding="utf-8")
