@@ -454,7 +454,9 @@ async def run_planner(
     if final_text and not _parse_tool_calls(final_text):
         return final_text
 
-    logger.warning("Planner finalization still returned tool calls. Returning latest tool results instead.")
+    logger.warning(
+        "Planner finalization still returned tool calls. Returning latest tool results instead."
+    )
     return last_result_text or text
 
 

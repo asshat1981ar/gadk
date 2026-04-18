@@ -1,24 +1,9 @@
 import json
-import logging
 import os
 import tempfile
 from datetime import UTC, datetime
 
-try:
-    import fcntl as _fcntl
-
-    _FLOCK_AVAILABLE = True
-except ImportError:  # Windows
-    _fcntl = None  # type: ignore[assignment]
-    _FLOCK_AVAILABLE = False
-
-_logger = logging.getLogger(__name__)
-
-#: One-shot guard so the "fcntl unavailable" warning fires at most once
-#: per process (on the first actual append) rather than at import time —
-#: avoids log noise before logging is configured and ensures the warning
-#: respects the runtime log level chosen by the caller.
-_FLOCK_WARNED = False
+from src.utils.file_lock import locked_append
 
 
 class StateManager:
@@ -57,41 +42,13 @@ class StateManager:
             raise
 
     def _append_locked(self, path: str, line: str) -> None:
-        """Append *line* (already serialised) to *path* with an advisory lock.
+        """Append *line* to *path* under an exclusive advisory lock.
 
-        On platforms where ``fcntl`` is unavailable (Windows) the lock is
-        skipped and a one-shot warning is emitted (at first call, not at
-        import), but the append is still performed so the module stays
-        functional.
-
-        Important: we ``flush()`` and ``fsync()`` *before* releasing the
-        ``fcntl`` lock. Without that, Python's text buffer could still
-        hold the data while another process acquired the lock, letting
-        lines interleave in the final file.
+        Delegates to :func:`src.utils.file_lock.locked_append`, which
+        flushes+fsyncs inside the critical section so concurrent
+        processes never see torn writes. Safe no-op on Windows.
         """
-        global _FLOCK_WARNED
-        if not _FLOCK_AVAILABLE and not _FLOCK_WARNED:
-            _logger.warning(
-                "fcntl unavailable on this platform; concurrent appends "
-                "to %s will not be serialized",
-                path,
-            )
-            _FLOCK_WARNED = True
-
-        with open(path, "a") as f:
-            if _FLOCK_AVAILABLE:
-                _fcntl.flock(f, _fcntl.LOCK_EX)
-                try:
-                    f.write(line + "\n")
-                    # Flush+fsync inside the critical section so the
-                    # bytes are on disk before the next process's
-                    # lock_ex grant can race against our buffer.
-                    f.flush()
-                    os.fsync(f.fileno())
-                finally:
-                    _fcntl.flock(f, _fcntl.LOCK_UN)
-            else:
-                f.write(line + "\n")
+        locked_append(path, line)
 
     # ------------------------------------------------------------------
     # Public mutators

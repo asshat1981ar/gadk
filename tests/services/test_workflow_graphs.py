@@ -22,7 +22,9 @@ from src.services.workflow_graphs import (
 
 
 def test_review_loop_state_requires_non_negative_attempts():
-    with pytest.raises(Exception):
+    from pydantic import ValidationError
+
+    with pytest.raises(ValidationError):
         ReviewLoopState(builder_attempts=-1, review_status="pass", latest_summary="ok")
 
 

@@ -38,8 +38,10 @@ def test_null_backend_clear_is_noop() -> None:
 
 
 def test_search_hit_is_frozen() -> None:
+    import dataclasses
+
     hit = SearchHit(doc_id="x", text="t", score=0.5)
-    with pytest.raises(Exception):
+    with pytest.raises(dataclasses.FrozenInstanceError):
         hit.score = 0.9  # type: ignore[misc]
 
 

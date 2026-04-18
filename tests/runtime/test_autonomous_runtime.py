@@ -30,7 +30,10 @@ def test_instruction_surface_uses_remote_repo_tools_not_fake_capabilities():
     assert "start with 'list_repo_contents'" in ideator_text
     assert "inspect files with 'read_repo_file'" in ideator_text
     assert "Use 'list_directory' and 'read_file' only for local workspace files." in ideator_text
-    assert "Do not use retrieve_planning_context or execute_capability to explore the remote repository" in ideator_text
+    assert (
+        "Do not use retrieve_planning_context or execute_capability to explore the remote repository"
+        in ideator_text
+    )
 
 
 def test_autonomous_prompt_uses_registered_remote_repo_tools():
@@ -63,8 +66,12 @@ async def test_run_swarm_loop_routes_initial_prompt_through_planner(monkeypatch)
         prompts.append(user_prompt)
         return "planner response"
 
-    monkeypatch.setattr(main_module, "_run_autonomous_prompt_with_tools", fake_run_autonomous_prompt_with_tools)
-    monkeypatch.setattr(main_module, "should_use_planner_for_autonomous_run", lambda model_name: True)
+    monkeypatch.setattr(
+        main_module, "_run_autonomous_prompt_with_tools", fake_run_autonomous_prompt_with_tools
+    )
+    monkeypatch.setattr(
+        main_module, "should_use_planner_for_autonomous_run", lambda model_name: True
+    )
     monkeypatch.setattr(main_module, "is_shutdown_requested", lambda: True)
     monkeypatch.setattr(main_module, "dequeue_prompts", lambda: [])
 
@@ -111,7 +118,9 @@ async def test_process_prompt_falls_back_on_wrapped_tool_call_json_error(monkeyp
     class BrokenRunner:
         def run_async(self, **kwargs):
             async def _events():
-                raise RuntimeError("Malformed tool-call JSON returned by ADK") from json.JSONDecodeError(
+                raise RuntimeError(
+                    "Malformed tool-call JSON returned by ADK"
+                ) from json.JSONDecodeError(
                     "bad tool call",
                     "{",
                     1,

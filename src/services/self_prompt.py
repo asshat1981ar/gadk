@@ -244,17 +244,10 @@ def dispatch(
     usage — multi-writer access is out of scope for Phase 4.
     """
     accepted: list[SelfPrompt] = []
-    # Optional fcntl lock — matches the swarm_ctl queue accessors so the
+    # Append under the shared file lock (src.utils.file_lock) so the
     # background self-prompt thread can't race with the main loop's
-    # dequeue read-then-unlink. Best-effort: if fcntl isn't available
-    # (Windows) we fall through to a plain append.
-    try:
-        import fcntl as _fcntl_mod
-
-        _have_flock = True
-    except ImportError:  # pragma: no cover — platform-dependent
-        _fcntl_mod = None  # type: ignore[assignment]
-        _have_flock = False
+    # dequeue read-then-unlink in swarm_ctl.
+    from src.utils.file_lock import locked_append
 
     for prompt in prompts:
         if not rate_limiter.try_consume():
@@ -268,16 +261,7 @@ def dispatch(
             "prompt": f"[{prompt.phase.value}] {prompt.intent}",
             "self_prompt": prompt.model_dump(mode="json"),
         }
-        with open(queue_path, "a") as f:
-            if _have_flock:
-                _fcntl_mod.flock(f, _fcntl_mod.LOCK_EX)
-            try:
-                f.write(json.dumps(entry) + "\n")
-                f.flush()
-                os.fsync(f.fileno())
-            finally:
-                if _have_flock:
-                    _fcntl_mod.flock(f, _fcntl_mod.LOCK_UN)
+        locked_append(str(queue_path), json.dumps(entry))
         accepted.append(prompt)
     return accepted
 
