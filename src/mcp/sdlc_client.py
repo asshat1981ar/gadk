@@ -148,13 +148,16 @@ async def cancel_pending_tasks(timeout: float = 5.0) -> None:
 
     Should be called during swarm shutdown (after the shutdown sentinel is
     detected) so no tasks are GC'd mid-flight with unhandled exceptions.
+    Tasks that do not finish within *timeout* seconds are logged as warnings.
     """
     if not _pending_tasks:
         return
     tasks = list(_pending_tasks)
     for t in tasks:
         t.cancel()
-    await asyncio.wait(tasks, timeout=timeout)
+    _done, pending = await asyncio.wait(tasks, timeout=timeout)
+    for t in pending:
+        logger.warning("sdlc_client: task %s did not finish within %.1fs drain timeout", t, timeout)
 
 
 __all__ = [
