@@ -144,10 +144,12 @@ class TestStateAtomicity:
 
         # Poll state.json while writers are active
         errors = []
+        read_count = 0
         deadline = time.monotonic() + 10  # cap at 10 s
         while any(p.is_alive() for p in processes) and time.monotonic() < deadline:
             try:
                 _read_json_safely(state_json)
+                read_count += 1
             except (json.JSONDecodeError, OSError) as exc:
                 errors.append(str(exc))
             time.sleep(POLL_INTERVAL_SECONDS)
@@ -155,4 +157,8 @@ class TestStateAtomicity:
         for p in processes:
             p.join(timeout=30)
 
+        assert read_count > 0, (
+            "state.json was never successfully read while writers were active; "
+            "the mid-flight check did not exercise any concurrent reads"
+        )
         assert not errors, "state.json was invalid JSON during concurrent writes:\n" + "\n".join(errors)

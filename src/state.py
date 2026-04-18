@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import tempfile
 from datetime import datetime, timezone
@@ -11,6 +12,13 @@ except ImportError:  # Windows
     _fcntl = None  # type: ignore[assignment]
     _FLOCK_AVAILABLE = False
 
+_logger = logging.getLogger(__name__)
+
+if not _FLOCK_AVAILABLE:
+    _logger.warning(
+        "fcntl unavailable on this platform; concurrent appends will not be serialized"
+    )
+
 
 class StateManager:
     def __init__(self, storage_type="json", filename="state.json", event_filename="events.jsonl"):
@@ -18,11 +26,6 @@ class StateManager:
         self.filename = filename
         self.event_filename = event_filename
         self.data = {}
-        if not _FLOCK_AVAILABLE:
-            import logging as _logging
-            _logging.getLogger(__name__).warning(
-                "fcntl unavailable on this platform; concurrent appends will not be serialized"
-            )
         if self.storage_type == "json" and os.path.exists(self.filename):
             with open(self.filename, "r") as f:
                 try:
