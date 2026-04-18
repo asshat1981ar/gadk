@@ -121,37 +121,48 @@ class _PRStubRepo:
 
 
 @pytest.mark.asyncio
-async def test_create_pull_request_chains_create_git_ref_error() -> None:
-    """create_pull_request surfaces both the branch-not-found and create_git_ref errors."""
+async def test_create_pull_request_chains_create_git_ref_error(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """create_pull_request must log the create_git_ref error with __cause__ set
+    to the original branch-not-found error.
+
+    The function catches _GITHUB_API_ERRORS and logs via ``exc_info=True``,
+    so the exception chain lives on the LogRecord. Capture that record and
+    assert on ``record.exc_info[1].__cause__`` to exercise the production
+    code path (the earlier version of this test constructed a chained
+    exception outside the SUT, which always passed regardless).
+    """
     tool = github_tool.GitHubTool.__new__(github_tool.GitHubTool)
     tool.repo = _PRStubRepo()  # type: ignore[attr-defined]
     tool.gh = None  # type: ignore[attr-defined]
 
-    result = await tool.create_pull_request(
-        title="My PR",
-        body="A" * 50,  # long enough to pass is_low_value_content guard
-        head="feature-branch",
-        base="main",
-    )
+    with caplog.at_level("ERROR", logger="src.tools.github_tool"):
+        result = await tool.create_pull_request(
+            title="My PR",
+            body="A" * 50,  # long enough to pass is_low_value_content guard
+            head="feature-branch",
+            base="main",
+        )
 
     # The function returns an error string (does not propagate the exception).
     assert result.startswith("Error creating PR:")
 
-    # Verify the chain was set up — re-run through the repo directly to inspect.
-    captured: list[BaseException] = []
-    try:
-        tool.repo.get_branch("feature-branch")
-    except github_tool._GITHUB_API_ERRORS as branch_exc:
-        try:
-            tool.repo.create_git_ref(ref="refs/heads/feature-branch", sha="deadbeef")
-        except github_tool._GITHUB_API_ERRORS as create_exc:
-            # The inner raise should chain the outer branch error.
-            try:
-                raise create_exc from branch_exc
-            except github_tool._GITHUB_API_ERRORS as final:
-                captured.append(final)
+    # Find the ERROR record with an attached exception chain.
+    failed_records = [
+        r for r in caplog.records if r.levelname == "ERROR" and r.exc_info is not None
+    ]
+    assert failed_records, (
+        "expected create_pull_request to log an ERROR with exc_info; "
+        f"got records: {[(r.levelname, r.message) for r in caplog.records]}"
+    )
 
-    assert captured, "expected at least one chained exception"
-    exc = captured[0]
-    assert exc.__cause__ is not None, "create_git_ref error must chain the original branch error"
-    assert isinstance(exc.__cause__, ConnectionError)
+    logged_exc = failed_records[0].exc_info[1]
+    assert logged_exc is not None, "log record must carry the caught exception"
+    assert (
+        logged_exc.__cause__ is not None
+    ), "create_git_ref error must chain the original branch error via `raise ... from`"
+    assert isinstance(logged_exc.__cause__, ConnectionError), (
+        f"expected __cause__ to be the original branch ConnectionError; "
+        f"got {type(logged_exc.__cause__).__name__}"
+    )

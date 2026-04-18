@@ -180,9 +180,9 @@ def test_recall_at_k_on_small_corpus(backend: SqliteVecBackend) -> None:
 
     hits = backend.query("vector embedding retrieval", top_k=5)
     assert hits
-    assert hits[0].doc_id == "memory", (
-        f"expected memory to rank first, got {[h.doc_id for h in hits]}"
-    )
+    assert (
+        hits[0].doc_id == "memory"
+    ), f"expected memory to rank first, got {[h.doc_id for h in hits]}"
 
 
 def test_hit_metadata_exposes_distance(backend: SqliteVecBackend) -> None:
@@ -245,7 +245,9 @@ def test_open_db_load_failure_logs_warning_and_sets_cause(
 
     monkeypatch.setattr(vec_mod._sqlite_vec, "load", _bad_load)
 
-    with caplog.at_level("WARNING", logger="src.services.vector_index"):
+    # vector_index.py binds its logger as `get_logger("vector_index")`, so
+    # caplog must filter on the same short name — not the module dotted path.
+    with caplog.at_level("WARNING", logger="vector_index"):
         with pytest.raises(VectorBackendUnavailable) as exc_info:
             SqliteVecBackend(
                 embedder=_make_fake_embedder(dim=32),
@@ -258,8 +260,11 @@ def test_open_db_load_failure_logs_warning_and_sets_cause(
     assert raised.__cause__ is original_error
 
     # A WARNING containing the type name and message must have been emitted.
-    warning_messages = [r.message for r in caplog.records if r.levelname == "WARNING"]
-    assert any("sqlite_vec.load failed" in m for m in warning_messages), (
-        f"expected 'sqlite_vec.load failed' in warnings; got: {warning_messages}"
-    )
+    # ``LogRecord.getMessage()`` renders the formatted message reliably;
+    # ``LogRecord.message`` is only set by ``logging.Formatter.format()`` and
+    # may be absent in caplog's raw capture path.
+    warning_messages = [r.getMessage() for r in caplog.records if r.levelname == "WARNING"]
+    assert any(
+        "sqlite_vec.load failed" in m for m in warning_messages
+    ), f"expected 'sqlite_vec.load failed' in warnings; got: {warning_messages}"
     assert any("OSError" in m for m in warning_messages)
