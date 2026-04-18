@@ -111,6 +111,7 @@ def cmd_logs(args):
 
 def cmd_metrics(args):
     from src.observability.cost_tracker import CostTracker
+    from src.services.embed_quota import EmbedQuota
 
     summary = registry.get_summary()
     costs = CostTracker().get_summary()
@@ -135,6 +136,20 @@ def cmd_metrics(args):
     print(f"  Total spend: ${costs['total_spend_usd']:.6f}")
     for agent, cost in costs.get("by_agent", {}).items():
         print(f"  {agent}: ${cost:.6f}")
+
+    # Embed quota — surfaces the daily token budget consumed by the
+    # retrieval vector path so operators can see whether the cap is
+    # being approached before it actually trips.
+    sm = _get_state_manager(args)
+    quota = EmbedQuota(sm)
+    used = quota.used_today()
+    remaining = quota.remaining_today()
+    cap = used + remaining
+    pct = (used / cap * 100.0) if cap > 0 else 0.0
+    print("=== Embed Quota (today) ===")
+    print(f"  Used:      {used:>10} tokens")
+    print(f"  Remaining: {remaining:>10} tokens")
+    print(f"  Cap:       {cap:>10} tokens  ({pct:.1f}% used)")
 
     if not summary["agents"] and not summary["tools"]:
         print("  (No metrics recorded yet. Metrics are populated at runtime.)")
@@ -358,6 +373,8 @@ def main(argv=None):
 
     # metrics
     p_metrics = subparsers.add_parser("metrics", help="Show metrics summary")
+    p_metrics.add_argument("--state-file", help="Path to state JSON file")
+    p_metrics.add_argument("--events-file", help="Path to events JSONL file")
     p_metrics.set_defaults(func=cmd_metrics)
 
     # events
