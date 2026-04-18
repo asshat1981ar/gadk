@@ -1,7 +1,3 @@
-import asyncio
-
-import pytest
-
 from src.cli.dashboard import Dashboard
 from src.state import StateManager
 

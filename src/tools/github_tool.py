@@ -18,16 +18,20 @@ except ImportError:  # pragma: no cover — branch depends on environment
 try:
     from google.adk import Tool
 except ImportError:
+
     class Tool:  # type: ignore[no-redef]
         pass
+
 
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 try:
     from github import GithubException  # type: ignore[import]
 except ImportError:  # pragma: no cover
+
     class GithubException(Exception):  # type: ignore[no-redef]
         """PyGithub-compatible fallback exception for offline/test mode."""
+
 
 from src.observability.metrics import tool_timer
 from src.tools.content_guards import (
@@ -104,9 +108,7 @@ class GitHubTool(Tool):
         try:
             self.repo = self.gh.get_repo(repo_name)
         except _GITHUB_API_ERRORS as exc:
-            logger.warning(
-                "GitHubTool: failed to resolve repo '%s': %s", repo_name, exc
-            )
+            logger.warning("GitHubTool: failed to resolve repo '%s': %s", repo_name, exc)
             self.repo = None
 
     @retry(
@@ -126,6 +128,7 @@ class GitHubTool(Tool):
         """Return an existing open issue whose title matches ``title`` (case-insensitive,
         whitespace-normalized), or None. Swallows errors — dedup is best-effort."""
         from src.tools.content_guards import _normalize_title  # local to keep public API small
+
         target = _normalize_title(title)
         try:
             # PyGithub's get_issues is paginated and lazy; slice to bound the scan.
@@ -172,7 +175,9 @@ class GitHubTool(Tool):
             logger.error("create_issue failed: %s", exc, exc_info=True)
             return f"Error creating issue: {exc}"
 
-    async def create_pull_request(self, title: str, body: str, head: str, base: str = "main") -> str:
+    async def create_pull_request(
+        self, title: str, body: str, head: str, base: str = "main"
+    ) -> str:
         """Open a PR, with review-section sanitization and an empty-body guard.
 
         Refuses to file the PR if the body (after sanitization) contains nothing
@@ -200,9 +205,7 @@ class GitHubTool(Tool):
                 self.repo.get_branch(head)
             except _GITHUB_API_ERRORS:
                 default_branch = self.repo.get_branch(base)
-                self.repo.create_git_ref(
-                    ref=f"refs/heads/{head}", sha=default_branch.commit.sha
-                )
+                self.repo.create_git_ref(ref=f"refs/heads/{head}", sha=default_branch.commit.sha)
             pr = self.repo.create_pull(title=title, body=clean_body, head=head, base=base)
             return pr.html_url
         except _GITHUB_API_ERRORS as exc:
@@ -251,7 +254,9 @@ class GitHubTool(Tool):
             return f"Error merging PR: {exc}"
 
     @tool_timer("GitHubTool")
-    async def create_or_update_file(self, path: str, content: str, message: str, branch: str, base: str = "main") -> str:
+    async def create_or_update_file(
+        self, path: str, content: str, message: str, branch: str, base: str = "main"
+    ) -> str:
         """Create or update a file in a specific branch via GitHub API."""
         if not self.repo:
             return "Error: Repository not configured or not found"
@@ -261,9 +266,7 @@ class GitHubTool(Tool):
                 self.repo.get_branch(branch)
             except _GITHUB_API_ERRORS:
                 default_branch = self.repo.get_branch(base)
-                self.repo.create_git_ref(
-                    ref=f"refs/heads/{branch}", sha=default_branch.commit.sha
-                )
+                self.repo.create_git_ref(ref=f"refs/heads/{branch}", sha=default_branch.commit.sha)
             # Try to get existing file for sha
             try:
                 existing = self.repo.get_contents(path, ref=branch)
@@ -279,13 +282,17 @@ class GitHubTool(Tool):
             return f"Error creating/updating file: {exc}"
 
     @tool_timer("GitHubTool")
-    async def commit_files_to_branch(self, files: dict, message: str, branch: str, base: str = "main") -> str:
+    async def commit_files_to_branch(
+        self, files: dict, message: str, branch: str, base: str = "main"
+    ) -> str:
         """Commit multiple files to a branch. files = {path: content}."""
         if not self.repo:
             return "Error: Repository not configured or not found"
         results = []
         for path, content in files.items():
-            result = await self.create_or_update_file(path, content, f"{message} - {path}", branch, base)
+            result = await self.create_or_update_file(
+                path, content, f"{message} - {path}", branch, base
+            )
             results.append(result)
         return "\n".join(results)
 
@@ -328,10 +335,7 @@ class GitHubTool(Tool):
             contents = await asyncio.to_thread(self._get_contents_with_retry, path)
             if not isinstance(contents, list):
                 contents = [contents]
-            return [
-                {"name": c.name, "path": c.path, "type": c.type}
-                for c in contents
-            ]
+            return [{"name": c.name, "path": c.path, "type": c.type} for c in contents]
         except (GitHubRetryableError, *_GITHUB_API_ERRORS) as exc:
             logger.warning("list_repo_contents(%s) failed: %s", path, exc)
             return []
@@ -339,6 +343,7 @@ class GitHubTool(Tool):
 
 # Standalone wrappers for agent tool registration (lazy instantiation)
 _gh_tool_instance = None
+
 
 def _get_gh_tool() -> GitHubTool:
     global _gh_tool_instance

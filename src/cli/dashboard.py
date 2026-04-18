@@ -1,9 +1,7 @@
 import asyncio
-import json
 import os
 import sys
-import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 # Allow running directly from src/cli/ by adding project root to path
 _project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
@@ -107,7 +105,7 @@ class Dashboard:
 
     def _render(self) -> Group:
         header = Text(
-            f"Cognitive Foundry Swarm Dashboard  |  {datetime.now(timezone.utc).isoformat()}  |  {'PAUSED' if self.paused else 'RUNNING'}",
+            f"Cognitive Foundry Swarm Dashboard  |  {datetime.now(UTC).isoformat()}  |  {'PAUSED' if self.paused else 'RUNNING'}",
             style="bold white on blue",
             justify="center",
         )
@@ -129,7 +127,9 @@ class Dashboard:
 
     async def run(self) -> None:
         logger.info("Dashboard starting")
-        with Live(self._render(), refresh_per_second=1 / self.refresh_rate, console=self.console) as live:
+        with Live(
+            self._render(), refresh_per_second=1 / self.refresh_rate, console=self.console
+        ) as live:
             while self.running:
                 if not self.paused:
                     live.update(self._render())

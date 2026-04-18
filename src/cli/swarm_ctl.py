@@ -8,9 +8,7 @@ Provides inter-process communication via sentinel files and queues:
 
 import json
 import os
-import sys
-from datetime import datetime, timezone
-from typing import List, Optional
+from datetime import UTC, datetime
 
 SENTINEL_PATH = ".swarm_shutdown"
 QUEUE_PATH = "prompt_queue.jsonl"
@@ -23,7 +21,7 @@ def is_shutdown_requested() -> bool:
 
 def request_shutdown() -> None:
     with open(SENTINEL_PATH, "w") as f:
-        f.write(datetime.now(timezone.utc).isoformat())
+        f.write(datetime.now(UTC).isoformat())
 
 
 def clear_shutdown() -> None:
@@ -41,7 +39,7 @@ def clear_pid() -> None:
         os.remove(PID_PATH)
 
 
-def get_swarm_pid() -> Optional[int]:
+def get_swarm_pid() -> int | None:
     if not os.path.exists(PID_PATH):
         return None
     try:
@@ -53,7 +51,7 @@ def get_swarm_pid() -> Optional[int]:
 
 def enqueue_prompt(prompt: str, user_id: str = "cli_user") -> None:
     entry = {
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
         "user_id": user_id,
         "prompt": prompt,
     }
@@ -61,11 +59,11 @@ def enqueue_prompt(prompt: str, user_id: str = "cli_user") -> None:
         f.write(json.dumps(entry) + "\n")
 
 
-def dequeue_prompts() -> List[dict]:
+def dequeue_prompts() -> list[dict]:
     if not os.path.exists(QUEUE_PATH):
         return []
     entries = []
-    with open(QUEUE_PATH, "r") as f:
+    with open(QUEUE_PATH) as f:
         for line in f:
             line = line.strip()
             if line:
@@ -78,11 +76,11 @@ def dequeue_prompts() -> List[dict]:
     return entries
 
 
-def peek_prompts() -> List[dict]:
+def peek_prompts() -> list[dict]:
     if not os.path.exists(QUEUE_PATH):
         return []
     entries = []
-    with open(QUEUE_PATH, "r") as f:
+    with open(QUEUE_PATH) as f:
         for line in f:
             line = line.strip()
             if line:

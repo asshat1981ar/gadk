@@ -2,18 +2,14 @@
 """Unified CLI for interacting with the Cognitive Foundry swarm."""
 
 import argparse
-import json
 import os
 import sys
-from datetime import datetime, timezone
 
 from src.capabilities.helpers import get_swarm_status_view
 from src.cli.dashboard import Dashboard
 from src.cli.swarm_ctl import (
     QUEUE_PATH,
     SENTINEL_PATH,
-    clear_shutdown,
-    dequeue_prompts,
     enqueue_prompt,
     get_swarm_pid,
     peek_prompts,
@@ -116,16 +112,21 @@ def cmd_logs(args):
 
 def cmd_metrics(args):
     from src.observability.cost_tracker import CostTracker
+
     summary = registry.get_summary()
     costs = CostTracker().get_summary()
 
     print("=== Agent Metrics ===")
     for name, m in summary.get("agents", {}).items():
-        print(f"  {name}: calls={m['calls_total']} errors={m['errors_total']} avg_duration={m['avg_duration_seconds']:.3f}s")
+        print(
+            f"  {name}: calls={m['calls_total']} errors={m['errors_total']} avg_duration={m['avg_duration_seconds']:.3f}s"
+        )
 
     print("=== Tool Metrics ===")
     for name, m in summary.get("tools", {}).items():
-        print(f"  {name}: calls={m['calls_total']} errors={m['errors_total']} avg_duration={m['avg_duration_seconds']:.3f}s")
+        print(
+            f"  {name}: calls={m['calls_total']} errors={m['errors_total']} avg_duration={m['avg_duration_seconds']:.3f}s"
+        )
 
     print("=== Token Usage ===")
     for agent, count in summary.get("token_usage", {}).items():
@@ -193,8 +194,10 @@ def cmd_queue(args):
 
 
 def cmd_prs(args):
-    from src.tools.github_tool import GitHubTool
     import asyncio
+
+    from src.tools.github_tool import GitHubTool
+
     gh = GitHubTool()
     prs = asyncio.run(gh.list_pull_requests(state=args.state or "open"))
     if not prs:
@@ -203,8 +206,8 @@ def cmd_prs(args):
     print(f"{'#':<6} {'State':<8} {'Head':<25} {'Title':<35} URL")
     print("-" * 90)
     for pr in prs:
-        head = pr['head'][:23] if pr['head'] else ""
-        title = pr['title'][:33] if pr['title'] else ""
+        head = pr["head"][:23] if pr["head"] else ""
+        title = pr["title"][:33] if pr["title"] else ""
         print(f"{pr['number']:<6} {pr['state']:<8} {head:<25} {title:<35} {pr['url']}")
     return 0
 
@@ -279,6 +282,7 @@ def main(argv=None):
         argv = sys.argv[1:]
     if len(argv) == 0:
         from src.cli.interactive import run_interactive
+
         return run_interactive()
 
     args = parser.parse_args(argv)

@@ -59,10 +59,10 @@ class Settings(BaseSettings):
 
     # Phase 0 stabilization flags
     github_mock_allowed: bool = False  # require real PyGithub in prod
-    workspace_root: str = "."           # sandbox root for filesystem/dispatcher
+    workspace_root: str = "."  # sandbox root for filesystem/dispatcher
 
     # Phase 1 phase-gate framework
-    project_id: str = "chimera"         # single-tenant scope (v1)
+    project_id: str = "chimera"  # single-tenant scope (v1)
 
     # Phase 4 self-prompting loop
     self_prompt_enabled: bool = False

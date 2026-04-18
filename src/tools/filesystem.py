@@ -1,9 +1,7 @@
 """Filesystem tools with path sandboxing guardrails for agent use."""
 
 import fnmatch
-import os
 from pathlib import Path
-from typing import List
 
 from src.observability.logger import get_logger
 from src.observability.metrics import tool_timer
@@ -40,6 +38,7 @@ _WRITE_MAX_BYTES = 500_000
 
 class FilesystemGuardrailError(Exception):
     """Raised when a filesystem operation violates guardrails."""
+
     pass
 
 
@@ -87,9 +86,7 @@ def _check_write_allowlist(resolved: Path) -> None:
     try:
         rel = resolved.relative_to(_PROJECT_ROOT)
     except ValueError:
-        raise FilesystemGuardrailError(
-            f"Write outside project root is not allowed: {resolved}"
-        )
+        raise FilesystemGuardrailError(f"Write outside project root is not allowed: {resolved}")
 
     top_level = rel.parts[0] if rel.parts else ""
     if top_level not in _WRITE_ALLOWED_DIRS:
@@ -164,7 +161,7 @@ def write_file(path: str, content: str) -> str:
 
 
 @tool_timer("ListDirectory")
-def list_directory(path: str = ".") -> List[dict]:
+def list_directory(path: str = ".") -> list[dict]:
     """
     List files and directories at the given path.
 

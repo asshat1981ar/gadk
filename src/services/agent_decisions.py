@@ -49,7 +49,9 @@ def choose_delegate(user_goal: str, available_agents: list[str]) -> DelegationDe
     ]
 
     for keywords, candidate, reason in ranked_rules:
-        if candidate in available_agents and any(keyword in normalized_goal for keyword in keywords):
+        if candidate in available_agents and any(
+            keyword in normalized_goal for keyword in keywords
+        ):
             required_capabilities = ["repo.read_file"] if candidate in {"Ideator", "Critic"} else []
             return DelegationDecision(
                 target_agent=candidate,

@@ -4,8 +4,8 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from src.services.agent_contracts import ReviewVerdict, TaskProposal
 import src.services.structured_output as structured_output
+from src.services.agent_contracts import ReviewVerdict, TaskProposal
 
 
 class TestStructuredOutputParsing:

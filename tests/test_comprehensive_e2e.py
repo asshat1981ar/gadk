@@ -14,10 +14,8 @@ This test exercises the full pipeline:
 10. Queue is cleared after processing
 """
 
-import asyncio
 import json
 import os
-import sqlite3
 import tempfile
 
 import pytest
@@ -75,6 +73,7 @@ class TestComprehensiveEndToEnd:
 
         # Verify queue has the prompt (without consuming)
         from src.cli.swarm_ctl import peek_prompts
+
         queue_peeked = peek_prompts()
         assert len(queue_peeked) == 1
         assert queue_peeked[0]["prompt"] == prompt_text

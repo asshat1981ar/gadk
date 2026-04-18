@@ -1,5 +1,3 @@
-import os
-import pytest
 from src.observability.cost_tracker import CostTracker
 
 

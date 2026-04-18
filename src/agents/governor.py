@@ -141,7 +141,11 @@ def register_external_gate(task_id: str, verdict: dict[str, Any]) -> dict[str, A
     dict so callers never have to branch on None.
     """
     if not Config.SDLC_MCP_ENABLED:
-        return {"status": "sdlc.gate.skipped", "task_id": task_id, "reason": "SDLC_MCP_ENABLED=false"}
+        return {
+            "status": "sdlc.gate.skipped",
+            "task_id": task_id,
+            "reason": "SDLC_MCP_ENABLED=false",
+        }
 
     try:
         from src.mcp.sdlc_client import submit_gate_decision  # type: ignore[import-not-found]
@@ -191,7 +195,8 @@ the cumulative cost_usd. If the verdict is ready, optionally call
 tooling. If not ready, enumerate the concerns and route the work item
 back to REVIEW.
 
-Phase under your ownership: """ + Phase.GOVERN.value,
+Phase under your ownership: """
+        + Phase.GOVERN.value,
         tools=[
             batch_execute,
             run_governance_review,

@@ -82,9 +82,7 @@ class PhaseController:
         """Attempt to move ``item`` from its current phase to ``target``."""
         from_phase = item.phase
         if not force and target not in ALLOWED_TRANSITIONS.get(from_phase, frozenset()):
-            raise PhaseTransitionError(
-                f"disallowed transition {from_phase.value} → {target.value}"
-            )
+            raise PhaseTransitionError(f"disallowed transition {from_phase.value} → {target.value}")
 
         results = self._evaluate(item, target)
         blockers = [r for r in results if r.blocking and not r.passed]
@@ -104,8 +102,7 @@ class PhaseController:
                 to_phase=from_phase,
                 advanced=False,
                 gates=results,
-                reason="blocked by gate: "
-                + ", ".join(r.gate for r in blockers),
+                reason="blocked by gate: " + ", ".join(r.gate for r in blockers),
             )
 
         evidence_refs = [r.gate for r in results if r.passed]

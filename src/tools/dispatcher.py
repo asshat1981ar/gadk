@@ -1,5 +1,6 @@
 import asyncio
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from src.capabilities.contracts import CapabilityRequest, CapabilityResult
 from src.capabilities.registry import CapabilityRegistry

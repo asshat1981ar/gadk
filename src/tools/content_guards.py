@@ -26,7 +26,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
-from typing import Iterable
+from collections.abc import Iterable
 
 # ---------------------------------------------------------------------------
 # 1. Sanitize agent review text (strip tool-call JSON leakage)
@@ -58,7 +58,7 @@ def _strip_code_fence(text: str) -> str:
         if first_nl != -1:
             t = t[first_nl + 1 :]
         if t.rstrip().endswith("```"):
-            t = t.rstrip()[: -3].rstrip()
+            t = t.rstrip()[:-3].rstrip()
     return t.strip()
 
 

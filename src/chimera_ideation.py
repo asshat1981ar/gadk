@@ -8,8 +8,8 @@ from src.observability.logger import configure_logging, get_logger, set_session_
 from src.planner import run_planner
 from src.state import StateManager
 from src.tools.dispatcher import register_tool
-from src.tools.filesystem import read_file, write_file, list_directory
-from src.tools.github_tool import read_repo_file, list_repo_contents
+from src.tools.filesystem import list_directory, read_file, write_file
+from src.tools.github_tool import list_repo_contents, read_repo_file
 from src.tools.web_search import search_web
 
 register_tool("search_web", search_web)
@@ -26,13 +26,16 @@ REPO = Config.REPO_NAME or "asshat1981ar/project-chimera"
 
 
 async def main():
-    trace_id = f"chimera-ideation-{int(os.time())}" if hasattr(os, 'time') else "chimera-ideation-001"
+    trace_id = (
+        f"chimera-ideation-{int(os.time())}" if hasattr(os, "time") else "chimera-ideation-001"
+    )
     # os.time doesn't exist, use a simpler approach
     import time
+
     trace_id = f"chimera-ideation-{int(time.time())}"
     set_trace_id(trace_id)
     set_session_id("chimera-session-001")
-    logger.info(f"=== Chimera Ideation Pipeline ===")
+    logger.info("=== Chimera Ideation Pipeline ===")
     logger.info(f"Target repo: {REPO}")
 
     sm = StateManager()
@@ -76,7 +79,7 @@ async def main():
 
     # Phase 3: Builder implements a fix for the highest priority issue
     logger.info("=== PHASE 3: BUILDER IMPLEMENTS FIX ===")
-    
+
     builder_system = (
         "You are the Builder of the Cognitive Foundry. "
         "Your ONLY job is to write Python code using write_file. "
@@ -104,11 +107,12 @@ async def main():
     # extract the code and write it directly.
     if not any(f.startswith("chimera") for f in os.listdir("src/staged_agents")):
         import re
+
         py_block = re.search(r"```python\n(.*?)\n```", builder_result, re.DOTALL)
         if py_block:
             code = py_block.group(1)
             # Infer filename from first line comment or docstring
-            fname_match = re.search(r'"""\n?(\S+\.py)', code) or re.search(r'#\s*(\S+\.py)', code)
+            fname_match = re.search(r'"""\n?(\S+\.py)', code) or re.search(r"#\s*(\S+\.py)", code)
             fname = fname_match.group(1) if fname_match else "chimera_fix.py"
             if not fname.startswith("chimera"):
                 fname = f"chimera_{fname}"
@@ -127,7 +131,9 @@ async def main():
         "ALWAYS provide a text review. Never return an empty response."
     )
 
-    staged_files = [f for f in os.listdir("src/staged_agents") if f.startswith("chimera") and f.endswith(".py")]
+    staged_files = [
+        f for f in os.listdir("src/staged_agents") if f.startswith("chimera") and f.endswith(".py")
+    ]
     if staged_files:
         latest = sorted(staged_files)[-1]
         staged_code = read_file(f"src/staged_agents/{latest}")
