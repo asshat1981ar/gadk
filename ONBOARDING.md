@@ -2,19 +2,20 @@
 
 ## How We Use Claude
 
-Based on recent usage over the last 30 days (9 sessions, 410 MCP calls):
+Based on recent usage over the last 30 days (9 sessions, 445 GitHub MCP calls):
 
 Work Type Breakdown:
-  Improve Quality  ████████████████░░░░  75%
+  Improve Quality  ███████████████░░░░░  75%
   Build Feature    ██░░░░░░░░░░░░░░░░░░  12%
   Plan Design      ██░░░░░░░░░░░░░░░░░░  12%
 
 Top Skills & Commands:
   /mcp__github__AssignCodingAgent  ████████████████████  28x/month
   /loop                            ██████░░░░░░░░░░░░░░   9x/month
+  /team-onboarding                 █░░░░░░░░░░░░░░░░░░░   1x/month
 
 Top MCP Servers:
-  github  ████████████████████  410 calls
+  github  ████████████████████  445 calls
 
 ## Your Setup Checklist
 
@@ -22,7 +23,7 @@ Top MCP Servers:
 - [ ] gadk — https://github.com/asshat1981ar/gadk
 
 ### MCP Servers to Activate
-- [ ] github — GitHub PRs, issues, reviews, CI status, branch management. The team leans on this heavily (~45 calls/session average). Authenticate via the GitHub MCP server in Claude Code settings. Prefer a **fine-grained personal access token** scoped to this repo with the minimum permissions the workflow needs:
+- [ ] github — GitHub PRs, issues, reviews, CI status, branch management. The team leans on this heavily (~50 calls/session average). Authenticate via the GitHub MCP server in Claude Code settings. Prefer a **fine-grained personal access token** scoped to this repo with the minimum permissions the workflow needs:
   - **Contents**: Read + Write (clone, push, create branches)
   - **Pull requests**: Read + Write (open, review, merge)
   - **Issues**: Read + Write (open, comment, label)
@@ -34,6 +35,7 @@ Top MCP Servers:
 ### Skills to Know About
 - `/mcp__github__AssignCodingAgent` — Assigns GitHub Copilot's coding agent to an issue so it opens a draft PR. The team uses this to fan out well-scoped refactor/cleanup work in parallel (Copilot handles the mechanical change, a human reviews + merges).
 - `/loop` — Iterates on a task until it's done (handy for PR review cycles, CI-failure fixes, and multi-step stabilization sweeps).
+- `/team-onboarding` — Generates this onboarding guide from recent Claude Code usage. Run it when a new teammate joins to produce an up-to-date walkthrough of the team's tooling.
 
 ## Team Tips
 
