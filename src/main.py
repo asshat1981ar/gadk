@@ -8,6 +8,7 @@ from google.genai import types
 from src.agents.orchestrator import orchestrator_agent
 from src.capabilities.contracts import CapabilityRequest, CapabilityResult
 from src.config import Config
+from src.mcp.sdlc_client import cancel_pending_tasks as _cancel_sdlc_tasks
 from src.planner import run_planner
 from src.services.retrieval_context import (
     PLANNING_RETRIEVAL_CAPABILITY,
@@ -335,6 +336,7 @@ async def main():
             await run_single(session_service, session, runner)
 
     finally:
+        await _cancel_sdlc_tasks()
         clear_pid()
         clear_shutdown()
         logger.info("Swarm exited cleanly.")
