@@ -91,26 +91,24 @@ def test_parse_tool_calls_repairs_canonical_json_blocks():
             [{"tool_name": "read_file", "args": {"path": "src/main.py"}}],
         ),
         # 7. Fallback 3 / Parser #4 – write_file block, well-formed for the walker
-        #    The JSON has no "action"/"tool_name" keys so _extract_tool_calls_from_obj
-        #    returns []. The walker then extracts path + raw content from the end of
-        #    the block; the trailing '"  }' chars are an expected artifact of the
-        #    backward-scan heuristic on a flat (non-nested) JSON object.
+        #    Even without explicit "action"/"tool_name" keys, the fallback should
+        #    recover the intended path + content payload without trailing JSON junk.
         (
             '```json\n{"write_file": 1, "path": "notes.txt", "content": "hello world"}\n```',
             [
                 {
                     "tool_name": "write_file",
-                    "args": {"path": "notes.txt", "content": 'hello world"}'},
+                    "args": {"path": "notes.txt", "content": "hello world"},
                 }
             ],
         ),
         # 8. Fallback 3 / Parser #4 – write_file block embedded in surrounding prose
-        #    Same walker artifact: content ends with '"  }' due to backward scan.
+        #    Content should still be extracted cleanly from the JSON block.
         (
             "Here is the file:\n"
             '```json\n{"write_file": 1, "path": "code.py", "content": "x = 1"}\n```\n'
             "Done.",
-            [{"tool_name": "write_file", "args": {"path": "code.py", "content": 'x = 1"}'}}],
+            [{"tool_name": "write_file", "args": {"path": "code.py", "content": "x = 1"}}],
         ),
         # 9. Malformed-everything – returns [], no crash
         (
