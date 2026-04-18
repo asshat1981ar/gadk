@@ -94,6 +94,8 @@ class _SubprocessGate(QualityGate):
             self.blocking = blocking
 
     def evaluate(self, item: WorkItem) -> GateResult:
+        from src.config import Config  # local import — avoids cycle at module load
+
         try:
             completed = subprocess.run(
                 list(self.cmd),
@@ -101,7 +103,7 @@ class _SubprocessGate(QualityGate):
                 capture_output=True,
                 text=True,
                 check=False,
-                timeout=120,
+                timeout=getattr(Config, "GATE_SUBPROCESS_TIMEOUT_SEC", 120.0),
             )
         except (FileNotFoundError, subprocess.TimeoutExpired) as exc:
             return GateResult(

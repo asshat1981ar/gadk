@@ -91,7 +91,7 @@ configure_logging(
 )
 
 
-async def _self_prompt_tick(sm: StateManager, *, interval_sec: float = 60.0) -> None:
+async def _self_prompt_tick(sm: StateManager, *, interval_sec: float | None = None) -> None:
     """Opt-in background coroutine that runs the self-prompt loop periodically.
 
     Exits cleanly when the shutdown sentinel or the self-prompt off-switch
@@ -101,7 +101,10 @@ async def _self_prompt_tick(sm: StateManager, *, interval_sec: float = 60.0) -> 
     """
     if not Config.SELF_PROMPT_ENABLED:
         return
-    logger.info("self_prompt.tick: enabled, interval=%.1fs", interval_sec)
+    effective_interval = (
+        interval_sec if interval_sec is not None else Config.SELF_PROMPT_TICK_INTERVAL_SEC
+    )
+    logger.info("self_prompt.tick: enabled, interval=%.1fs", effective_interval)
     while not is_shutdown_requested() and not _self_prompt.off_switch_active():
         try:
             # run_once is synchronous and does blocking file I/O (state.json,
@@ -110,7 +113,7 @@ async def _self_prompt_tick(sm: StateManager, *, interval_sec: float = 60.0) -> 
             await asyncio.to_thread(_self_prompt.run_once, sm=sm)
         except Exception:
             logger.exception("self_prompt.tick: run_once crashed; continuing")
-        await asyncio.sleep(interval_sec)
+        await asyncio.sleep(effective_interval)
     logger.info("self_prompt.tick: stopped (shutdown or off-switch)")
 
 
@@ -134,7 +137,13 @@ async def process_prompt(runner, session, user_query: str) -> None:
 
 
 async def run_swarm_loop(session_service, session, runner) -> None:
-    """Run the swarm in autonomous loop mode, checking for prompts and shutdown."""
+    """Run the swarm in autonomous loop mode, checking for prompts and shutdown.
+
+    Every loop iteration — including the initial prompt — is wrapped in a
+    broad try/except so a transient handler crash (network hiccup, mock
+    seam, LiteLLM blip) doesn't silently terminate the swarm. The only
+    clean-exit paths are the shutdown sentinel and KeyboardInterrupt.
+    """
     initial_query = (
         "First, use 'list_repo_contents' to explore the 'project-chimera' repository. "
         "Read key files in that repository (like build.gradle.kts or major Kotlin files) to understand its current state. "
@@ -142,25 +151,38 @@ async def run_swarm_loop(session_service, session, runner) -> None:
         "create structured tasks for them, and start the proactive ideation process. "
         "Remember: You are the Cognitive Foundry swarm, and Project Chimera is your development target."
     )
-    await process_prompt(runner, session, initial_query)
+    try:
+        await process_prompt(runner, session, initial_query)
+    except Exception:
+        logger.exception("initial prompt crashed; continuing into main loop")
 
     while True:
-        if is_shutdown_requested():
-            logger.info("Shutdown sentinel detected. Exiting swarm loop.")
-            break
+        try:
+            if is_shutdown_requested():
+                logger.info("Shutdown sentinel detected. Exiting swarm loop.")
+                break
+        except Exception:
+            logger.exception("shutdown-check crashed; treating as not-requested")
+            # Conservative: fall through and keep looping so we don't
+            # exit on a transient os.path.exists failure.
 
-        # Check for injected prompts
-        prompts = dequeue_prompts()
-        for entry in prompts:
-            prompt_text = entry.get("prompt", "")
-            user_id = entry.get("user_id", "cli_user")
-            logger.info(
-                f"Injected prompt from {user_id}: {prompt_text}",
-                extra={"session_id": session.id},
-            )
-            await process_prompt(runner, session, prompt_text)
+        # Check for injected prompts. Any crash here (queue file I/O,
+        # prompt handler) gets logged and the loop keeps going —
+        # silently exiting on a transient error was the original bug.
+        try:
+            prompts = dequeue_prompts()
+            for entry in prompts:
+                prompt_text = entry.get("prompt", "")
+                user_id = entry.get("user_id", "cli_user")
+                logger.info(
+                    f"Injected prompt from {user_id}: {prompt_text}",
+                    extra={"session_id": session.id},
+                )
+                await process_prompt(runner, session, prompt_text)
+        except Exception:
+            logger.exception("swarm loop iteration crashed; continuing")
 
-        await asyncio.sleep(2)
+        await asyncio.sleep(Config.SWARM_LOOP_POLL_SEC)
 
 
 async def run_single(session_service, session, runner) -> None:

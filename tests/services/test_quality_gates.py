@@ -18,8 +18,10 @@ from src.services.sdlc_phase import Phase, WorkItem
 
 
 def test_gate_result_is_frozen() -> None:
+    import dataclasses
+
     result = GateResult(gate="x", passed=True, blocking=True)
-    with pytest.raises(Exception):
+    with pytest.raises(dataclasses.FrozenInstanceError):
         result.passed = False  # type: ignore[misc]
 
 

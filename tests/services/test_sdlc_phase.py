@@ -70,5 +70,7 @@ def test_work_item_record_appends_history() -> None:
 
 
 def test_work_item_id_min_length_enforced() -> None:
-    with pytest.raises(Exception):
+    from pydantic import ValidationError
+
+    with pytest.raises(ValidationError):
         WorkItem(id="")

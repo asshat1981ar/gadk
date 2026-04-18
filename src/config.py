@@ -76,6 +76,12 @@ class Settings(BaseSettings):
     embed_model: str = "openrouter/openai/text-embedding-3-small"
     embed_daily_token_cap: int = 200_000
 
+    # Stabilization round 2: centralized runtime tunables.
+    swarm_loop_poll_sec: float = 2.0
+    self_prompt_tick_interval_sec: float = 60.0
+    gate_subprocess_timeout_sec: float = 120.0
+    github_dedup_issue_scan_limit: int = 100
+
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
@@ -115,6 +121,10 @@ class Config:
     RETRIEVAL_BACKEND = _settings.retrieval_backend
     EMBED_MODEL = _settings.embed_model
     EMBED_DAILY_TOKEN_CAP = _settings.embed_daily_token_cap
+    SWARM_LOOP_POLL_SEC = _settings.swarm_loop_poll_sec
+    SELF_PROMPT_TICK_INTERVAL_SEC = _settings.self_prompt_tick_interval_sec
+    GATE_SUBPROCESS_TIMEOUT_SEC = _settings.gate_subprocess_timeout_sec
+    GITHUB_DEDUP_ISSUE_SCAN_LIMIT = _settings.github_dedup_issue_scan_limit
 
 
 __all__ = ["Config", "Settings", "get_settings"]

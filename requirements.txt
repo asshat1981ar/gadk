@@ -1,21 +1,30 @@
-google-cloud-aiplatform
-google-adk
-litellm
-mcp
-pydantic
-pydantic-settings
-pydantic-ai
-instructor
-langchain
-langgraph
-llama-index
-tenacity
-json-repair
-playwright
-pygithub
-python-dotenv
-pytest
-rich
-pytest-asyncio
-prompt_toolkit
-duckduckgo-search
+# Runtime dependencies for the Cognitive Foundry Swarm.
+#
+# Lower bounds pin to the versions the test suite has been exercised
+# against; upper bounds are deliberately omitted for now because we
+# don't yet run a compatibility matrix. A future uv-lock / pip-tools
+# pass will introduce a full lockfile so resolution becomes
+# reproducible across machines.
+#
+# Keep this sorted alphabetically so diffs stay reviewable.
+duckduckgo-search>=6.0
+google-adk>=0.3
+google-cloud-aiplatform>=1.60
+instructor>=1.3
+json-repair>=0.25
+langchain>=0.3
+langgraph>=0.2
+litellm>=1.50
+llama-index>=0.11
+mcp>=1.0
+playwright>=1.40
+prompt_toolkit>=3.0
+pydantic>=2.5
+pydantic-ai>=0.0.30
+pydantic-settings>=2.1
+pygithub>=2.1
+pytest>=8.0
+pytest-asyncio>=0.23
+python-dotenv>=1.0
+rich>=13.0
+tenacity>=8.2

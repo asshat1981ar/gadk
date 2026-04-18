@@ -55,9 +55,11 @@ _GITHUB_API_ERRORS: tuple[type[BaseException], ...] = (
 
 _GITHUB_RETRY_WAIT = wait_exponential(multiplier=0.01, min=0, max=0.05)
 
-#: Cap for the open-issue scan used by create_issue dedup. Most repos stay well
-#: under 100 open issues; scanning more would slow every create_issue call and
-#: the marginal dedup value drops fast.
+#: Default cap for the open-issue scan used by create_issue dedup. The
+#: runtime value comes from ``Config.GITHUB_DEDUP_ISSUE_SCAN_LIMIT`` so
+#: operators can tune it without patching code; the module-level constant
+#: stays as a fallback for callers that construct ``GitHubTool`` before
+#: Config is initialized (import-time paths).
 _DEDUP_OPEN_ISSUE_SCAN_LIMIT = 100
 
 #: Token used in issue bodies to mark the critic review section. Keep in sync
@@ -133,7 +135,9 @@ class GitHubTool(Tool):
         try:
             # PyGithub's get_issues is paginated and lazy; slice to bound the scan.
             for idx, issue in enumerate(self.repo.get_issues(state="open")):
-                if idx >= _DEDUP_OPEN_ISSUE_SCAN_LIMIT:
+                if idx >= getattr(
+                    Config, "GITHUB_DEDUP_ISSUE_SCAN_LIMIT", _DEDUP_OPEN_ISSUE_SCAN_LIMIT
+                ):
                     break
                 # Skip pull requests — they show up in issues/ but we dedup those separately.
                 if getattr(issue, "pull_request", None):

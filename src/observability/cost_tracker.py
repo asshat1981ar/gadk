@@ -1,5 +1,6 @@
 import json
 import os
+import tempfile
 
 
 class CostTracker:
@@ -35,8 +36,26 @@ class CostTracker:
         return result
 
     def _persist(self) -> None:
-        with open(self.filename, "w") as f:
-            json.dump(self._data, f, indent=2)
+        """Atomic write via tempfile + os.replace.
+
+        Cost records land here on every LLM call from the swarm loop, the
+        self-prompt tick, and any other concurrent agent path. A plain
+        ``open(..., "w")`` would truncate + partially-rewrite under
+        concurrent writers, leaking cost data. The tempfile + replace
+        pattern mirrors ``StateManager._atomic_write_json``.
+        """
+        dir_name = os.path.dirname(os.path.abspath(self.filename)) or "."
+        fd, tmp_path = tempfile.mkstemp(dir=dir_name, suffix=".tmp")
+        try:
+            with os.fdopen(fd, "w") as f:
+                json.dump(self._data, f, indent=2)
+            os.replace(tmp_path, self.filename)
+        except Exception:
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
+            raise
 
     def _load(self) -> None:
         if os.path.exists(self.filename):
