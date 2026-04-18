@@ -1,5 +1,7 @@
 import importlib
 
+import pytest
+
 import src.config as config_module
 
 
@@ -59,3 +61,76 @@ def test_config_preserves_legacy_uppercase_attributes(monkeypatch, tmp_path):
     assert module.Config.OPENROUTER_MODEL == "openrouter/compat-model"
     assert module.Config.OPENROUTER_TOOL_MODEL == "openrouter/tool-compat-model"
     assert module.Config.FALLBACK_MODELS[0] == "openrouter/tool-compat-model"
+
+
+# ---------------------------------------------------------------------------
+# Validator tests (new validators added in fix(config) issue)
+# ---------------------------------------------------------------------------
+
+
+def test_retrieval_backend_invalid_raises():
+    """`retrieval_backend` must be one of the four accepted literals."""
+    from pydantic import ValidationError
+
+    with pytest.raises(ValidationError):
+        config_module.Settings(_env_file=None, retrieval_backend="typo")  # type: ignore[call-arg]
+
+
+def test_retrieval_backend_valid_values():
+    """All four valid `retrieval_backend` values must be accepted."""
+    for value in ("keyword", "vector", "sqlite-vec", "sqlitevec"):
+        s = config_module.Settings(_env_file=None, retrieval_backend=value)  # type: ignore[call-arg]
+        assert s.retrieval_backend == value
+
+
+def test_embed_model_invalid_raises():
+    """`embed_model` values not prefixed with `openrouter/` must be rejected."""
+    from pydantic import ValidationError
+
+    with pytest.raises(ValidationError):
+        config_module.Settings(_env_file=None, embed_model="not-an-openrouter-model")  # type: ignore[call-arg]
+
+
+def test_embed_model_valid_accepts_openrouter_prefix():
+    """A model string starting with `openrouter/` must be accepted."""
+    s = config_module.Settings(
+        _env_file=None,
+        embed_model="openrouter/openai/text-embedding-3-small",  # type: ignore[call-arg]
+    )
+    assert s.embed_model == "openrouter/openai/text-embedding-3-small"
+
+
+def test_openrouter_api_base_invalid_raises():
+    """`openrouter_api_base` must be a valid HTTP/HTTPS URL."""
+    from pydantic import ValidationError
+
+    with pytest.raises(ValidationError):
+        config_module.Settings(_env_file=None, openrouter_api_base="garbage")  # type: ignore[call-arg]
+
+
+def test_openrouter_api_base_valid_url():
+    """A valid HTTPS URL must be accepted for `openrouter_api_base`."""
+    s = config_module.Settings(
+        _env_file=None,
+        openrouter_api_base="https://openrouter.ai/api/v1",  # type: ignore[call-arg]
+    )
+    assert s.openrouter_api_base == "https://openrouter.ai/api/v1"
+
+
+def test_github_tool_late_mock_flag(monkeypatch):
+    """GitHubTool() honours GITHUB_MOCK_ALLOWED even when it was set after module import."""
+    import src.tools.github_tool as gth
+
+    # Simulate PyGithub being absent by patching _PYGITHUB_AVAILABLE
+    monkeypatch.setattr(gth, "_PYGITHUB_AVAILABLE", False)
+
+    # Set the mock flag after module import (the "late" scenario)
+    monkeypatch.setenv("GITHUB_MOCK_ALLOWED", "true")
+    config_module.get_settings.cache_clear()
+
+    try:
+        tool = gth.GitHubTool()
+        # Should have reached here without RuntimeError, using the mock Github
+        assert tool.gh is not None
+    finally:
+        config_module.get_settings.cache_clear()
