@@ -240,7 +240,7 @@ def test_open_db_load_failure_logs_warning_and_sets_cause(
 
     original_error = OSError("extension not loadable in this process")
 
-    def _bad_load(conn) -> None:
+    def _bad_load(_conn) -> None:
         raise original_error
 
     monkeypatch.setattr(vec_mod._sqlite_vec, "load", _bad_load)

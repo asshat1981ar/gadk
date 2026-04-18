@@ -116,7 +116,7 @@ class _PRStubRepo:
     def create_git_ref(self, ref: str, sha: str):
         raise TimeoutError("network flap")
 
-    def create_pull(self, **kwargs):  # pragma: no cover
+    def create_pull(self, **kwargs):
         raise AssertionError("should not reach create_pull")
 
 
