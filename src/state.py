@@ -14,8 +14,11 @@ except ImportError:  # Windows
 
 _logger = logging.getLogger(__name__)
 
-if not _FLOCK_AVAILABLE:
-    _logger.warning("fcntl unavailable on this platform; concurrent appends will not be serialized")
+#: One-shot guard so the "fcntl unavailable" warning fires at most once
+#: per process (on the first actual append) rather than at import time —
+#: avoids log noise before logging is configured and ensures the warning
+#: respects the runtime log level chosen by the caller.
+_FLOCK_WARNED = False
 
 
 class StateManager:
@@ -57,14 +60,34 @@ class StateManager:
         """Append *line* (already serialised) to *path* with an advisory lock.
 
         On platforms where ``fcntl`` is unavailable (Windows) the lock is
-        skipped and a warning is emitted, but the append is still performed so
-        the module remains functional.
+        skipped and a one-shot warning is emitted (at first call, not at
+        import), but the append is still performed so the module stays
+        functional.
+
+        Important: we ``flush()`` and ``fsync()`` *before* releasing the
+        ``fcntl`` lock. Without that, Python's text buffer could still
+        hold the data while another process acquired the lock, letting
+        lines interleave in the final file.
         """
+        global _FLOCK_WARNED
+        if not _FLOCK_AVAILABLE and not _FLOCK_WARNED:
+            _logger.warning(
+                "fcntl unavailable on this platform; concurrent appends "
+                "to %s will not be serialized",
+                path,
+            )
+            _FLOCK_WARNED = True
+
         with open(path, "a") as f:
             if _FLOCK_AVAILABLE:
                 _fcntl.flock(f, _fcntl.LOCK_EX)
                 try:
                     f.write(line + "\n")
+                    # Flush+fsync inside the critical section so the
+                    # bytes are on disk before the next process's
+                    # lock_ex grant can race against our buffer.
+                    f.flush()
+                    os.fsync(f.fileno())
                 finally:
                     _fcntl.flock(f, _fcntl.LOCK_UN)
             else:

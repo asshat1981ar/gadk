@@ -59,7 +59,8 @@ class LiteLLMEmbedder:
             )
         self._model = model or Config.EMBED_MODEL
         if quota is None:
-            quota = EmbedQuota(state_manager)  # type: ignore[arg-type]
+            assert state_manager is not None  # guaranteed by the guard above
+            quota = EmbedQuota(state_manager)
         self._quota = quota
 
     @property
@@ -123,19 +124,27 @@ def build_default_embedder(
 ) -> LiteLLMEmbedder | None:
     """Construct the default embedder used by :mod:`retrieval_context`.
 
-    ``state_manager`` is **required in practice** — pass in the same
-    ``StateManager`` instance the swarm uses elsewhere so quota writes
-    don't race with task-state writes. Callers that don't have one
-    already can construct ``StateManager()`` once at bootstrap and
-    thread it through.
+    ``state_manager`` is **required**. If omitted this returns ``None``
+    (the caller then falls back to keyword retrieval with a
+    ``retrieval.degraded`` log). This is intentional: auto-constructing
+    a fresh ``StateManager()`` would create a second writer of
+    ``state.json`` that races with the swarm's shared instance and can
+    clobber task state under concurrent writes.
+
+    Wiring guidance: the swarm entrypoint (``src.main``) builds a
+    ``StateManager`` once at startup and threads it through to both the
+    self-prompt tick and, via ``set_embedder``, into any vector-path
+    retrieval. Tests that exercise the vector path supply their own
+    ``state_manager`` to keep isolation tight.
 
     Returns ``None`` when:
     - ``Config.TEST_MODE`` is on (keep tests hermetic unless they opt in
       via their own embedder fixture);
     - ``Config.OPENROUTER_API_KEY`` is missing (fail fast via the
       keyword-fallback path instead of surfacing auth errors);
-    - or the current ``Config.RETRIEVAL_BACKEND`` is not a vector name
-      (don't pay the setup cost if we'll never be used).
+    - ``Config.RETRIEVAL_BACKEND`` is not a vector name (don't pay the
+      setup cost if we'll never be used);
+    - or ``state_manager`` is not supplied (safety rail described above).
     """
     if Config.TEST_MODE:
         return None
@@ -145,11 +154,14 @@ def build_default_embedder(
     backend = (Config.RETRIEVAL_BACKEND or "").strip().lower()
     if backend not in {"vector", "sqlite-vec", "sqlitevec"}:
         return None
-    # Fall back to a fresh StateManager only when the caller didn't pass
-    # one — LiteLLMEmbedder enforces that *something* is supplied, so we
-    # surface a construction error rather than silently spawning a racing
-    # writer.
-    return LiteLLMEmbedder(state_manager=state_manager or StateManager())
+    if state_manager is None:
+        logger.warning(
+            "build_default_embedder: no state_manager supplied; refusing "
+            "to auto-construct one. Pass the swarm's shared StateManager "
+            "to enable vector retrieval — falling back to keyword until then."
+        )
+        return None
+    return LiteLLMEmbedder(state_manager=state_manager)
 
 
 __all__ = ["LiteLLMEmbedder", "build_default_embedder"]

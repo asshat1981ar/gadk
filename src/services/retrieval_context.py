@@ -190,7 +190,17 @@ def _sync_corpus_to_backend(
     - Upserts only docs whose SHA-256 content hash changed.
     - Removes docs that were previously indexed but are no longer on disk.
     - Returns the number of documents currently present after sync.
+
+    The hash cache is only written for backends that actually persist
+    writes. Without that guard, a degraded run backed by ``NullVectorIndex``
+    would mark every file as "current" and cause later retrievals against
+    a real backend to skip them forever, leaving the index empty.
     """
+    # Skip hash caching when the backend is the no-op placeholder — its
+    # upsert() doesn't persist anything, so subsequent runs must still see
+    # the files as "changed" and re-embed them into a real backend.
+    backend_persists = getattr(backend, "name", "") != "null"
+
     seen_ids: set[str] = set()
     for corpus_name, path in _collect_corpus_files(resolved_root, corpus):
         try:
@@ -203,7 +213,7 @@ def _sync_corpus_to_backend(
         doc_id = str(path.relative_to(resolved_root))
         seen_ids.add(doc_id)
         sha = _sha(text)
-        if _doc_hashes.get(doc_id) == sha:
+        if backend_persists and _doc_hashes.get(doc_id) == sha:
             # Unchanged since last call — skip the (costly) embed.
             continue
         backend.upsert(
@@ -211,14 +221,25 @@ def _sync_corpus_to_backend(
             text=text,
             metadata={"corpus": corpus_name, "path": doc_id},
         )
-        _doc_hashes[doc_id] = sha
+        if backend_persists:
+            _doc_hashes[doc_id] = sha
 
     # Drop backend rows + cache entries whose source file disappeared so
     # stale embeddings don't get served in future queries. Only supported
     # on backends that expose `known_doc_ids` / `delete` (SqliteVecBackend);
-    # the NullVectorIndex no-ops both.
+    # the NullVectorIndex no-ops both. IMPORTANT: scope the cleanup to the
+    # corpora we actually synced this call — without that restriction,
+    # retrieving only `specs` would wipe all `plans` / `history` docs from
+    # the shared index.
     if hasattr(backend, "known_doc_ids") and hasattr(backend, "delete"):
-        for stale_id in backend.known_doc_ids() - seen_ids:
+        try:
+            in_scope = backend.known_doc_ids(corpora=corpus)
+        except TypeError:
+            # Older backend without the corpus filter — fall back to
+            # full scan (matches pre-fix behavior). This path is
+            # intentionally conservative.
+            in_scope = backend.known_doc_ids()
+        for stale_id in in_scope - seen_ids:
             backend.delete(stale_id)
             _doc_hashes.pop(stale_id, None)
 
