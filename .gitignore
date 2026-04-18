@@ -36,3 +36,4 @@ costs.jsonl
 coverage.xml
 .coverage
 .secrets.baseline
+test_metrics.jsonl
