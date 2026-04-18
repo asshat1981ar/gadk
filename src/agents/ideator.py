@@ -1,5 +1,6 @@
 import asyncio
-from datetime import UTC, datetime
+from datetime import datetime, timezone
+from typing import List
 
 from google.adk.agents import Agent
 
@@ -41,11 +42,11 @@ state_manager = StateManager()
 async def create_structured_task(
     title: str,
     description: str,
-    acceptance_criteria: list[str],
+    acceptance_criteria: List[str],
     priority: int = 3,
     complexity: str = "medium",
     suggested_agent: str = "Builder",
-    tags: list[str] = None,
+    tags: List[str] = None,
 ) -> str:
     """
     Creates a high-quality, actionable task in the swarm state.
@@ -74,14 +75,14 @@ async def create_structured_task(
         "complexity": complexity,
         "suggested_agent": proposal.recommended_agent,
         "tags": tags or [],
-        "created_at": datetime.now(UTC).isoformat(),
+        "created_at": datetime.now(timezone.utc).isoformat(),
         "source": "Ideator",
     }
 
     state_manager.set_task(task_id, task_data, agent="Ideator")
 
     # Also track in GitHub for visibility
-    body = f"## Summary\n{proposal.summary}\n\n## Description\n{proposal.description}\n\n## Acceptance Criteria\n"
+    body = f"## Summary\n{proposal.title}\n\n## Description\n{proposal.description}\n\n## Acceptance Criteria\n"
     body += "\n".join([f"- [ ] {ac}" for ac in proposal.acceptance_criteria])
     body += (
         f"\n\n**Priority**: {priority} | **Complexity**: {complexity} "
@@ -102,8 +103,13 @@ ideator_agent = Agent(
 
     STRATEGY:
     1. RESEARCH: Use 'search_web' and 'batch_execute' to scout for latest trends (e.g., "latest FastAPI patterns", "React 19 features").
-    2. ANALYZE: Read relevant project files using 'read_repo_file' to identify where these trends could be applied.
+    2. ANALYZE: For remote GitHub repository exploration, start with 'list_repo_contents' and inspect files with 'read_repo_file'.
     3. PLAN: Use 'create_structured_task' to turn findings into ACTIONABLE work.
+
+    REMOTE VS LOCAL BOUNDARY:
+    - For the remote GitHub repository, use 'list_repo_contents' and 'read_repo_file' directly.
+    - Use 'list_directory' and 'read_file' only for local workspace files.
+    - Do not use retrieve_planning_context or execute_capability to explore the remote repository; retrieve_planning_context is only for local specs, plans, and history.
 
     TASK GUIDELINES:
     - BE SPECIFIC: Avoid vague titles like "Improve code". Use "Refactor Error Handling in src/main.py".

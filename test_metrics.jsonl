@@ -4,42 +4,42 @@
     "TestTool": {
       "calls_total": 1,
       "errors_total": 0,
-      "duration_seconds_sum": 8.350000086920772e-07,
+      "duration_seconds_sum": 1.2269999842828838e-06,
       "duration_seconds_count": 1,
       "last_error": ""
     },
     "ReadFile": {
       "calls_total": 9,
       "errors_total": 7,
-      "duration_seconds_sum": 0.007864120999983015,
+      "duration_seconds_sum": 0.009351796999794715,
       "duration_seconds_count": 9,
       "last_error": "Path cannot be empty."
     },
     "WriteFile": {
       "calls_total": 9,
       "errors_total": 5,
-      "duration_seconds_sum": 0.012338746000011724,
+      "duration_seconds_sum": 0.015492612999992161,
       "duration_seconds_count": 9,
       "last_error": "Content size (500001 bytes) exceeds write limit of 500000 bytes."
     },
     "ListDirectory": {
       "calls_total": 5,
       "errors_total": 3,
-      "duration_seconds_sum": 0.005983541999967201,
+      "duration_seconds_sum": 0.007277808000026198,
       "duration_seconds_count": 5,
       "last_error": "Path traversal outside project root is not allowed: ../etc"
     },
     "GitHubTool": {
       "calls_total": 3,
       "errors_total": 0,
-      "duration_seconds_sum": 0.018850055000001475,
+      "duration_seconds_sum": 0.02063877000011871,
       "duration_seconds_count": 3,
       "last_error": ""
     },
     "SandboxExecutor": {
       "calls_total": 3,
       "errors_total": 0,
-      "duration_seconds_sum": 1.0311635279999791,
+      "duration_seconds_sum": 1.0320541509998975,
       "duration_seconds_count": 3,
       "last_error": ""
     }

@@ -397,11 +397,16 @@ async def run_planner(
     Returns:
         Final text response from the LLM after all tools are resolved.
     """
+    if max_iterations <= 0:
+        return ""
+
     suffix = _build_tool_suffix(allowed_tools)
     messages = [
         {"role": "system", "content": system_prompt + suffix},
         {"role": "user", "content": user_prompt},
     ]
+    text = ""
+    last_result_text = ""
 
     for iteration in range(max_iterations):
         logger.info(f"Planner iteration {iteration + 1}/{max_iterations}")
@@ -431,10 +436,28 @@ async def run_planner(
             f"Tool '{r.get('tool_name')}': {r.get('status')} → {r.get('output', r.get('message', ''))}"
             for r in results
         )
+        last_result_text = result_text
         messages.append({"role": "user", "content": f"Tool results:\n{result_text}"})
 
-    logger.warning("Max iterations reached. Returning last response.")
-    return text
+    logger.warning("Max iterations reached. Requesting final response without more tool calls.")
+    final_messages = messages + [
+        {
+            "role": "user",
+            "content": (
+                "You have received the latest tool results. "
+                "Respond with a final plain-text answer now. "
+                "Do not call any more tools or return JSON."
+            ),
+        }
+    ]
+    final_text = await _llm_turn(final_messages, model=model, retries=Config.LLM_RETRIES)
+    if final_text and not _parse_tool_calls(final_text):
+        return final_text
+
+    logger.warning(
+        "Planner finalization still returned tool calls. Returning latest tool results instead."
+    )
+    return last_result_text or text
 
 
 async def run_planner_structured(
