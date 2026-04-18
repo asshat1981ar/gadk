@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(git status)",
+      "Bash(git status -*)",
+      "Bash(git log *)",
+      "Bash(git diff)",
+      "Bash(git diff *)",
+      "Bash(git show *)",
+      "Bash(git branch)",
+      "Bash(git branch -*)",
+      "Bash(git fetch *)",
+      "Bash(git pull *)",
+      "Bash(git add *)",
+      "Bash(git restore *)",
+      "Bash(git rebase --continue)",
+      "Bash(git rebase --abort)",
+      "Bash(git rm --cached *)",
+      "Bash(python -m pytest *)",
+      "Bash(python -m ruff *)",
+      "Bash(coverage *)",
+      "Bash(pip install -q *)",
+      "Bash(ls *)",
+      "Read",
+      "Grep",
+      "Glob"
+    ],
+    "deny": [
+      "Bash(rm -rf *)",
+      "Bash(rm -rf /*)",
+      "Bash(git reset --hard origin/main)",
+      "Bash(git push --force origin main)",
+      "Bash(git push --force-with-lease origin main)",
+      "Bash(git push -f origin main)",
+      "Bash(git push origin main --force*)",
+      "Bash(git commit *--no-verify*)",
+      "Bash(git push *--no-verify*)"
+    ],
+    "ask": [
+      "Bash(git push --force*)",
+      "Bash(git push -f *)",
+      "Bash(git push --force-with-lease*)",
+      "Bash(git reset --hard*)",
+      "Bash(git checkout --theirs *)",
+      "Bash(git checkout --ours *)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r '.tool_response.filePath // .tool_input.file_path' | { read -r f; case \"$f\" in *.py) python -m ruff format \"$f\" && python -m ruff check --fix --quiet \"$f\";; esac; } 2>/dev/null || true",
+            "timeout": 15,
+            "statusMessage": "ruff format + --fix"
+          }
+        ]
+      }
+    ]
+  },
+  "enableAllProjectMcpServers": false,
+  "enabledMcpjsonServers": ["github"]
+}
