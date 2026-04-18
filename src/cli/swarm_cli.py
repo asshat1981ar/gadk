@@ -2,18 +2,13 @@
 """Unified CLI for interacting with the Cognitive Foundry swarm."""
 
 import argparse
-import json
 import os
 import sys
-from datetime import datetime, timezone
 
 from src.capabilities.helpers import get_swarm_status_view
-from src.cli.dashboard import Dashboard
 from src.cli.swarm_ctl import (
     QUEUE_PATH,
     SENTINEL_PATH,
-    clear_shutdown,
-    dequeue_prompts,
     enqueue_prompt,
     get_swarm_pid,
     peek_prompts,
@@ -116,16 +111,22 @@ def cmd_logs(args):
 
 def cmd_metrics(args):
     from src.observability.cost_tracker import CostTracker
+    from src.services.embed_quota import EmbedQuota
+
     summary = registry.get_summary()
     costs = CostTracker().get_summary()
 
     print("=== Agent Metrics ===")
     for name, m in summary.get("agents", {}).items():
-        print(f"  {name}: calls={m['calls_total']} errors={m['errors_total']} avg_duration={m['avg_duration_seconds']:.3f}s")
+        print(
+            f"  {name}: calls={m['calls_total']} errors={m['errors_total']} avg_duration={m['avg_duration_seconds']:.3f}s"
+        )
 
     print("=== Tool Metrics ===")
     for name, m in summary.get("tools", {}).items():
-        print(f"  {name}: calls={m['calls_total']} errors={m['errors_total']} avg_duration={m['avg_duration_seconds']:.3f}s")
+        print(
+            f"  {name}: calls={m['calls_total']} errors={m['errors_total']} avg_duration={m['avg_duration_seconds']:.3f}s"
+        )
 
     print("=== Token Usage ===")
     for agent, count in summary.get("token_usage", {}).items():
@@ -135,6 +136,20 @@ def cmd_metrics(args):
     print(f"  Total spend: ${costs['total_spend_usd']:.6f}")
     for agent, cost in costs.get("by_agent", {}).items():
         print(f"  {agent}: ${cost:.6f}")
+
+    # Embed quota — surfaces the daily token budget consumed by the
+    # retrieval vector path so operators can see whether the cap is
+    # being approached before it actually trips.
+    sm = _get_state_manager(args)
+    quota = EmbedQuota(sm)
+    used = quota.used_today()
+    remaining = quota.remaining_today()
+    cap = used + remaining
+    pct = (used / cap * 100.0) if cap > 0 else 0.0
+    print("=== Embed Quota (today) ===")
+    print(f"  Used:      {used:>10} tokens")
+    print(f"  Remaining: {remaining:>10} tokens")
+    print(f"  Cap:       {cap:>10} tokens  ({pct:.1f}% used)")
 
     if not summary["agents"] and not summary["tools"]:
         print("  (No metrics recorded yet. Metrics are populated at runtime.)")
@@ -168,6 +183,8 @@ def cmd_events(args):
 
 
 def cmd_dashboard(args):
+    from src.cli.dashboard import Dashboard  # heavy import (rich) — keep lazy
+
     sm = _get_state_manager(args)
     dashboard = Dashboard(sm, refresh_rate=args.refresh)
     try:
@@ -193,8 +210,10 @@ def cmd_queue(args):
 
 
 def cmd_prs(args):
-    from src.tools.github_tool import GitHubTool
     import asyncio
+
+    from src.tools.github_tool import GitHubTool
+
     gh = GitHubTool()
     prs = asyncio.run(gh.list_pull_requests(state=args.state or "open"))
     if not prs:
@@ -203,9 +222,115 @@ def cmd_prs(args):
     print(f"{'#':<6} {'State':<8} {'Head':<25} {'Title':<35} URL")
     print("-" * 90)
     for pr in prs:
-        head = pr['head'][:23] if pr['head'] else ""
-        title = pr['title'][:33] if pr['title'] else ""
+        head = pr["head"][:23] if pr["head"] else ""
+        title = pr["title"][:33] if pr["title"] else ""
         print(f"{pr['number']:<6} {pr['state']:<8} {head:<25} {title:<35} {pr['url']}")
+    return 0
+
+
+def cmd_phase_status(args):
+    """Show the current phase and transition history for a work item."""
+    from src.services.phase_store import load_work_item
+
+    sm = _get_state_manager(args)
+    item = load_work_item(sm, args.task_id)
+    if item is None:
+        print(f"No work item found for task_id={args.task_id!r}.")
+        return 1
+    print(f"Task: {item.id}")
+    print(f"Current phase: {item.phase.value}")
+    if not item.history:
+        print("History: (none — item still at starting phase)")
+        return 0
+    print("History:")
+    for entry in item.history:
+        frm = entry.from_phase.value if entry.from_phase else "-"
+        refs = ", ".join(entry.evidence_refs) if entry.evidence_refs else "-"
+        print(
+            f"  {entry.at.isoformat()}  {frm} -> {entry.to_phase.value}  ({entry.reason or '-'}) evidence=[{refs}]"
+        )
+    return 0
+
+
+def cmd_phase_advance(args):
+    """Advance a work item to the next phase through the PhaseController."""
+    from src.services.phase_controller import PhaseController
+    from src.services.phase_store import ensure_work_item, save_work_item
+    from src.services.quality_gates import ContentGuardGate
+    from src.services.sdlc_phase import Phase, PhaseTransitionError
+
+    try:
+        target = Phase(args.target.upper())
+    except ValueError:
+        valid = ", ".join(p.value for p in Phase)
+        print(f"Invalid target phase {args.target!r}. Valid: {valid}")
+        return 2
+
+    sm = _get_state_manager(args)
+    item = ensure_work_item(sm, args.task_id)
+
+    gates = []
+    if not args.no_gates:
+        # Default CLI gate set: just the content-guard; real pipelines
+        # wire richer gate bundles from code.
+        gates.append(ContentGuardGate(min_bytes=args.min_body_bytes))
+
+    controller = PhaseController(gates=gates, state_manager=sm)
+    try:
+        report = controller.advance(item, target, reason=args.reason or "", force=args.force)
+    except PhaseTransitionError as exc:
+        print(f"Disallowed transition: {exc}")
+        return 1
+
+    save_work_item(sm, item, agent="cli")
+    print(f"advanced={report.advanced}  {report.from_phase.value} -> {report.to_phase.value}")
+    if report.reason:
+        print(f"reason: {report.reason}")
+    for gate in report.gates:
+        mark = "PASS" if gate.passed else ("BLOCK" if gate.blocking else "warn")
+        print(f"  [{mark:<5}] {gate.gate}: {gate.message or '-'}")
+    return 0 if report.advanced else 1
+
+
+def cmd_self_prompt(args):
+    """Run the self-prompting loop once (dry-run by default)."""
+    from pathlib import Path
+
+    from src.config import Config
+    from src.services import self_prompt as sp
+
+    sm = _get_state_manager(args)
+    coverage_path = Path(args.coverage_file)
+    queue_path = Path(args.queue_file)
+
+    # Dry-run: force-enable the loop just for this call and never write
+    # to the real prompt queue unless --write is explicitly passed.
+    if args.dry_run or not args.write:
+        original_enabled = Config.SELF_PROMPT_ENABLED
+        Config.SELF_PROMPT_ENABLED = True
+        try:
+            signals = []
+            signals.extend(sp.collect_coverage_signals(coverage_path))
+            signals.extend(sp.collect_event_log_signals(sm))
+            signals.extend(sp.collect_backlog_signals(queue_path))
+            dedup = set(sm.data.get("self_prompt", {}).get("dedup", []))
+            prompts = sp.synthesize(signals, dedup=dedup)
+        finally:
+            Config.SELF_PROMPT_ENABLED = original_enabled
+        print(f"signals={len(signals)} prompts={len(prompts)}  (dry-run: queue untouched)")
+        for prompt in prompts:
+            print(
+                f"  [{prompt.phase.value:<9}] p={prompt.priority} gen={prompt.generation}  {prompt.intent}"
+            )
+        return 0
+
+    # Write path: use run_once with the configured queue.
+    written = sp.run_once(sm=sm, coverage_xml=coverage_path, queue_path=queue_path)
+    print(f"wrote {len(written)} prompt(s) to {queue_path}")
+    for prompt in written:
+        print(
+            f"  [{prompt.phase.value:<9}] p={prompt.priority} gen={prompt.generation}  {prompt.intent}"
+        )
     return 0
 
 
@@ -248,6 +373,8 @@ def main(argv=None):
 
     # metrics
     p_metrics = subparsers.add_parser("metrics", help="Show metrics summary")
+    p_metrics.add_argument("--state-file", help="Path to state JSON file")
+    p_metrics.add_argument("--events-file", help="Path to events JSONL file")
     p_metrics.set_defaults(func=cmd_metrics)
 
     # events
@@ -274,11 +401,66 @@ def main(argv=None):
     p_prs.add_argument("--state", choices=["open", "closed", "all"], default="open")
     p_prs.set_defaults(func=cmd_prs)
 
+    # phase
+    p_phase = subparsers.add_parser("phase", help="SDLC phase-gate operations")
+    phase_subs = p_phase.add_subparsers(dest="phase_cmd", required=True)
+
+    p_phase_status = phase_subs.add_parser("status", help="Show current phase + history")
+    p_phase_status.add_argument("task_id", help="Work-item / task ID")
+    p_phase_status.add_argument("--state-file", help="Path to state JSON file")
+    p_phase_status.add_argument("--events-file", help="Path to events JSONL file")
+    p_phase_status.set_defaults(func=cmd_phase_status)
+
+    p_phase_advance = phase_subs.add_parser("advance", help="Advance a work item to a target phase")
+    p_phase_advance.add_argument("task_id", help="Work-item / task ID")
+    p_phase_advance.add_argument(
+        "target",
+        help="Target phase (PLAN, ARCHITECT, IMPLEMENT, REVIEW, GOVERN, OPERATE)",
+    )
+    p_phase_advance.add_argument("--reason", default="", help="Reason for transition")
+    p_phase_advance.add_argument(
+        "--force", action="store_true", help="Force transition even if a blocking gate fails"
+    )
+    p_phase_advance.add_argument(
+        "--no-gates", action="store_true", help="Skip default gates (dry-run semantics)"
+    )
+    p_phase_advance.add_argument(
+        "--min-body-bytes",
+        type=int,
+        default=40,
+        help="Minimum body length for the default ContentGuardGate",
+    )
+    p_phase_advance.add_argument("--state-file", help="Path to state JSON file")
+    p_phase_advance.add_argument("--events-file", help="Path to events JSONL file")
+    p_phase_advance.set_defaults(func=cmd_phase_advance)
+
+    # self-prompt
+    p_self_prompt = subparsers.add_parser(
+        "self-prompt",
+        help="Run the self-prompting gap-signal loop once (dry-run by default)",
+    )
+    p_self_prompt.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Collect signals and synthesize prompts without writing the queue (default)",
+    )
+    p_self_prompt.add_argument(
+        "--write",
+        action="store_true",
+        help="Actually write synthesized prompts into the queue",
+    )
+    p_self_prompt.add_argument("--coverage-file", default="coverage.xml")
+    p_self_prompt.add_argument("--queue-file", default=QUEUE_PATH)
+    p_self_prompt.add_argument("--state-file", help="Path to state JSON file")
+    p_self_prompt.add_argument("--events-file", help="Path to events JSONL file")
+    p_self_prompt.set_defaults(func=cmd_self_prompt)
+
     # If no args provided, enter interactive mode
     if argv is None:
         argv = sys.argv[1:]
     if len(argv) == 0:
         from src.cli.interactive import run_interactive
+
         return run_interactive()
 
     args = parser.parse_args(argv)

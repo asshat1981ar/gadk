@@ -150,7 +150,9 @@ class TestCoverageGate(QualityGate):
     blocking = True
     applies_to = frozenset({Phase.GOVERN})
 
-    def __init__(self, min_coverage: float = 0.65, coverage_file: Path | str = "coverage.xml") -> None:
+    def __init__(
+        self, min_coverage: float = 0.65, coverage_file: Path | str = "coverage.xml"
+    ) -> None:
         self._min = min_coverage
         self._path = Path(coverage_file)
 

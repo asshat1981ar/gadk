@@ -2,8 +2,7 @@ import json
 import logging
 import os
 import tempfile
-from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from datetime import UTC, datetime
 
 try:
     import fcntl as _fcntl
@@ -27,7 +26,7 @@ class StateManager:
         self.event_filename = event_filename
         self.data = {}
         if self.storage_type == "json" and os.path.exists(self.filename):
-            with open(self.filename, "r") as f:
+            with open(self.filename) as f:
                 try:
                     self.data = json.load(f)
                 except json.JSONDecodeError:
@@ -81,36 +80,40 @@ class StateManager:
         self.data[task_id] = task_data
         if self.storage_type == "json":
             self._atomic_write_json(self.filename, self.data)
-        self._append_event({
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-            "task_id": task_id,
-            "agent": agent,
-            "action": "SET",
-            "diff": self._compute_diff(old, task_data),
-        })
+        self._append_event(
+            {
+                "timestamp": datetime.now(UTC).isoformat(),
+                "task_id": task_id,
+                "agent": agent,
+                "action": "SET",
+                "diff": self._compute_diff(old, task_data),
+            }
+        )
 
-    def get_task(self, task_id: str) -> Optional[dict]:
+    def get_task(self, task_id: str) -> dict | None:
         return self.data.get(task_id)
 
-    def get_all_tasks(self) -> Dict[str, dict]:
+    def get_all_tasks(self) -> dict[str, dict]:
         return dict(self.data)
 
     def delete_task(self, task_id: str, agent: str = "") -> None:
         old = self.data.pop(task_id, None)
         if self.storage_type == "json":
             self._atomic_write_json(self.filename, self.data)
-        self._append_event({
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-            "task_id": task_id,
-            "agent": agent,
-            "action": "DELETE",
-            "diff": self._compute_diff(old, {}) if old else {},
-        })
+        self._append_event(
+            {
+                "timestamp": datetime.now(UTC).isoformat(),
+                "task_id": task_id,
+                "agent": agent,
+                "action": "DELETE",
+                "diff": self._compute_diff(old, {}) if old else {},
+            }
+        )
 
-    def get_task_history(self, task_id: str) -> List[dict]:
+    def get_task_history(self, task_id: str) -> list[dict]:
         events = []
         if os.path.exists(self.event_filename):
-            with open(self.event_filename, "r") as f:
+            with open(self.event_filename) as f:
                 for line in f:
                     line = line.strip()
                     if not line:
@@ -123,10 +126,10 @@ class StateManager:
                         continue
         return events
 
-    def get_all_events(self) -> List[dict]:
+    def get_all_events(self) -> list[dict]:
         events = []
         if os.path.exists(self.event_filename):
-            with open(self.event_filename, "r") as f:
+            with open(self.event_filename) as f:
                 for line in f:
                     line = line.strip()
                     if not line:
@@ -156,7 +159,7 @@ class StateManager:
         """
         self._append_event(
             {
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
                 "task_id": task_id,
                 "agent": "PhaseController",
                 "action": "phase.transition",

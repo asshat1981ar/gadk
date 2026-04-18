@@ -8,7 +8,7 @@ then parses and executes them explicitly.
 import asyncio
 import json
 import re
-from typing import Any, Dict, List, Optional, TypeVar
+from typing import Any, TypeVar
 
 from json_repair import repair_json
 from litellm import acompletion
@@ -66,9 +66,13 @@ If you don't need any tools, just respond normally without JSON blocks.
 
 # Recognized tool names for permissive parsing
 _KNOWN_TOOLS = {
-    "read_file", "write_file", "list_directory",
-    "read_repo_file", "list_repo_contents",
-    "search_web", "execute_python_code",
+    "read_file",
+    "write_file",
+    "list_directory",
+    "read_repo_file",
+    "list_repo_contents",
+    "search_web",
+    "execute_python_code",
 }
 
 _PLANNER_RETRY_WAIT = wait_exponential(multiplier=0.01, min=0, max=0.05)
@@ -79,9 +83,9 @@ class PlannerToolCall(BaseModel):
 
     action: str = Field(pattern="^tool_call$")
     tool_name: str
-    args: Dict[str, Any] = Field(default_factory=dict)
+    args: dict[str, Any] = Field(default_factory=dict)
 
-    def to_dispatch_call(self) -> Dict[str, Any]:
+    def to_dispatch_call(self) -> dict[str, Any]:
         """Return the dispatcher-compatible envelope."""
         return {
             "tool_name": self.tool_name,
@@ -101,7 +105,7 @@ _PLANNER_RETRYABLE_EXCEPTIONS = (
 )
 
 
-def repair_and_validate_tool_json(raw: str) -> Optional[PlannerToolCall]:
+def repair_and_validate_tool_json(raw: str) -> PlannerToolCall | None:
     """Repair and validate the canonical planner tool-call JSON block."""
     try:
         repaired = repair_json(raw)
@@ -122,7 +126,7 @@ def _load_repaired_json(raw: str) -> Any | None:
         return None
 
 
-def _extract_tool_calls_from_obj(data: Any) -> List[Dict[str, Any]]:
+def _extract_tool_calls_from_obj(data: Any) -> list[dict[str, Any]]:
     """Extract tool calls from a parsed JSON object. Very permissive."""
     calls = []
     if isinstance(data, list):
@@ -137,7 +141,11 @@ def _extract_tool_calls_from_obj(data: Any) -> List[Dict[str, Any]]:
         # Format 2/3b: {"action": "write_file", "args": {...}} or {"action": "list_directory", "arguments": {...}}
         action = data.get("action", "")
         if action in _KNOWN_TOOLS:
-            args = data.get("args") or data.get("arguments") or {k: v for k, v in data.items() if k not in ["action", "args", "arguments"]}
+            args = (
+                data.get("args")
+                or data.get("arguments")
+                or {k: v for k, v in data.items() if k not in ["action", "args", "arguments"]}
+            )
             calls.append({"tool_name": action, "args": args})
             return calls
         # Format 3: {"action": "read_file", "tools": [{...}]}
@@ -155,7 +163,7 @@ def _extract_tool_calls_from_obj(data: Any) -> List[Dict[str, Any]]:
     return calls
 
 
-def _parse_tool_calls(text: str) -> List[Dict[str, Any]]:
+def _parse_tool_calls(text: str) -> list[dict[str, Any]]:
     """Extract tool-call JSON blocks from LLM text output.
     Handles multiple formats the model might emit.
     """
@@ -176,7 +184,9 @@ def _parse_tool_calls(text: str) -> List[Dict[str, Any]]:
 
     # Fallback 1: look for inline {"tool_name": "...", "args": {...}} patterns
     if not calls:
-        for match in re.finditer(r'\{\s*"tool_name"\s*:\s*"([^"]+)"\s*,\s*"args"\s*:\s*(\{[^}]*\})\s*\}', text):
+        for match in re.finditer(
+            r'\{\s*"tool_name"\s*:\s*"([^"]+)"\s*,\s*"args"\s*:\s*(\{[^}]*\})\s*\}', text
+        ):
             try:
                 args = json.loads(match.group(2))
                 calls.append({"tool_name": match.group(1), "args": args})
@@ -215,16 +225,16 @@ def _parse_tool_calls(text: str) -> List[Dict[str, Any]]:
             in_string = False
             for i in range(end - 1, start - 1, -1):
                 ch = raw[i]
-                if ch == '"' and (i == 0 or raw[i - 1] != '\\'):
+                if ch == '"' and (i == 0 or raw[i - 1] != "\\"):
                     in_string = not in_string
                     continue
                 if in_string:
                     continue
-                if ch == '}':
+                if ch == "}":
                     brace_depth += 1
-                elif ch == '{':
+                elif ch == "{":
                     brace_depth -= 1
-                if brace_depth == 0 and ch == '}':
+                if brace_depth == 0 and ch == "}":
                     end = i
                     break
             content = raw[start:end]
@@ -233,21 +243,23 @@ def _parse_tool_calls(text: str) -> List[Dict[str, Any]]:
     return calls
 
 
-def _normalize_call(item: Dict[str, Any]) -> Dict[str, Any]:
+def _normalize_call(item: dict[str, Any]) -> dict[str, Any]:
     """Normalize different call formats into {tool_name, args}."""
     # Handle nested arguments: {"action": "tool_call", "arguments": {"tool_name": "x", "args": {}}}
     if "arguments" in item and isinstance(item["arguments"], dict):
         inner = item["arguments"]
         tool_name = inner.get("tool_name") or item.get("tool_name")
-        args = inner.get("args") or {k: v for k, v in inner.items() if k not in ["tool_name", "args"]}
-        
+        args = inner.get("args") or {
+            k: v for k, v in inner.items() if k not in ["tool_name", "args"]
+        }
+
         # Heuristic: if tool_name is missing but we have path/content, it's write_file
         if not tool_name:
             if "path" in args and "content" in args:
                 tool_name = "write_file"
             elif "path" in args:
                 tool_name = "read_file"
-        
+
         return {
             "tool_name": tool_name or "",
             "args": args,
@@ -259,7 +271,7 @@ def _normalize_call(item: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-async def _execute_tool_call(call: Dict[str, Any]) -> Dict[str, Any]:
+async def _execute_tool_call(call: dict[str, Any]) -> dict[str, Any]:
     """Execute a single parsed tool call."""
     name = call.get("tool_name")
     args = call.get("args", {})
@@ -290,7 +302,7 @@ def _extract_response_content(response: Any) -> str:
     return content
 
 
-async def _llm_turn(messages: List[Dict[str, str]], model: str = None, retries: int = 1) -> str:
+async def _llm_turn(messages: list[dict[str, str]], model: str = None, retries: int = 1) -> str:
     """Single LLM completion call via LiteLLM, with retry for empty responses."""
     model = model or Config.OPENROUTER_MODEL
     attempts = max(1, retries + 1)
@@ -324,7 +336,7 @@ async def _llm_turn(messages: List[Dict[str, str]], model: str = None, retries: 
 
 
 async def _llm_turn_structured(
-    messages: List[Dict[str, str]],
+    messages: list[dict[str, str]],
     response_model: type[StructuredModelT],
     model: str = None,
     retries: int = 1,

@@ -1,7 +1,4 @@
 import os
-import tempfile
-
-import pytest
 
 from src.cli.swarm_ctl import (
     clear_pid,

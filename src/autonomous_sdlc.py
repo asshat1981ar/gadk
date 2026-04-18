@@ -9,11 +9,9 @@ Runs a continuous loop:
 """
 
 import asyncio
-import json
 import os
 import re
 import time
-from typing import List, Dict, Optional
 
 # Allowed characters in generated task IDs. Collisions after slugification are
 # broader than the prefix alone implies, but this regex at least rejects
@@ -36,9 +34,11 @@ def _slugify_task_id(prefix: str, title: str, max_len: int = 40) -> str:
         raise ValueError(f"rejected unsafe task_id derived from title: {title!r}")
     return task_id
 
+
 from src.config import Config
-from src.observability.logger import configure_logging, get_logger, set_session_id, set_trace_id
+from src.observability.logger import configure_logging, get_logger, set_trace_id
 from src.observability.metrics import registry
+from src.planner import run_planner, run_planner_structured
 from src.services.agent_contracts import ReviewVerdict
 from src.services.structured_output import (
     format_review_verdict,
@@ -51,10 +51,9 @@ from src.services.workflow_graphs import (
     run_review_rework_cycle,
 )
 from src.state import StateManager
-from src.tools.github_tool import GitHubTool
 from src.tools.content_guards import is_low_value_content
 from src.tools.filesystem import read_file, write_file
-from src.planner import run_planner, run_planner_structured
+from src.tools.github_tool import GitHubTool
 
 configure_logging(level=os.getenv("LOG_LEVEL", "INFO").upper(), json_format=False)
 logger = get_logger("autonomous_sdlc")
@@ -198,12 +197,14 @@ class AutonomousSDLCEngine:
         """Builder implements fix. Returns staged file path or None."""
         logger.info("=== BUILD: implementing fix ===")
         task_id = task["task_id"]
-        self.sm.set_task(task_id, {**task, "status": "IN_PROGRESS", "agent": "Builder"}, agent="Builder")
+        self.sm.set_task(
+            task_id, {**task, "status": "IN_PROGRESS", "agent": "Builder"}, agent="Builder"
+        )
 
         # Pre-read repo context (increased scope)
         context_parts = []
         # Try to read the specific file mentioned in the task or discovery
-        file_hint = task.get('file_hint', '')
+        file_hint = task.get("file_hint", "")
         if file_hint:
             content = await self.gh.read_repo_file(file_hint)
             if not content.startswith("Error"):
@@ -215,7 +216,7 @@ class AutonomousSDLCEngine:
                 content = await self.gh.read_repo_file(path)
                 if not content.startswith("Error"):
                     context_parts.append(f"--- {path} ---\n{content[:1000]}")
-        
+
         context = "\n\n".join(context_parts)
 
         builder_prompt = (
@@ -249,8 +250,12 @@ class AutonomousSDLCEngine:
         )
 
         # Check if file was written via tool call DURING this build
-        staged = [f for f in os.listdir("src/staged_agents") 
-                  if (f.endswith(".kt") or f.endswith(".py") or f.endswith(".md")) and os.path.getmtime(f"src/staged_agents/{f}") > build_start]
+        staged = [
+            f
+            for f in os.listdir("src/staged_agents")
+            if (f.endswith(".kt") or f.endswith(".py") or f.endswith(".md"))
+            and os.path.getmtime(f"src/staged_agents/{f}") > build_start
+        ]
         if staged:
             paths = [f"src/staged_agents/{f}" for f in staged]
             paths.sort(key=lambda p: os.path.getmtime(p), reverse=True)
@@ -261,6 +266,7 @@ class AutonomousSDLCEngine:
 
         # Post-process: extract code block if present
         import re
+
         kt_block = re.search(r"```kotlin\n(.*?)\n```", result, re.DOTALL)
         py_block = re.search(r"```python\n(.*?)\n```", result, re.DOTALL)
         md_block = re.search(r"```markdown\n(.*?)\n```", result, re.DOTALL)
@@ -339,8 +345,8 @@ class AutonomousSDLCEngine:
         if filename.endswith(".kt"):
             remote_path = f"src/main/java/com/chimera/tools/{filename}"
         elif filename.endswith(".md") and "README" in filename:
-             # Try to find a logical path for documentation
-             remote_path = f"docs/{filename}"
+            # Try to find a logical path for documentation
+            remote_path = f"docs/{filename}"
         else:
             remote_path = f"tools/{filename}"
 
@@ -367,7 +373,7 @@ class AutonomousSDLCEngine:
             logger.info(f"=== MERGING PR #{pr_number} ===")
             merge_result = await self.gh.merge_pull_request(
                 pr_number=pr_number,
-                commit_message=f"Autonomous Merge: {task['title']}\n\n{task['description'][:200]}"
+                commit_message=f"Autonomous Merge: {task['title']}\n\n{task['description'][:200]}",
             )
             logger.info(f"Merge result: {merge_result}")
         except Exception as e:
@@ -454,8 +460,7 @@ class AutonomousSDLCEngine:
 
         if graph_decision.next_step == "critic_stop":
             logger.warning(
-                f"Review loop stopped after {builder_attempts} attempt(s): "
-                f"{graph_decision.reason}"
+                f"Review loop stopped after {builder_attempts} attempt(s): {graph_decision.reason}"
             )
             self.tasks_failed += 1
             self.sm.set_task(
@@ -474,12 +479,16 @@ class AutonomousSDLCEngine:
         except Exception as e:
             logger.exception("Delivery failed")
             self.tasks_failed += 1
-            self.sm.set_task(task["task_id"], {"status": "FAILED", "reason": str(e)}, agent="Builder")
+            self.sm.set_task(
+                task["task_id"], {"status": "FAILED", "reason": str(e)}, agent="Builder"
+            )
             return False
 
     async def run(self):
         logger.info("=== Autonomous SDLC Engine Starting ===")
-        logger.info(f"Repo: {REPO} | Max cycles: {MAX_CYCLES or 'infinite'} | Sleep: {CYCLE_SLEEP_SEC}s")
+        logger.info(
+            f"Repo: {REPO} | Max cycles: {MAX_CYCLES or 'infinite'} | Sleep: {CYCLE_SLEEP_SEC}s"
+        )
 
         while True:
             if self._should_shutdown():
@@ -494,7 +503,7 @@ class AutonomousSDLCEngine:
             failed_before = self.tasks_failed
             try:
                 await self.run_cycle()
-            except Exception as e:
+            except Exception:
                 logger.exception(f"Cycle {self.cycle} crashed")
                 self.tasks_failed += 1
 

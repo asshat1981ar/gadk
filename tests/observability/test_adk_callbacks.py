@@ -1,7 +1,5 @@
 import os
 
-import pytest
-
 from src.observability.adk_callbacks import ObservabilityCallback
 from src.observability.metrics import registry
 

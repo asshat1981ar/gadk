@@ -11,8 +11,8 @@ from src.services.agent_contracts import ReviewVerdict
 from src.services.structured_output import format_review_verdict, parse_task_proposal
 from src.state import StateManager
 from src.tools.dispatcher import register_tool
-from src.tools.filesystem import read_file, write_file, list_directory
-from src.tools.github_tool import read_repo_file, list_repo_contents
+from src.tools.filesystem import list_directory, read_file, write_file
+from src.tools.github_tool import list_repo_contents, read_repo_file
 from src.tools.sandbox_executor import execute_python_code
 from src.tools.web_search import search_web
 
@@ -48,7 +48,7 @@ async def main():
     ideator_prompt = (
         "Scan the Cognitive Foundry codebase in three steps:\n"
         "1. Read src/main.py\n"
-        "2. List the src/ directory structure\n" 
+        "2. List the src/ directory structure\n"
         "3. Identify ONE specific missing feature that would improve the swarm\n\n"
         "After your analysis, create a task by calling write_file to save a task spec "
         "to docs/suggested_task.md as JSON with keys: title, summary, description, "
@@ -81,7 +81,7 @@ async def main():
 
     # Phase 3: Builder implements the feature
     logger.info("=== PHASE 3: BUILDER IMPLEMENTS FEATURE ===")
-    
+
     # Pre-read context so Builder doesn't waste iterations exploring
     try:
         main_py = read_file("src/main.py")
@@ -90,7 +90,7 @@ async def main():
         context = f"src/main.py:\n{main_py[:800]}\n\nsrc/config.py:\n{config_py[:800]}\n\nExisting staged agents: {[f['name'] for f in existing_staged]}"
     except Exception as e:
         context = f"Could not read context: {e}"
-    
+
     builder_system = (
         "You are the Builder of the Cognitive Foundry. "
         "Your ONLY job is to write Python code using write_file. "
@@ -169,7 +169,7 @@ async def main():
     print("\n--- Results ---")
     print(f"Task spec: {task_spec_path if os.path.exists(task_spec_path) else 'NOT FOUND'}")
     print(f"Staged files: {staged_files}")
-    print(f"State task: planned-task-001 → COMPLETED")
+    print("State task: planned-task-001 → COMPLETED")
 
 
 if __name__ == "__main__":

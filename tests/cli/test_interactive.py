@@ -1,8 +1,4 @@
-import pytest
-
 from src.cli.interactive import get_banner, get_help_text, run_interactive
-from prompt_toolkit.document import Document
-from prompt_toolkit.validation import ValidationError
 
 
 class TestInteractiveHelpers:

@@ -105,9 +105,7 @@ def build_mcp_server() -> FastMCP:
         annotations=read_only,
     )
     async def repo_list_directory(path: str = ".") -> dict[str, Any]:
-        return _build_result_envelope(
-            await service.execute("repo.list_directory", path=path)
-        )
+        return _build_result_envelope(await service.execute("repo.list_directory", path=path))
 
     return server
 

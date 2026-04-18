@@ -47,7 +47,9 @@ def test_review_rework_cycle_stops_on_pass():
 
 def test_review_rework_cycle_retries_before_stop():
     """Plan test: retry verdict routes back to Builder while budget remains."""
-    state = ReviewLoopState(builder_attempts=1, review_status="retry", latest_summary="missing tests")
+    state = ReviewLoopState(
+        builder_attempts=1, review_status="retry", latest_summary="missing tests"
+    )
 
     result = run_review_rework_cycle(state, max_retries=2)
 
@@ -61,7 +63,9 @@ def test_review_rework_cycle_retries_before_stop():
 
 def test_review_rework_cycle_exhausts_budget():
     """When builder_attempts reaches max_retries, stop unconditionally."""
-    state = ReviewLoopState(builder_attempts=3, review_status="retry", latest_summary="still failing")
+    state = ReviewLoopState(
+        builder_attempts=3, review_status="retry", latest_summary="still failing"
+    )
 
     result = run_review_rework_cycle(state, max_retries=2)
 
@@ -71,7 +75,9 @@ def test_review_rework_cycle_exhausts_budget():
 
 def test_review_rework_cycle_blocks_immediately():
     """Block verdict always returns critic_stop regardless of attempt count."""
-    state = ReviewLoopState(builder_attempts=1, review_status="block", latest_summary="safety issue")
+    state = ReviewLoopState(
+        builder_attempts=1, review_status="block", latest_summary="safety issue"
+    )
 
     result = run_review_rework_cycle(state)
 

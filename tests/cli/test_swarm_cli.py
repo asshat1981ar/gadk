@@ -1,13 +1,7 @@
-import json
 import os
-import tempfile
-
-import pytest
 
 from src.cli import swarm_cli
 from src.cli.swarm_ctl import (
-    clear_pid,
-    clear_shutdown,
     dequeue_prompts,
 )
 from src.observability.metrics import registry
@@ -17,12 +11,24 @@ from src.state import StateManager
 class TestSwarmCli:
     def setup_method(self):
         registry.reset()
-        for f in [".swarm_shutdown", "prompt_queue.jsonl", "swarm.pid", "test_state.json", "test_events.jsonl"]:
+        for f in [
+            ".swarm_shutdown",
+            "prompt_queue.jsonl",
+            "swarm.pid",
+            "test_state.json",
+            "test_events.jsonl",
+        ]:
             if os.path.exists(f):
                 os.remove(f)
 
     def teardown_method(self):
-        for f in [".swarm_shutdown", "prompt_queue.jsonl", "swarm.pid", "test_state.json", "test_events.jsonl"]:
+        for f in [
+            ".swarm_shutdown",
+            "prompt_queue.jsonl",
+            "swarm.pid",
+            "test_state.json",
+            "test_events.jsonl",
+        ]:
             if os.path.exists(f):
                 os.remove(f)
 
@@ -55,29 +61,47 @@ class TestSwarmCli:
         assert os.path.exists(".swarm_shutdown")
 
     def test_tasks_empty(self, capsys):
-        ret = swarm_cli.main(["tasks", "--state-file", "test_state.json", "--events-file", "test_events.jsonl"])
+        ret = swarm_cli.main(
+            ["tasks", "--state-file", "test_state.json", "--events-file", "test_events.jsonl"]
+        )
         assert ret == 0
         out = capsys.readouterr().out
         # With empty state, should show no tasks message
         assert "No tasks found" in out
 
     def test_tasks_with_data(self, capsys):
-        sm = StateManager(storage_type="json", filename="test_state.json", event_filename="test_events.jsonl")
+        sm = StateManager(
+            storage_type="json", filename="test_state.json", event_filename="test_events.jsonl"
+        )
         sm.set_task("t1", {"status": "PLANNED", "source": "Ideator"})
         sm.set_task("t2", {"status": "COMPLETED", "source": "Builder"})
 
-        ret = swarm_cli.main(["tasks", "--state-file", "test_state.json", "--events-file", "test_events.jsonl"])
+        ret = swarm_cli.main(
+            ["tasks", "--state-file", "test_state.json", "--events-file", "test_events.jsonl"]
+        )
         assert ret == 0
         out = capsys.readouterr().out
         assert "t1" in out
         assert "t2" in out
 
     def test_tasks_filter(self, capsys):
-        sm = StateManager(storage_type="json", filename="test_state.json", event_filename="test_events.jsonl")
+        sm = StateManager(
+            storage_type="json", filename="test_state.json", event_filename="test_events.jsonl"
+        )
         sm.set_task("t1", {"status": "PLANNED", "source": "Ideator"})
         sm.set_task("t2", {"status": "COMPLETED", "source": "Builder"})
 
-        ret = swarm_cli.main(["tasks", "--status", "PLANNED", "--state-file", "test_state.json", "--events-file", "test_events.jsonl"])
+        ret = swarm_cli.main(
+            [
+                "tasks",
+                "--status",
+                "PLANNED",
+                "--state-file",
+                "test_state.json",
+                "--events-file",
+                "test_events.jsonl",
+            ]
+        )
         assert ret == 0
         out = capsys.readouterr().out
         assert "t1" in out
@@ -90,10 +114,22 @@ class TestSwarmCli:
         assert "No metrics recorded yet" in out
 
     def test_events(self, capsys):
-        sm = StateManager(storage_type="json", filename="test_state.json", event_filename="test_events.jsonl")
+        sm = StateManager(
+            storage_type="json", filename="test_state.json", event_filename="test_events.jsonl"
+        )
         sm.set_task("t1", {"status": "PLANNED"}, agent="Ideator")
 
-        ret = swarm_cli.main(["events", "--tail", "5", "--state-file", "test_state.json", "--events-file", "test_events.jsonl"])
+        ret = swarm_cli.main(
+            [
+                "events",
+                "--tail",
+                "5",
+                "--state-file",
+                "test_state.json",
+                "--events-file",
+                "test_events.jsonl",
+            ]
+        )
         assert ret == 0
         out = capsys.readouterr().out
         assert "Ideator" in out

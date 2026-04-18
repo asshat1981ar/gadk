@@ -6,6 +6,16 @@ from typing import Any
 
 from pydantic import BaseModel, Field, field_validator
 
+from src.config import Config
+from src.observability.logger import get_logger
+from src.services.vector_index import (
+    SearchHit,
+    VectorBackendUnavailable,
+    resolve_vector_backend,
+)
+
+logger = get_logger("retrieval_context")
+
 APPROVED_CORPORA = ("specs", "plans", "history")
 DEFAULT_CORPUS = list(APPROVED_CORPORA)
 PLANNING_RETRIEVAL_CAPABILITY = "planning.retrieve_context"
@@ -98,21 +108,16 @@ def _build_snippet(text: str, query: str, limit: int = 240) -> str:
     return f"{collapsed[:limit].rstrip()}..."
 
 
-def retrieve_context(
+def _keyword_retrieve(
     request: RetrievalQuery,
-    *,
-    repo_root: Path | None = None,
-) -> dict[str, Any]:
-    """Retrieve opt-in planning context from the approved corpus only."""
-
-    resolved_root = _repo_root(repo_root)
+    resolved_root: Path,
+) -> list[dict[str, Any]]:
+    """Existing LlamaIndex keyword path — extracted so the vector branch
+    can reuse it as a fallback without duplicating the loader + snippet
+    logic."""
     documents = _load_documents(resolved_root, request.corpus)
     if not documents:
-        return {
-            "query": request.query,
-            "corpus": request.corpus,
-            "sources": [],
-        }
+        return []
 
     from llama_index.core import KeywordTableIndex
     from llama_index.core.llms.mock import MockLLM
@@ -134,6 +139,111 @@ def retrieve_context(
                 "snippet": _build_snippet(text, request.query),
             }
         )
+    return sources
+
+
+#: Override hook for tests and callers that want to inject a custom
+#: embedder (e.g., deterministic fakes). ``None`` means "use the
+#: default embedder from :func:`src.services.embedder.build_default_embedder`".
+_embedder_override: Any = None
+
+
+def set_embedder(embedder: Any) -> None:
+    """Install a custom :data:`Embedder` for the next vector-retrieve calls.
+
+    Primarily used by tests; production code should rely on the
+    Config-driven default from ``build_default_embedder``.
+    """
+    global _embedder_override
+    _embedder_override = embedder
+
+
+def _resolve_embedder():
+    if _embedder_override is not None:
+        return _embedder_override
+    # Late import to break a potential cycle during module bootstrap.
+    from src.services.embedder import build_default_embedder
+
+    return build_default_embedder()
+
+
+def _vector_retrieve(
+    request: RetrievalQuery,
+    resolved_root: Path,
+) -> list[dict[str, Any]]:
+    """Vector-backed retrieval path.
+
+    When no embedder is available (test mode, missing API key, or no
+    override installed) ``resolve_vector_backend`` returns a
+    :class:`NullVectorIndex` and the caller falls back to keyword
+    retrieval with a ``retrieval.degraded`` log line.
+    """
+    embedder = _resolve_embedder()
+    backend = resolve_vector_backend(embedder=embedder)
+
+    any_docs = False
+    for corpus_name, path in _collect_corpus_files(resolved_root, request.corpus):
+        try:
+            text = path.read_text(encoding="utf-8").strip()
+        except (OSError, UnicodeDecodeError) as exc:
+            logger.debug("vector.upsert: skipping %s (%s)", path, exc)
+            continue
+        if not text:
+            continue
+        any_docs = True
+        backend.upsert(
+            doc_id=str(path.relative_to(resolved_root)),
+            text=text,
+            metadata={"corpus": corpus_name, "path": str(path.relative_to(resolved_root))},
+        )
+
+    if not any_docs:
+        # Match the keyword path: empty corpus returns no sources rather
+        # than provoking a backend.query() that would raise on some
+        # implementations.
+        return []
+
+    hits: list[SearchHit] = backend.query(request.query, top_k=request.top_k)
+    return [
+        {
+            "path": h.metadata.get("path", h.doc_id),
+            "corpus": h.metadata.get("corpus"),
+            "score": h.score,
+            "snippet": _build_snippet(h.text, request.query),
+        }
+        for h in hits
+    ]
+
+
+def retrieve_context(
+    request: RetrievalQuery,
+    *,
+    repo_root: Path | None = None,
+) -> dict[str, Any]:
+    """Retrieve opt-in planning context from the approved corpus only.
+
+    Routes through the configured retrieval backend (``Config.RETRIEVAL_BACKEND``).
+    When the vector backend is requested but unavailable, emits a structured
+    ``retrieval.degraded`` log line and falls back to keyword retrieval so
+    callers always get a best-effort result.
+    """
+
+    resolved_root = _repo_root(repo_root)
+    backend_name = (Config.RETRIEVAL_BACKEND or "keyword").strip().lower()
+
+    sources: list[dict[str, Any]] = []
+    if backend_name in {"vector", "sqlite-vec", "sqlitevec"}:
+        try:
+            sources = _vector_retrieve(request, resolved_root)
+        except VectorBackendUnavailable as exc:
+            logger.warning(
+                "retrieval.degraded backend=%s reason=%s falling_back=keyword",
+                backend_name,
+                exc,
+            )
+            sources = _keyword_retrieve(request, resolved_root)
+    else:
+        sources = _keyword_retrieve(request, resolved_root)
 
     return {
         "query": request.query,

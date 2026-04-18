@@ -1,9 +1,11 @@
-import pytest
-import asyncio
 import os
+
+import pytest
+
 from src.services.session_store import SQLiteSessionService
 
 TEST_DB = "test_sessions.db"
+
 
 class TestSQLiteSessionService:
     def setup_method(self):
@@ -35,9 +37,7 @@ class TestSQLiteSessionService:
 
         # Simulate restart with new service instance
         service2 = SQLiteSessionService(db_path=TEST_DB)
-        restored = await service2.get_session(
-            app_name="TestApp", session_id=sid, user_id="u1"
-        )
+        restored = await service2.get_session(app_name="TestApp", session_id=sid, user_id="u1")
         assert restored is not None
         assert restored.id == sid
 
@@ -55,9 +55,7 @@ class TestSQLiteSessionService:
     @pytest.mark.asyncio
     async def test_delete_session(self):
         session = await self.service.create_session(user_id="u1", app_name="TestApp")
-        await self.service.delete_session(
-            app_name="TestApp", session_id=session.id, user_id="u1"
-        )
+        await self.service.delete_session(app_name="TestApp", session_id=session.id, user_id="u1")
         restored = await self.service.get_session(
             app_name="TestApp", session_id=session.id, user_id="u1"
         )

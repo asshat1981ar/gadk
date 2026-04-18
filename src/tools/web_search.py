@@ -1,5 +1,4 @@
 from duckduckgo_search import DDGS
-
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 _WEB_SEARCH_RETRY_WAIT = wait_exponential(multiplier=0.01, min=0, max=0.05)
@@ -46,6 +45,7 @@ def _search_with_retry(query: str, max_results: int) -> str:
         formatted.append(f"Title: {r['title']}\nSnippet: {r['body']}\nURL: {r['href']}")
     return "\n\n".join(formatted)
 
+
 def search_web(query: str, max_results: int = 3) -> str:
     """
     Searches the web using DuckDuckGo to find real-time information.
@@ -56,4 +56,4 @@ def search_web(query: str, max_results: int = 3) -> str:
     try:
         return _search_with_retry(query, max_results)
     except Exception as e:
-        return f"Search Error: {str(e)}"
+        return f"Search Error: {e!s}"

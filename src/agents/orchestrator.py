@@ -1,7 +1,8 @@
 from google.adk.agents import Agent
+
 from src.config import Config
-from src.tools.smithery_bridge import call_smithery_tool
 from src.tools.dispatcher import batch_execute, execute_capability
+from src.tools.smithery_bridge import call_smithery_tool
 from src.tools.web_search import search_web
 
 if Config.TEST_MODE:
@@ -9,11 +10,11 @@ if Config.TEST_MODE:
 else:
     from google.adk.models.lite_llm import LiteLlm
 
-from src.agents.ideator import ideator_agent, create_structured_task
 from src.agents.builder import builder_agent
 from src.agents.critic import critic_agent
-from src.agents.pulse import pulse_agent
 from src.agents.finops import finops_agent
+from src.agents.ideator import create_structured_task, ideator_agent
+from src.agents.pulse import pulse_agent
 from src.services.agent_decisions import choose_delegate
 from src.services.retrieval_context import retrieve_planning_context
 
@@ -44,8 +45,8 @@ def route_task(task_id: str, agent_name: str | None = None, user_goal: str | Non
     return f"Task {task_id} has been successfully routed to the {agent_name} agent."
 
 
-from src.tools.filesystem import read_file, list_directory
-from src.tools.github_tool import read_repo_file, list_repo_contents
+from src.tools.filesystem import list_directory, read_file
+from src.tools.github_tool import list_repo_contents, read_repo_file
 
 # ... existing code ...
 
@@ -79,17 +80,17 @@ Prefer execute_capability(name='smithery.call_tool', ...) to access external ser
 Common servers: 'neon' (Postgres), 'node2flow/slack' (Slack).
 """,
     tools=[
-        route_task, 
+        route_task,
         execute_capability,
         retrieve_planning_context,
-        call_smithery_tool, 
-        batch_execute, 
-        create_structured_task, 
+        call_smithery_tool,
+        batch_execute,
+        create_structured_task,
         search_web,
         read_file,
         list_directory,
         read_repo_file,
-        list_repo_contents
+        list_repo_contents,
     ],
     sub_agents=[ideator_agent, builder_agent, critic_agent, pulse_agent, finops_agent],
 )

@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import json
 import re
+from collections.abc import Awaitable, Callable
 from types import SimpleNamespace
-from typing import Any, Awaitable, Callable, Literal, TypeVar
+from typing import Any, Literal, TypeVar
 
 from json_repair import repair_json
 from litellm import acompletion

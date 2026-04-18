@@ -1,12 +1,11 @@
 import json
 import os
-from typing import Dict
 
 
 class CostTracker:
     def __init__(self, filename: str = "costs.jsonl"):
         self.filename = filename
-        self._data: Dict[str, Dict[str, float]] = {}
+        self._data: dict[str, dict[str, float]] = {}
         self._load()
 
     def record_cost(self, task_id: str, agent_name: str, cost_usd: float) -> None:
@@ -21,15 +20,15 @@ class CostTracker:
     def get_total_spend(self) -> float:
         return sum(sum(v.values()) for v in self._data.values())
 
-    def get_summary(self) -> Dict:
+    def get_summary(self) -> dict:
         return {
             "total_spend_usd": self.get_total_spend(),
             "by_task": {k: sum(v.values()) for k, v in self._data.items()},
             "by_agent": self._aggregate_by_agent(),
         }
 
-    def _aggregate_by_agent(self) -> Dict[str, float]:
-        result: Dict[str, float] = {}
+    def _aggregate_by_agent(self) -> dict[str, float]:
+        result: dict[str, float] = {}
         for task in self._data.values():
             for agent, cost in task.items():
                 result[agent] = result.get(agent, 0.0) + cost
@@ -41,7 +40,7 @@ class CostTracker:
 
     def _load(self) -> None:
         if os.path.exists(self.filename):
-            with open(self.filename, "r") as f:
+            with open(self.filename) as f:
                 self._data = json.load(f)
 
     def reset(self) -> None:
