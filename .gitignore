@@ -36,4 +36,6 @@ costs.jsonl
 coverage.xml
 .coverage
 .secrets.baseline
+# Metrics snapshots — rewritten by every swarm / e2e test run.
+metrics.jsonl
 test_metrics.jsonl
