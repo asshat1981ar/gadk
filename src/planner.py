@@ -172,7 +172,7 @@ def _parse_tool_calls(text: str) -> list[dict[str, Any]]:
     # A legitimate tool-call response never exceeds PLANNER_MAX_CONTENT_BYTES;
     # anything larger is a pathological write_file content injection and the
     # re.finditer DOTALL scan would itself become slow on such inputs.
-    _block_scan_ok = len(text) <= Config.PLANNER_MAX_CONTENT_BYTES
+    _block_scan_ok = len(text.encode("utf-8")) <= Config.PLANNER_MAX_CONTENT_BYTES
 
     # Find all ```json ... ``` and ```python ... ``` blocks
     if _block_scan_ok:
