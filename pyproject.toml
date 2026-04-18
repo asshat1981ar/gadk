@@ -1,0 +1,95 @@
+[project]
+name = "gadk"
+version = "0.1.0"
+description = "Cognitive Foundry Swarm — multi-agent SDLC system on Google ADK"
+requires-python = ">=3.11"
+readme = "README.md"
+license = { text = "Proprietary" }
+
+[project.optional-dependencies]
+dev = [
+    "ruff>=0.5",
+    "mypy>=1.10",
+    "pip-audit>=2.7",
+    "bandit>=1.7",
+    "pre-commit>=3.7",
+    "coverage[toml]>=7.5",
+    "types-requests",
+]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["src*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+extend-exclude = ["docs", ".venv", "build", "dist", "src/staged_agents"]
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "F",    # pyflakes
+    "W",    # pycodestyle warnings
+    "I",    # isort
+    "B",    # bugbear
+    "UP",   # pyupgrade
+    "SIM",  # simplify
+    "RUF",  # ruff-specific
+    "BLE",  # blind-except
+]
+ignore = [
+    "E501",  # line-length handled by formatter
+    "B008",  # function calls in default arguments (pydantic Field is fine)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["BLE"]
+"src/tools/github_tool.py" = []
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.mypy]
+python_version = "3.11"
+strict = false
+warn_unused_ignores = true
+warn_redundant_casts = true
+warn_return_any = true
+check_untyped_defs = true
+ignore_missing_imports = true
+exclude = ["src/staged_agents", "build", "dist", "docs"]
+
+[[tool.mypy.overrides]]
+module = ["src.services.sdlc_phase", "src.services.quality_gates", "src.services.phase_controller"]
+strict = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+filterwarnings = [
+    "ignore::DeprecationWarning",
+]
+
+[tool.coverage.run]
+source = ["src"]
+branch = true
+omit = [
+    "src/staged_agents/*",
+    "src/testing/*",
+    "src/test/*",
+]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false
+fail_under = 0  # advisory during Phase 0; Phase 5 raises to 65
+
+[tool.bandit]
+exclude_dirs = ["tests", "src/staged_agents"]
+skips = ["B101"]  # assert_used — acceptable in controlled contexts

@@ -57,6 +57,20 @@ class Settings(BaseSettings):
     llm_timeout: int = 30
     llm_retries: int = 3
 
+    # Phase 0 stabilization flags
+    github_mock_allowed: bool = False  # require real PyGithub in prod
+    workspace_root: str = "."           # sandbox root for filesystem/dispatcher
+
+    # Phase 1 phase-gate framework
+    project_id: str = "chimera"         # single-tenant scope (v1)
+
+    # Phase 4 self-prompting loop
+    self_prompt_enabled: bool = False
+    self_prompt_max_per_hour: int = 6
+
+    # Phase 5 external SDLC MCP integration
+    sdlc_mcp_enabled: bool = False
+
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
@@ -87,6 +101,12 @@ class Config:
     FALLBACK_MODELS = _settings.fallback_models
     LLM_TIMEOUT = _settings.llm_timeout
     LLM_RETRIES = _settings.llm_retries
+    GITHUB_MOCK_ALLOWED = _settings.github_mock_allowed
+    WORKSPACE_ROOT = _settings.workspace_root
+    PROJECT_ID = _settings.project_id
+    SELF_PROMPT_ENABLED = _settings.self_prompt_enabled
+    SELF_PROMPT_MAX_PER_HOUR = _settings.self_prompt_max_per_hour
+    SDLC_MCP_ENABLED = _settings.sdlc_mcp_enabled
 
 
 __all__ = ["Config", "Settings", "get_settings"]

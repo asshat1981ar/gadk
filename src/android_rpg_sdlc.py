@@ -129,10 +129,14 @@ class AndroidRPGBuilder:
         if cid != "scaffold":
             try:
                 # Read previous main files for continuity
-                prev = read_file("src/staged_agents/MainActivity.kt") if os.path.exists("src/staged_agents/MainActivity.kt") else ""
+                prev = (
+                    read_file("src/staged_agents/MainActivity.kt")
+                    if os.path.exists("src/staged_agents/MainActivity.kt")
+                    else ""
+                )
                 context = f"Previously built context:\n{prev[:600]}\n\n"
-            except Exception:
-                pass
+            except (OSError, UnicodeDecodeError) as exc:
+                logger.debug("prior-context read skipped: %s", exc)
 
         builder_prompt = (
             f"Build Android RPG component: {spec['title']}\n\n"

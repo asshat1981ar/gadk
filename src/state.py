@@ -84,6 +84,33 @@ class StateManager:
         with open(self.event_filename, "a") as f:
             f.write(json.dumps(event, default=str) + "\n")
 
+    def record_phase_transition(
+        self,
+        task_id: str,
+        *,
+        from_phase: str,
+        to_phase: str,
+        reason: str = "",
+        gates: list[dict] | None = None,
+    ) -> None:
+        """Append a ``phase.transition`` event to the event log.
+
+        Used by ``src.services.phase_controller.PhaseController`` to keep the
+        SDLC phase ledger in the same audit stream as task-state changes.
+        """
+        self._append_event(
+            {
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "task_id": task_id,
+                "agent": "PhaseController",
+                "action": "phase.transition",
+                "from_phase": from_phase,
+                "to_phase": to_phase,
+                "reason": reason,
+                "gates": list(gates or []),
+            }
+        )
+
     def _compute_diff(self, old: dict, new: dict) -> dict:
         diff = {}
         all_keys = set(old.keys()) | set(new.keys())

@@ -30,7 +30,10 @@ class ObservabilityCallback:
             raw = getattr(response, "_raw_response", response)
             if raw is not None:
                 cost = completion_cost(raw)
-        except Exception:
+        except (ImportError, AttributeError, TypeError, ValueError) as exc:
+            logger.debug(
+                "cost extraction failed for agent %s: %s", agent_name, exc
+            )
             cost = 0.0
 
         if cost > 0:
