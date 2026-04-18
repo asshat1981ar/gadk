@@ -4,7 +4,10 @@ import tempfile
 import threading
 from datetime import UTC, datetime
 
+from src.observability.logger import get_logger
 from src.utils.file_lock import locked_append, locked_file
+
+logger = get_logger("state")
 
 
 class StateManager:
@@ -61,6 +64,10 @@ class StateManager:
         for the write step so readers always see a complete JSON file — never
         an empty or partially-written one.
 
+        On a transient read/parse failure the write is aborted and the
+        exception is re-raised so the caller can fall back to its existing
+        in-memory snapshot, preventing silent data-loss on I/O hiccups.
+
         *mutate_fn* receives the on-disk ``dict`` and must mutate it in place.
         Returns the merged ``dict`` so the caller can sync its in-memory view.
         """
@@ -72,15 +79,15 @@ class StateManager:
         with locked_file(lock_path, "a"):
             on_disk: dict = {}
             if os.path.exists(self.filename):
-                try:
-                    with open(self.filename) as sf:
-                        raw = sf.read()
-                    if raw.strip():
-                        loaded = json.loads(raw)
-                        if isinstance(loaded, dict):
-                            on_disk = loaded
-                except (OSError, json.JSONDecodeError):
-                    pass
+                with open(self.filename) as sf:
+                    raw = sf.read()
+                if raw.strip():
+                    loaded = json.loads(raw)
+                    if not isinstance(loaded, dict):
+                        raise ValueError(
+                            f"state file {self.filename!r} contains non-dict JSON"
+                        )
+                    on_disk = loaded
 
             mutate_fn(on_disk)
             # Atomic write via tmpfile + os.replace so readers outside the
