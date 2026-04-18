@@ -65,10 +65,12 @@ jobs:
       - run: pip install coverage[toml] pytest pytest-asyncio
       - run: coverage run -m pytest -q
       - run: coverage xml
-      # Soft coverage floor: keep it low to unblock CI while we add agent
-      # and CLI tests incrementally. Raised as the phase-gate milestones
-      # land (see plan: Phase 5 targets 65% global, 80% changed-files).
-      - run: coverage report --fail-under=35
+      # Coverage floor. Raised from 35% once the stable test subset
+      # consistently measured 52%+ on the swarm's core modules. Plan's
+      # long-term target is 65% global / 80% changed-files (Phase 5);
+      # bumping here incrementally rather than in one jump so a missing
+      # test file fails fast without trapping contributors at 0 headroom.
+      - run: coverage report --fail-under=45
       - uses: actions/upload-artifact@v4
         if: matrix.python-version == '3.11'
         with:
