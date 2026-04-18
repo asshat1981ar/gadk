@@ -116,3 +116,78 @@ def test_vector_backend_upsert_path_runs_without_crashing(
     result = rc.retrieve_context(RetrievalQuery(query="alpha"), repo_root=tmp_path)
     # Phase 3a: falls back to keyword (our stub). Phase 3b: vector returns hits directly.
     assert result["sources"], "expected at least one source from either backend"
+
+
+def test_vector_backend_end_to_end_with_injected_embedder(
+    monkeypatch: pytest.MonkeyPatch,
+    stub_keyword: list[str],
+    tmp_path: Path,
+) -> None:
+    """Phase 3c: when an embedder is installed via set_embedder, the vector
+    path actually serves hits (no keyword fallback)."""
+    # Word-hash embedder — matches the SqliteVecBackend fixture.
+    import hashlib
+    import math
+    from collections.abc import Sequence
+
+    def _fake_embedder(texts: Sequence[str]) -> list[list[float]]:
+        out = []
+        for text in texts:
+            bucket = [0.0] * 32
+            for word in text.lower().replace("-", " ").split():
+                h = hashlib.md5(word.encode()).digest()
+                idx = int.from_bytes(h[:4], "big") % 32
+                bucket[idx] += 1.0
+            n = math.sqrt(sum(v * v for v in bucket)) or 1.0
+            out.append([v / n for v in bucket])
+        return out
+
+    from src.services.vector_index import _SQLITE_VEC_AVAILABLE, SqliteVecBackend
+
+    if not _SQLITE_VEC_AVAILABLE:
+        pytest.skip("sqlite-vec not installed")
+
+    # Point the backend at a scratch db + dim=8 to match the fake.
+    monkeypatch.setattr(Config, "RETRIEVAL_BACKEND", "vector")
+
+    def _resolve(*, embedder=None, backend_name=None, db_path="sessions.db", dim=1536):
+        return SqliteVecBackend(embedder=embedder, db_path=tmp_path / "vec.db", dim=32)
+
+    monkeypatch.setattr(rc, "resolve_vector_backend", _resolve)
+    rc.set_embedder(_fake_embedder)
+    try:
+        (tmp_path / "docs" / "superpowers" / "specs").mkdir(parents=True)
+        (tmp_path / "docs" / "superpowers" / "plans").mkdir(parents=True)
+        (tmp_path / "docs" / "superpowers" / "specs" / "memory.md").write_text(
+            "sqlite-vec vector retrieval embedding index"
+        )
+        (tmp_path / "docs" / "superpowers" / "plans" / "other.md").write_text(
+            "unrelated document about lint and formatting"
+        )
+
+        result = rc.retrieve_context(
+            RetrievalQuery(query="vector embedding retrieval"), repo_root=tmp_path
+        )
+
+        # Keyword stub must NOT fire; we should have real vector hits.
+        assert stub_keyword == [], "vector path must not fall back when backend works"
+        assert result["sources"], "expected real hits from the vector backend"
+        # Confirm the memory doc is in the returned set — exact ranking is
+        # not promised for the fake embedder, but the right doc must show up.
+        paths = {s["path"] for s in result["sources"]}
+        assert "docs/superpowers/specs/memory.md" in paths or any(
+            "memory.md" in p for p in paths
+        ), f"expected memory.md in hits, got {paths}"
+    finally:
+        rc.set_embedder(None)
+
+
+def test_set_embedder_override_wins_over_default(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    sentinel = object()
+    rc.set_embedder(sentinel)
+    try:
+        assert rc._resolve_embedder() is sentinel
+    finally:
+        rc.set_embedder(None)

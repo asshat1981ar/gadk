@@ -7,6 +7,7 @@ in Phase 3c once the LiteLLM wiring lands.
 
 from __future__ import annotations
 
+import hashlib
 import math
 from collections.abc import Sequence
 from pathlib import Path
@@ -36,13 +37,13 @@ pytestmark = pytest.mark.skipif(
 # ---------------------------------------------------------------------------
 
 
-def _make_fake_embedder(dim: int = 8) -> Embedder:
+def _make_fake_embedder(dim: int = 32) -> Embedder:
     """Return a deterministic embedder that maps text → stable unit vector.
 
-    Uses character-n-gram hashing into ``dim`` buckets; the same text
-    always produces the same vector, and vectors for similar strings
-    share more components, so the L2 distance behaves roughly like
-    a semantic-similarity proxy for the tests.
+    Word-hashing into ``dim`` buckets: each whitespace-separated token
+    contributes a +1 to one bucket (md5-keyed), so documents that share
+    exact tokens with the query produce similar vectors. Deterministic
+    and independent of ``PYTHONHASHSEED``.
     """
 
     def _embed(texts: Sequence[str]) -> list[list[float]]:
@@ -53,13 +54,10 @@ def _make_fake_embedder(dim: int = 8) -> Embedder:
             if not normalized:
                 out.append([0.0] * dim)
                 continue
-            for i in range(len(normalized) - 2):
-                trigram = normalized[i : i + 3]
-                idx = hash(trigram) % dim
+            for word in normalized.replace("-", " ").split():
+                h = hashlib.md5(word.encode()).digest()
+                idx = int.from_bytes(h[:4], "big") % dim
                 bucket[idx] += 1.0
-            # Also count individual chars so short docs still differ.
-            for ch in normalized:
-                bucket[ord(ch) % dim] += 0.25
             norm = math.sqrt(sum(v * v for v in bucket)) or 1.0
             out.append([v / norm for v in bucket])
         return out
@@ -71,9 +69,9 @@ def _make_fake_embedder(dim: int = 8) -> Embedder:
 def backend(tmp_path: Path) -> SqliteVecBackend:
     db = tmp_path / "vec.db"
     b = SqliteVecBackend(
-        embedder=_make_fake_embedder(dim=8),
+        embedder=_make_fake_embedder(dim=32),
         db_path=db,
-        dim=8,
+        dim=32,
     )
     yield b
     b.close()
@@ -93,7 +91,7 @@ def test_backend_rejects_embedder_dimension_mismatch(tmp_path: Path) -> None:
     def _bad(_: Sequence[str]) -> list[list[float]]:
         return [[1.0, 2.0]]  # dim=2
 
-    backend = SqliteVecBackend(embedder=_bad, db_path=tmp_path / "db.sqlite", dim=8)
+    backend = SqliteVecBackend(embedder=_bad, db_path=tmp_path / "db.sqlite", dim=32)
     try:
         with pytest.raises(VectorBackendUnavailable):
             backend.upsert("doc-1", "hello")
@@ -105,7 +103,7 @@ def test_backend_rejects_malformed_embedder_output(tmp_path: Path) -> None:
     def _empty(_: Sequence[str]) -> list[list[float]]:
         return []
 
-    backend = SqliteVecBackend(embedder=_empty, db_path=tmp_path / "db.sqlite", dim=8)
+    backend = SqliteVecBackend(embedder=_empty, db_path=tmp_path / "db.sqlite", dim=32)
     try:
         with pytest.raises(VectorBackendUnavailable):
             backend.upsert("doc-1", "hello")
@@ -167,7 +165,13 @@ def test_clear_drops_all_docs(backend: SqliteVecBackend) -> None:
 
 
 def test_recall_at_k_on_small_corpus(backend: SqliteVecBackend) -> None:
-    """Insert 5 themed docs and confirm the thematically-closest one wins."""
+    """Insert 5 themed docs and confirm the thematically-closest one wins.
+
+    With the word-hash embedder at dim=32, the doc that shares the most
+    query tokens should rank first. The real recall@5 floor against a
+    keyword baseline over a 50-doc corpus belongs in a Phase-3d follow-up
+    with real LiteLLM embeddings.
+    """
     backend.upsert("phase", "SDLC phase gate controller and quality gates")
     backend.upsert("memory", "sqlite-vec vector retrieval embedding index")
     backend.upsert("prompt", "self-prompt loop gap signals coverage backlog")
@@ -176,8 +180,9 @@ def test_recall_at_k_on_small_corpus(backend: SqliteVecBackend) -> None:
 
     hits = backend.query("vector embedding retrieval", top_k=5)
     assert hits
-    # The memory doc should beat the others given the shared tokens.
-    assert hits[0].doc_id == "memory"
+    assert hits[0].doc_id == "memory", (
+        f"expected memory to rank first, got {[h.doc_id for h in hits]}"
+    )
 
 
 def test_hit_metadata_exposes_distance(backend: SqliteVecBackend) -> None:
@@ -195,9 +200,9 @@ def test_hit_metadata_exposes_distance(backend: SqliteVecBackend) -> None:
 def test_resolve_returns_sqlite_vec_when_embedder_supplied(tmp_path: Path) -> None:
     backend = resolve_vector_backend(
         backend_name="vector",
-        embedder=_make_fake_embedder(dim=8),
+        embedder=_make_fake_embedder(dim=32),
         db_path=tmp_path / "fv.sqlite",
-        dim=8,
+        dim=32,
     )
     try:
         assert isinstance(backend, SqliteVecBackend)

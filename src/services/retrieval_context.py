@@ -142,17 +142,44 @@ def _keyword_retrieve(
     return sources
 
 
+#: Override hook for tests and callers that want to inject a custom
+#: embedder (e.g., deterministic fakes). ``None`` means "use the
+#: default embedder from :func:`src.services.embedder.build_default_embedder`".
+_embedder_override: Any = None
+
+
+def set_embedder(embedder: Any) -> None:
+    """Install a custom :data:`Embedder` for the next vector-retrieve calls.
+
+    Primarily used by tests; production code should rely on the
+    Config-driven default from ``build_default_embedder``.
+    """
+    global _embedder_override
+    _embedder_override = embedder
+
+
+def _resolve_embedder():
+    if _embedder_override is not None:
+        return _embedder_override
+    # Late import to break a potential cycle during module bootstrap.
+    from src.services.embedder import build_default_embedder
+
+    return build_default_embedder()
+
+
 def _vector_retrieve(
     request: RetrievalQuery,
     resolved_root: Path,
 ) -> list[dict[str, Any]]:
     """Vector-backed retrieval path.
 
-    Phase 3a: `resolve_vector_backend` returns a `NullVectorIndex` that
-    always raises `VectorBackendUnavailable`, so this path is exercised
-    by the degraded-fallback test but doesn't actually serve traffic yet.
+    When no embedder is available (test mode, missing API key, or no
+    override installed) ``resolve_vector_backend`` returns a
+    :class:`NullVectorIndex` and the caller falls back to keyword
+    retrieval with a ``retrieval.degraded`` log line.
     """
-    backend = resolve_vector_backend()
+    embedder = _resolve_embedder()
+    backend = resolve_vector_backend(embedder=embedder)
 
     any_docs = False
     for corpus_name, path in _collect_corpus_files(resolved_root, request.corpus):
