@@ -29,6 +29,7 @@ swarm.pid
 .swarm_self_prompt_off
 .swarm_history
 prompt_queue.jsonl
+events.jsonl
 state.json.bak
 events.jsonl.bak
 costs.jsonl
