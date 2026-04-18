@@ -46,6 +46,124 @@ def test_parse_tool_calls_repairs_canonical_json_blocks():
     assert calls == [{"tool_name": "read_file", "args": {"path": "src/main.py"}}]
 
 
+# ---------------------------------------------------------------------------
+# Parametrized matrix: all 4 parser paths
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "text,expected_calls",
+    [
+        # 1. Parser #1 – canonical JSON, single call (repair_and_validate_tool_json)
+        (
+            '```json\n{"action":"tool_call","tool_name":"read_file","args":{"path":"src/main.py"}}\n```',
+            [{"tool_name": "read_file", "args": {"path": "src/main.py"}}],
+        ),
+        # 2. Parser #2 – canonical JSON, multiple calls (_load_repaired_json + _extract)
+        (
+            "```json\n"
+            '[{"action":"tool_call","tool_name":"read_file","args":{"path":"a"}},'
+            '{"action":"tool_call","tool_name":"list_directory","args":{"path":"src"}}]\n```',
+            [
+                {"tool_name": "read_file", "args": {"path": "a"}},
+                {"tool_name": "list_directory", "args": {"path": "src"}},
+            ],
+        ),
+        # 3. Parser #2 – repaired JSON with trailing comma
+        (
+            '```json\n{"action":"tool_call","tool_name":"write_file",'
+            '"args":{"path":"out.txt","content":"data",}}\n```',
+            [{"tool_name": "write_file", "args": {"path": "out.txt", "content": "data"}}],
+        ),
+        # 4. Parser #2 – repaired JSON with unquoted keys (_load_repaired_json)
+        (
+            '```json\n{action: "write_file", path: "out.txt", content: "data"}\n```',
+            [{"tool_name": "write_file", "args": {"path": "out.txt", "content": "data"}}],
+        ),
+        # 5. Fallback 1 – inline {"tool_name": ..., "args": {...}} dict pattern
+        (
+            'Call {"tool_name": "read_file", "args": {"path": "x.py"}} to read.',
+            [{"tool_name": "read_file", "args": {"path": "x.py"}}],
+        ),
+        # 6. Fallback 2 / Parser #3 – simple function-call syntax  read_file("path")
+        (
+            'read_file("src/main.py")',
+            [{"tool_name": "read_file", "args": {"path": "src/main.py"}}],
+        ),
+        # 7. Fallback 3 / Parser #4 – write_file block, well-formed for the walker
+        #    The JSON has no "action"/"tool_name" keys so _extract_tool_calls_from_obj
+        #    returns []. The walker then extracts path + raw content from the end of
+        #    the block; the trailing '"  }' chars are an expected artifact of the
+        #    backward-scan heuristic on a flat (non-nested) JSON object.
+        (
+            '```json\n{"write_file": 1, "path": "notes.txt", "content": "hello world"}\n```',
+            [
+                {
+                    "tool_name": "write_file",
+                    "args": {"path": "notes.txt", "content": 'hello world"}'},
+                }
+            ],
+        ),
+        # 8. Fallback 3 / Parser #4 – write_file block embedded in surrounding prose
+        #    Same walker artifact: content ends with '"  }' due to backward scan.
+        (
+            "Here is the file:\n"
+            '```json\n{"write_file": 1, "path": "code.py", "content": "x = 1"}\n```\n'
+            "Done.",
+            [{"tool_name": "write_file", "args": {"path": "code.py", "content": 'x = 1"}'}}],
+        ),
+        # 9. Malformed-everything – returns [], no crash
+        (
+            "```json\n{this is NOT valid json at all!!! @#$}\n```",
+            [],
+        ),
+        # 10. Plain text, no tool calls – returns []
+        (
+            "I have finished the task. No further tools are needed.",
+            [],
+        ),
+    ],
+    ids=[
+        "canonical-single",
+        "canonical-multi",
+        "repaired-trailing-comma",
+        "repaired-unquoted-key",
+        "fallback1-inline-json-dict",
+        "fallback2-function-syntax",
+        "fallback3-writefile-wellformed",
+        "fallback3-writefile-prose",
+        "malformed-everything",
+        "plain-text-no-tools",
+    ],
+)
+def test_parse_tool_calls_parametrized(text, expected_calls):
+    calls = planner._parse_tool_calls(text)
+    assert calls == expected_calls
+
+
+def test_parse_tool_calls_caps_pathological_content_size():
+    """Fallback-3 walker must be skipped when content exceeds PLANNER_MAX_CONTENT_BYTES.
+
+    The test must complete in < 100 ms even with a 10 MB payload; without the
+    cap the character-by-character walker would take ~1 s on this input.
+    """
+    import time
+
+    big_content = "X" * 10_000_001  # ~10 million bytes
+    text = '```json\n{"write_file": 1, "path": "big.txt", "content": "' + big_content + '"}\n```'
+
+    t0 = time.perf_counter()
+    calls = planner._parse_tool_calls(text)
+    elapsed = time.perf_counter() - t0
+
+    assert elapsed < 0.1, f"took {elapsed:.3f}s – walker cap not firing?"
+    # The oversized block must not produce a write_file call with the huge content.
+    assert not any(
+        c.get("tool_name") == "write_file" and len(c.get("args", {}).get("content", "")) > 500_000
+        for c in calls
+    )
+
+
 @pytest.mark.asyncio
 async def test_llm_turn_retries_empty_response(monkeypatch):
     monkeypatch.setattr(planner, "_PLANNER_RETRY_WAIT", wait_none())

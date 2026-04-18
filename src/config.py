@@ -109,6 +109,10 @@ class Settings(BaseSettings):
     gate_subprocess_timeout_sec: float = Field(default=120.0, gt=0.0)
     github_dedup_issue_scan_limit: int = Field(default=100, gt=0)
 
+    # Planner safety: cap the maximum content bytes the write_file fallback
+    # walker may scan to avoid O(n) scans on pathologically large LLM outputs.
+    planner_max_content_bytes: int = Field(default=500_000, gt=0)
+
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
@@ -157,6 +161,7 @@ class Config:
     SELF_PROMPT_TICK_INTERVAL_SEC = _settings.self_prompt_tick_interval_sec
     GATE_SUBPROCESS_TIMEOUT_SEC = _settings.gate_subprocess_timeout_sec
     GITHUB_DEDUP_ISSUE_SCAN_LIMIT = _settings.github_dedup_issue_scan_limit
+    PLANNER_MAX_CONTENT_BYTES = _settings.planner_max_content_bytes
 
 
 __all__ = ["Config", "Settings", "get_settings"]
