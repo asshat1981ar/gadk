@@ -19,3 +19,4 @@ rich
 pytest-asyncio
 prompt_toolkit
 duckduckgo-search
+pyspark
