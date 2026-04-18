@@ -2,7 +2,10 @@ import os
 import asyncio
 from litellm import acompletion
 
-async def test():
+import pytest
+
+@pytest.mark.asyncio
+async def test_llm_completion():
     try:
         api_key = os.getenv("OPENROUTER_API_KEY")
         api_base = "https://openrouter.ai/api/v1"
@@ -22,4 +25,4 @@ async def test():
         print(f"CAUGHT_ERROR: {e}")
 
 if __name__ == "__main__":
-    asyncio.run(test())
+    asyncio.run(test_llm_completion())
