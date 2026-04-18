@@ -229,11 +229,19 @@ def _sync_corpus_to_backend(
         if already_cached:
             # Unchanged since last call — skip the (costly) embed.
             continue
-        backend.upsert(
-            doc_id=doc_id,
-            text=text,
-            metadata={"corpus": corpus_name, "path": doc_id},
-        )
+        try:
+            backend.upsert(
+                doc_id=doc_id,
+                text=text,
+                metadata={"corpus": corpus_name, "path": doc_id},
+            )
+        except Exception:
+            # Upsert failed — revert the pre-marked hash so the next call
+            # will retry the embed rather than silently skipping it.
+            if backend_persists:
+                with _doc_hashes_lock:
+                    _doc_hashes.pop(doc_id, None)
+            raise
 
     # Drop backend rows + cache entries whose source file disappeared so
     # stale embeddings don't get served in future queries. Only supported
