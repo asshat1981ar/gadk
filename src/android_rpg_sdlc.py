@@ -27,6 +27,7 @@ from src.state import StateManager
 from src.tools.dispatcher import register_tool
 from src.tools.filesystem import read_file, write_file, list_directory
 from src.tools.github_tool import read_repo_file, list_repo_contents, GitHubTool
+from src.tools.content_guards import is_low_value_content
 from src.tools.web_search import search_web
 
 register_tool("search_web", search_web)
@@ -220,6 +221,23 @@ class AndroidRPGBuilder:
         cid = spec["id"]
         branch = f"{BRANCH_PREFIX}/{cid}-{int(time.time())}"
         code = read_file(f"src/staged_agents/{artifact}") if os.path.exists(f"src/staged_agents/{artifact}") else ""
+
+        # Empty-content guard: don't commit+PR a stub. This prevents the
+        # "Turn-Based Combat System" case where the RPG engine generated an
+        # empty .kt file and the PR body was literally "the code snippet is
+        # empty. Let me first check if there are any files..."
+        if is_low_value_content(code):
+            logger.warning(
+                "_deliver: skipping low-value RPG artifact %s (%d bytes)",
+                artifact,
+                len(code or ""),
+            )
+            self.sm.set_task(
+                f"rpg-{cid}",
+                {"status": "SKIPPED_LOW_VALUE", "artifact": artifact},
+                agent="Builder",
+            )
+            return None
 
         # Commit to repo — place in correct Android path
         remote_path = spec["files"][0]  # Use first file path from spec

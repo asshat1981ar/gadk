@@ -30,6 +30,7 @@ from src.services.workflow_graphs import (
 )
 from src.state import StateManager
 from src.tools.github_tool import GitHubTool
+from src.tools.content_guards import is_low_value_content
 from src.tools.filesystem import read_file, write_file
 from src.planner import run_planner, run_planner_structured
 
@@ -282,6 +283,24 @@ class AutonomousSDLCEngine:
         logger.info("=== DELIVER: pushing to repo ===")
         task_id = task["task_id"]
         code = read_file(artifact_path)
+
+        # Empty-content guard: don't open a PR for a stub or empty file.
+        # This stops the "Turn-Based Combat System" pattern where an empty
+        # .kt gets committed and a PR is raised whose own body admits
+        # "the code snippet is empty".
+        if is_low_value_content(code):
+            logger.warning(
+                "_deliver: skipping low-value artifact %s (%d bytes)",
+                artifact_path,
+                len(code or ""),
+            )
+            self.sm.set_task(
+                task_id,
+                {"status": "SKIPPED_LOW_VALUE", "artifact": artifact_path},
+                agent="Builder",
+            )
+            return None
+
         # Use unique branch name with timestamp to avoid collisions
         branch = f"bot/{task_id}-{int(time.time())}"
         filename = os.path.basename(artifact_path)
