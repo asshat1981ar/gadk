@@ -1,16 +1,15 @@
 import asyncio
-from datetime import UTC, datetime
-
+from typing import List, Any
+from datetime import datetime, timezone
 from google.adk.agents import Agent
-
-from src.config import Config
-from src.services.agent_decisions import build_task_proposal
-from src.state import StateManager
-from src.tools.dispatcher import batch_execute
-from src.tools.filesystem import list_directory, read_file
-from src.tools.github_tool import GitHubTool
 from src.tools.scraper import ScraperTool
+from src.tools.github_tool import GitHubTool
+from src.state import StateManager
+from src.config import Config
 from src.tools.web_search import search_web
+from src.tools.dispatcher import batch_execute
+from src.tools.filesystem import read_file, list_directory
+from src.services.agent_decisions import build_task_proposal
 
 if Config.TEST_MODE:
     from src.testing.mock_llm import MockLiteLlm as LiteLlm
@@ -26,26 +25,22 @@ tool_model = LiteLlm(
 
 # Initialize core services
 if Config.TEST_MODE:
-
     class MockScraper:
-        async def scrape(self, url):
-            return "Mock content for testing"
-
+        async def scrape(self, url): return "Mock content for testing"
     scraper_tool = MockScraper()
 else:
     scraper_tool = ScraperTool(allowlist=["github.com", "google.com"])
 github_tool = GitHubTool()
 state_manager = StateManager()
 
-
 async def create_structured_task(
-    title: str,
-    description: str,
-    acceptance_criteria: list[str],
-    priority: int = 3,
+    title: str, 
+    description: str, 
+    acceptance_criteria: List[str], 
+    priority: int = 3, 
     complexity: str = "medium",
     suggested_agent: str = "Builder",
-    tags: list[str] = None,
+    tags: List[str] = None
 ) -> str:
     """
     Creates a high-quality, actionable task in the swarm state.
@@ -74,36 +69,43 @@ async def create_structured_task(
         "complexity": complexity,
         "suggested_agent": proposal.recommended_agent,
         "tags": tags or [],
-        "created_at": datetime.now(UTC).isoformat(),
-        "source": "Ideator",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "source": "Ideator"
     }
-
+    
     state_manager.set_task(task_id, task_data, agent="Ideator")
-
+    
     # Also track in GitHub for visibility
-    body = f"## Summary\n{proposal.summary}\n\n## Description\n{proposal.description}\n\n## Acceptance Criteria\n"
+    body = f"## Summary\n{proposal.title}\n\n## Description\n{proposal.description}\n\n## Acceptance Criteria\n"
     body += "\n".join([f"- [ ] {ac}" for ac in proposal.acceptance_criteria])
     body += (
         f"\n\n**Priority**: {priority} | **Complexity**: {complexity} "
         f"| **Suggested Agent**: {proposal.recommended_agent}"
     )
-
-    await github_tool.create_issue(title=f"[SWARM TASK] {proposal.title}", body=body)
-
+    
+    await github_tool.create_issue(
+        title=f"[SWARM TASK] {proposal.title}",
+        body=body
+    )
+    
     return f"Successfully created structured task: {task_id}"
-
 
 ideator_agent = Agent(
     name="Ideator",
     model=tool_model,
     description="Proactively scouts technical trends and plans autonomous tasks",
-    instruction="""You are the Ideator of the Cognitive Foundry.
+    instruction="""You are the Ideator of the Cognitive Foundry. 
     Your mission is to find high-impact opportunities for codebase improvement, new features, or technical debt reduction.
 
     STRATEGY:
     1. RESEARCH: Use 'search_web' and 'batch_execute' to scout for latest trends (e.g., "latest FastAPI patterns", "React 19 features").
-    2. ANALYZE: Read relevant project files using 'read_repo_file' to identify where these trends could be applied.
-    3. PLAN: Use 'create_structured_task' to turn findings into ACTIONABLE work.
+    2. ANALYZE: For remote GitHub repository exploration, start with 'list_repo_contents' and inspect files with 'read_repo_file'.
+    3. PLAN: Use 'create_structured_task' to turn findings into ACTIONABLE work. 
+
+    REMOTE VS LOCAL BOUNDARY:
+    - For the remote GitHub repository, use 'list_repo_contents' and 'read_repo_file' directly.
+    - Use 'list_directory' and 'read_file' only for local workspace files.
+    - Do not use retrieve_planning_context or execute_capability to explore the remote repository; retrieve_planning_context is only for local specs, plans, and history.
 
     TASK GUIDELINES:
     - BE SPECIFIC: Avoid vague titles like "Improve code". Use "Refactor Error Handling in src/main.py".
@@ -113,12 +115,12 @@ ideator_agent = Agent(
     ALWAYS use 'batch_execute' when you need to perform more than one search or file read to maximize throughput.
     """,
     tools=[
-        batch_execute,
-        search_web,
-        create_structured_task,
-        read_file,
-        list_directory,
-        github_tool.read_repo_file,
-        github_tool.list_repo_contents,
-    ],
+        batch_execute, 
+        search_web, 
+        create_structured_task, 
+        read_file, 
+        list_directory, 
+        github_tool.read_repo_file, 
+        github_tool.list_repo_contents
+    ]
 )
