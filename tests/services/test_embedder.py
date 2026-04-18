@@ -125,6 +125,14 @@ def test_embedder_rejects_malformed_response(
         embedder(["anything"])
 
 
+def test_embedder_rejects_construction_without_quota_or_sm() -> None:
+    """Reviewer feedback on #11: auto-constructing a fresh StateManager
+    risks racing with the swarm's writers. Enforce that callers supply
+    one of the two."""
+    with pytest.raises(ValueError, match="shared EmbedQuota or"):
+        LiteLLMEmbedder(model="m")
+
+
 def test_build_default_embedder_skips_in_test_mode(
     sm: StateManager, monkeypatch: pytest.MonkeyPatch
 ) -> None:

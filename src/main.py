@@ -91,7 +91,10 @@ async def _self_prompt_tick(sm: StateManager, *, interval_sec: float = 60.0) -> 
     logger.info("self_prompt.tick: enabled, interval=%.1fs", interval_sec)
     while not is_shutdown_requested() and not _self_prompt.off_switch_active():
         try:
-            _self_prompt.run_once(sm=sm)
+            # run_once is synchronous and does blocking file I/O (state.json,
+            # coverage.xml, prompt_queue.jsonl). Offload to a worker thread
+            # so the swarm's event loop stays responsive.
+            await asyncio.to_thread(_self_prompt.run_once, sm=sm)
         except Exception:
             logger.exception("self_prompt.tick: run_once crashed; continuing")
         await asyncio.sleep(interval_sec)

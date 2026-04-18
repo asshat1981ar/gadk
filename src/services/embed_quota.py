@@ -9,7 +9,8 @@ every read to keep the state file small.
 
 from __future__ import annotations
 
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, datetime, timedelta
+from datetime import date as _date
 
 from src.config import Config
 from src.observability.logger import get_logger
@@ -45,12 +46,13 @@ class EmbedQuota:
 
     def _save(self, bucket: dict[str, int]) -> None:
         # Prune stale entries in the same pass so the state file doesn't grow
-        # unboundedly.
-        cutoff = date.today() - timedelta(days=_RETAIN_DAYS)
+        # unboundedly. Uses UTC to match the keying scheme (`_today_key`)
+        # so pruning is consistent across timezone boundaries.
+        cutoff = datetime.now(UTC).date() - timedelta(days=_RETAIN_DAYS)
         pruned: dict[str, int] = {}
         for k, v in bucket.items():
             try:
-                if date.fromisoformat(k) >= cutoff:
+                if _date.fromisoformat(k) >= cutoff:
                     pruned[k] = v
             except ValueError:
                 # Malformed key — drop silently rather than crash.

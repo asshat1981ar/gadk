@@ -6,6 +6,7 @@ from datetime import UTC, datetime
 
 try:
     import fcntl as _fcntl
+
     _FLOCK_AVAILABLE = True
 except ImportError:  # Windows
     _fcntl = None  # type: ignore[assignment]
@@ -14,9 +15,7 @@ except ImportError:  # Windows
 _logger = logging.getLogger(__name__)
 
 if not _FLOCK_AVAILABLE:
-    _logger.warning(
-        "fcntl unavailable on this platform; concurrent appends will not be serialized"
-    )
+    _logger.warning("fcntl unavailable on this platform; concurrent appends will not be serialized")
 
 
 class StateManager:
