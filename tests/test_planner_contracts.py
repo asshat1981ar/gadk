@@ -5,6 +5,7 @@ import pytest
 from tenacity import wait_none
 
 import src.planner as planner
+from src.config import Config
 
 
 def _mock_response(content: str):
@@ -152,7 +153,8 @@ def test_parse_tool_calls_caps_pathological_content_size():
     calls = planner._parse_tool_calls(text)
     # The oversized block must not produce a write_file call with the huge content.
     assert not any(
-        c.get("tool_name") == "write_file" and len(c.get("args", {}).get("content", "")) > 500_000
+        c.get("tool_name") == "write_file"
+        and len(c.get("args", {}).get("content", "")) > Config.PLANNER_MAX_CONTENT_BYTES
         for c in calls
     )
 

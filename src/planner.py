@@ -229,25 +229,12 @@ def _parse_tool_calls(text: str) -> list[dict[str, Any]]:
             # Guard against pathologically large content fields (DoS / O(n) scan).
             if len(raw) - start > Config.PLANNER_MAX_CONTENT_BYTES:
                 continue
-            # Walk backward from the end to find the closing brace of args
-            end = len(raw)
-            brace_depth = 0
-            in_string = False
-            for i in range(end - 1, start - 1, -1):
-                ch = raw[i]
-                if ch == '"' and (i == 0 or raw[i - 1] != "\\"):
-                    in_string = not in_string
-                    continue
-                if in_string:
-                    continue
-                if ch == "}":
-                    brace_depth += 1
-                elif ch == "{":
-                    brace_depth -= 1
-                if brace_depth == 0 and ch == "}":
-                    end = i
-                    break
-            content = raw[start:end]
+            # The content string ends at the last '"' in the slice; everything
+            # after it is JSON closing syntax (e.g. '"}}').  rfind is O(n) but
+            # bounded by PLANNER_MAX_CONTENT_BYTES above.
+            content_slice = raw[start:]
+            last_quote = content_slice.rfind('"')
+            content = content_slice[:last_quote] if last_quote >= 0 else content_slice
             calls.append({"tool_name": "write_file", "args": {"path": path, "content": content}})
 
     return calls
