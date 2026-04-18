@@ -1,5 +1,7 @@
 import pytest
+
 from src.tools.dispatcher import batch_execute, register_tool
+
 
 @pytest.mark.asyncio
 async def test_batch_execute_success():
@@ -8,12 +10,12 @@ async def test_batch_execute_success():
         {"tool_name": "mock_echo", "args": {"msg": "Hello"}},
         {"tool_name": "mock_echo", "args": {"msg": "World"}}
     ]
-    
+
     def mock_echo(msg: str) -> str:
         return msg
-    
+
     register_tool("mock_echo", mock_echo)
-    
+
     results = await batch_execute(requests)
     assert len(results) == 2
     assert results[0]["status"] == "success"
@@ -27,12 +29,12 @@ async def test_batch_execute_async_tool():
     requests = [
         {"tool_name": "mock_async_echo", "args": {"msg": "Async Hello"}}
     ]
-    
+
     async def mock_async_echo(msg: str) -> str:
         return msg
-    
+
     register_tool("mock_async_echo", mock_async_echo)
-    
+
     results = await batch_execute(requests)
     assert len(results) == 1
     assert results[0]["status"] == "success"

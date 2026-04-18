@@ -1,10 +1,9 @@
-import pytest
-from src.agents.orchestrator import orchestrator_agent
-from src.agents.ideator import ideator_agent
 from src.agents.builder import builder_agent
 from src.agents.critic import critic_agent
-from src.agents.pulse import pulse_agent
 from src.agents.finops import finops_agent
+from src.agents.ideator import ideator_agent
+from src.agents.orchestrator import orchestrator_agent
+from src.agents.pulse import pulse_agent
 
 
 def test_all_agents_are_adk_agents():
