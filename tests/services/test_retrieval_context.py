@@ -134,7 +134,9 @@ class TestDocHashesLock:
             def delete(self, doc_id: str) -> None:
                 pass
 
-        # Clear module-level cache before the test.
+        # Clear module-level cache before the test. Wrapping the whole
+        # body in try/finally so if an assertion fires before cleanup,
+        # later tests in the file still see a clean _doc_hashes cache.
         with rc._doc_hashes_lock:
             rc._doc_hashes.clear()
 
@@ -150,19 +152,24 @@ class TestDocHashesLock:
                 errors.append(exc)
 
         threads = [threading.Thread(target=_run) for _ in range(2)]
-        for t in threads:
-            t.start()
+        try:
+            for t in threads:
+                t.start()
 
-        # Once the first upsert has started, let both threads proceed.
-        upsert_entered.wait(timeout=5)
-        upsert_proceed.set()
+            # Once the first upsert has started, let both threads proceed.
+            upsert_entered.wait(timeout=5)
+            upsert_proceed.set()
 
-        for t in threads:
-            t.join(timeout=10)
-
-        # Restore state
-        with rc._doc_hashes_lock:
-            rc._doc_hashes.clear()
+            for t in threads:
+                t.join(timeout=10)
+                assert not t.is_alive(), f"thread {t.name} deadlocked; barrier/event may be broken"
+        finally:
+            # Always restore — even if an assertion above fires, subsequent
+            # tests should see a clean cache, and make sure no signals
+            # hold threads hostage by re-releasing on the way out.
+            upsert_proceed.set()
+            with rc._doc_hashes_lock:
+                rc._doc_hashes.clear()
 
         assert not errors, f"Threads raised exceptions: {errors}"
         # The doc should have been upserted exactly once despite two concurrent calls.

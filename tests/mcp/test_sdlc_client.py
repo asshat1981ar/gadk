@@ -82,19 +82,31 @@ async def test_submit_gate_decision_tracks_pending_tasks(
 
     monkeypatch.setattr(sdlc_client, "_invoke", _fast_invoke)
 
-    # Clear any leftover tasks from previous tests.
+    # Clear any leftover tasks from previous tests; ensure cleanup even on
+    # assertion failure so we don't contaminate subsequent tests with
+    # zombie tasks referencing this test's event loop.
     sdlc_client._pending_tasks.clear()
+    try:
+        out = sdlc_client.submit_gate_decision(task_id="t-track", verdict={"ready": True})
+        assert out["status"] == "scheduled"
 
-    out = sdlc_client.submit_gate_decision(task_id="t-track", verdict={"ready": True})
-    assert out["status"] == "scheduled"
+        # The task must be tracked immediately after creation.
+        assert len(sdlc_client._pending_tasks) == 1
 
-    # The task must be tracked immediately after creation.
-    assert len(sdlc_client._pending_tasks) == 1
+        # Deterministically wait for the done_callback rather than a fixed
+        # sleep — fixed sleeps flake on slow CI runners. Poll the tracked
+        # set with a generous overall timeout; the fake _invoke finishes
+        # on the next event-loop tick so this typically completes in <1ms.
+        start = _asyncio.get_event_loop().time()
+        while sdlc_client._pending_tasks and (_asyncio.get_event_loop().time() - start) < 2.0:
+            await _asyncio.sleep(0)
 
-    # Allow the event loop to run until the task completes.
-    await _asyncio.sleep(0.05)
-
-    # After completion the done_callback should have removed it.
-    assert len(sdlc_client._pending_tasks) == 0, (
-        "Task was not removed from _pending_tasks after completion."
-    )
+        assert (
+            len(sdlc_client._pending_tasks) == 0
+        ), "Task was not removed from _pending_tasks after completion."
+    finally:
+        # Cancel + clear any leftovers so a partial run can't leak tasks.
+        for task in list(sdlc_client._pending_tasks):
+            if not task.done():
+                task.cancel()
+        sdlc_client._pending_tasks.clear()

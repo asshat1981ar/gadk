@@ -64,9 +64,14 @@ class StateManager:
         for the write step so readers always see a complete JSON file — never
         an empty or partially-written one.
 
-        On a transient read/parse failure the write is aborted and the
-        exception is re-raised so the caller can fall back to its existing
-        in-memory snapshot, preventing silent data-loss on I/O hiccups.
+        **Failure semantics** — on a read/parse failure the exception is
+        logged and re-raised; the write is aborted. ``set_task``/
+        ``delete_task`` do NOT catch these — the process-level caller is
+        expected to handle the rare transient case, because silently
+        continuing on corrupted on-disk state would destroy the audit
+        trail. (Prior docstring mentioning caller-side in-memory fallback
+        was misleading; corrected to reflect the propagate-and-log
+        behavior actually implemented here.)
 
         *mutate_fn* receives the on-disk ``dict`` and must mutate it in place.
         Returns the merged ``dict`` so the caller can sync its in-memory view.
@@ -79,15 +84,24 @@ class StateManager:
         with locked_file(lock_path, "a"):
             on_disk: dict = {}
             if os.path.exists(self.filename):
-                with open(self.filename) as sf:
-                    raw = sf.read()
-                if raw.strip():
-                    loaded = json.loads(raw)
-                    if not isinstance(loaded, dict):
-                        raise ValueError(
-                            f"state file {self.filename!r} contains non-dict JSON"
-                        )
-                    on_disk = loaded
+                try:
+                    with open(self.filename) as sf:
+                        raw = sf.read()
+                    if raw.strip():
+                        loaded = json.loads(raw)
+                        if not isinstance(loaded, dict):
+                            raise ValueError(f"state file {self.filename!r} contains non-dict JSON")
+                        on_disk = loaded
+                except (OSError, json.JSONDecodeError, ValueError) as exc:
+                    # Log and re-raise. Silent fallback to empty dict would
+                    # destroy on-disk state on a transient I/O hiccup.
+                    logger.error(
+                        "state.persist.read_failed path=%s reason=%s",
+                        self.filename,
+                        exc,
+                        exc_info=True,
+                    )
+                    raise
 
             mutate_fn(on_disk)
             # Atomic write via tmpfile + os.replace so readers outside the

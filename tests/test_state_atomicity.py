@@ -208,8 +208,20 @@ class TestSetTaskNoLostUpdate:
         ]
         for p in processes:
             p.start()
+        # Reap each worker. If it's still alive after the timeout, terminate
+        # (SIGTERM) then kill (SIGKILL) before asserting, so a deadlocked
+        # worker doesn't leak into subsequent tests or block pytest shutdown.
         for p in processes:
             p.join(timeout=60)
+            if p.is_alive():
+                p.terminate()
+                p.join(timeout=5)
+                if p.is_alive():
+                    p.kill()
+                    p.join(timeout=5)
+                raise AssertionError(
+                    f"Worker process {p.pid} did not finish within 60s; killed for cleanup."
+                )
             assert p.exitcode == 0, f"Worker process {p.pid} exited with code {p.exitcode}"
 
         with open(state_json) as f:
