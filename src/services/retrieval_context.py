@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import re
 from pathlib import Path
 from typing import Any
@@ -11,6 +12,7 @@ from src.observability.logger import get_logger
 from src.services.vector_index import (
     SearchHit,
     VectorBackendUnavailable,
+    VectorIndex,
     resolve_vector_backend,
 )
 
@@ -167,6 +169,62 @@ def _resolve_embedder():
     return build_default_embedder()
 
 
+#: Content-hash cache keyed by ``doc_id`` so we only re-embed files whose
+#: content has actually changed between calls. Process-local — safe for the
+#: swarm's single-writer model; Phase 3d may move it into the backend's
+#: meta table so it survives restarts.
+_doc_hashes: dict[str, str] = {}
+
+
+def _sha(text: str) -> str:
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def _sync_corpus_to_backend(
+    backend: VectorIndex,
+    resolved_root: Path,
+    corpus: list[str],
+) -> int:
+    """Bring the backend in line with the on-disk corpus.
+
+    - Upserts only docs whose SHA-256 content hash changed.
+    - Removes docs that were previously indexed but are no longer on disk.
+    - Returns the number of documents currently present after sync.
+    """
+    seen_ids: set[str] = set()
+    for corpus_name, path in _collect_corpus_files(resolved_root, corpus):
+        try:
+            text = path.read_text(encoding="utf-8").strip()
+        except (OSError, UnicodeDecodeError) as exc:
+            logger.debug("vector.upsert: skipping %s (%s)", path, exc)
+            continue
+        if not text:
+            continue
+        doc_id = str(path.relative_to(resolved_root))
+        seen_ids.add(doc_id)
+        sha = _sha(text)
+        if _doc_hashes.get(doc_id) == sha:
+            # Unchanged since last call — skip the (costly) embed.
+            continue
+        backend.upsert(
+            doc_id=doc_id,
+            text=text,
+            metadata={"corpus": corpus_name, "path": doc_id},
+        )
+        _doc_hashes[doc_id] = sha
+
+    # Drop backend rows + cache entries whose source file disappeared so
+    # stale embeddings don't get served in future queries. Only supported
+    # on backends that expose `known_doc_ids` / `delete` (SqliteVecBackend);
+    # the NullVectorIndex no-ops both.
+    if hasattr(backend, "known_doc_ids") and hasattr(backend, "delete"):
+        for stale_id in backend.known_doc_ids() - seen_ids:
+            backend.delete(stale_id)
+            _doc_hashes.pop(stale_id, None)
+
+    return len(seen_ids)
+
+
 def _vector_retrieve(
     request: RetrievalQuery,
     resolved_root: Path,
@@ -181,38 +239,29 @@ def _vector_retrieve(
     embedder = _resolve_embedder()
     backend = resolve_vector_backend(embedder=embedder)
 
-    any_docs = False
-    for corpus_name, path in _collect_corpus_files(resolved_root, request.corpus):
-        try:
-            text = path.read_text(encoding="utf-8").strip()
-        except (OSError, UnicodeDecodeError) as exc:
-            logger.debug("vector.upsert: skipping %s (%s)", path, exc)
-            continue
-        if not text:
-            continue
-        any_docs = True
-        backend.upsert(
-            doc_id=str(path.relative_to(resolved_root)),
-            text=text,
-            metadata={"corpus": corpus_name, "path": str(path.relative_to(resolved_root))},
-        )
+    # Ensure backend connections (e.g., SqliteVecBackend) are released
+    # even if upsert/query raises. The NullVectorIndex has no close().
+    try:
+        any_docs = _sync_corpus_to_backend(backend, resolved_root, request.corpus) > 0
+        if not any_docs:
+            # Match the keyword path: empty corpus returns no sources rather
+            # than provoking a backend.query() that would raise on some
+            # implementations.
+            return []
 
-    if not any_docs:
-        # Match the keyword path: empty corpus returns no sources rather
-        # than provoking a backend.query() that would raise on some
-        # implementations.
-        return []
-
-    hits: list[SearchHit] = backend.query(request.query, top_k=request.top_k)
-    return [
-        {
-            "path": h.metadata.get("path", h.doc_id),
-            "corpus": h.metadata.get("corpus"),
-            "score": h.score,
-            "snippet": _build_snippet(h.text, request.query),
-        }
-        for h in hits
-    ]
+        hits: list[SearchHit] = backend.query(request.query, top_k=request.top_k)
+        return [
+            {
+                "path": h.metadata.get("path", h.doc_id),
+                "corpus": h.metadata.get("corpus"),
+                "score": h.score,
+                "snippet": _build_snippet(h.text, request.query),
+            }
+            for h in hits
+        ]
+    finally:
+        if hasattr(backend, "close"):
+            backend.close()
 
 
 def retrieve_context(
@@ -239,6 +288,19 @@ def retrieve_context(
             logger.warning(
                 "retrieval.degraded backend=%s reason=%s falling_back=keyword",
                 backend_name,
+                exc,
+            )
+            sources = _keyword_retrieve(request, resolved_root)
+        except Exception as exc:  # noqa: BLE001
+            # Broader safety net: sqlite-vec extension misconfigured,
+            # schema migration failures, OpenRouter transport errors, etc.
+            # The documented contract is best-effort fallback to keyword;
+            # surface the actual exception on the same `retrieval.degraded`
+            # channel so it's still visible in logs.
+            logger.warning(
+                "retrieval.degraded backend=%s unexpected_error=%s:%s falling_back=keyword",
+                backend_name,
+                type(exc).__name__,
                 exc,
             )
             sources = _keyword_retrieve(request, resolved_root)

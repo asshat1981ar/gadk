@@ -32,7 +32,16 @@ logger = get_logger("embedder")
 
 
 class LiteLLMEmbedder:
-    """Embedder backed by ``litellm.embedding`` + ``EmbedQuota``."""
+    """Embedder backed by ``litellm.embedding`` + ``EmbedQuota``.
+
+    Persistence note: the embedder writes the daily token total through
+    the ``EmbedQuota`` it's given, which in turn writes the whole
+    ``state.json`` via its ``StateManager``. To avoid racing with the
+    SDLC loop's writes, callers **must** pass in either a ``quota`` or
+    a ``state_manager`` that's shared with the rest of the swarm. The
+    factory :func:`build_default_embedder` enforces this — instantiating
+    ``LiteLLMEmbedder()`` without one of those args raises.
+    """
 
     def __init__(
         self,
@@ -41,13 +50,16 @@ class LiteLLMEmbedder:
         quota: EmbedQuota | None = None,
         state_manager: StateManager | None = None,
     ) -> None:
+        if quota is None and state_manager is None:
+            raise ValueError(
+                "LiteLLMEmbedder requires either a shared EmbedQuota or "
+                "a StateManager; auto-constructing a fresh StateManager "
+                "risks racing with the swarm's writers. Use "
+                "build_default_embedder() or pass state_manager= explicitly."
+            )
         self._model = model or Config.EMBED_MODEL
-        # Callers can supply their own quota (e.g., for tests); otherwise
-        # we build one on top of a fresh StateManager so persistence
-        # survives restarts.
         if quota is None:
-            sm = state_manager or StateManager()
-            quota = EmbedQuota(sm)
+            quota = EmbedQuota(state_manager)  # type: ignore[arg-type]
         self._quota = quota
 
     @property
@@ -111,6 +123,12 @@ def build_default_embedder(
 ) -> LiteLLMEmbedder | None:
     """Construct the default embedder used by :mod:`retrieval_context`.
 
+    ``state_manager`` is **required in practice** — pass in the same
+    ``StateManager`` instance the swarm uses elsewhere so quota writes
+    don't race with task-state writes. Callers that don't have one
+    already can construct ``StateManager()`` once at bootstrap and
+    thread it through.
+
     Returns ``None`` when:
     - ``Config.TEST_MODE`` is on (keep tests hermetic unless they opt in
       via their own embedder fixture);
@@ -127,7 +145,11 @@ def build_default_embedder(
     backend = (Config.RETRIEVAL_BACKEND or "").strip().lower()
     if backend not in {"vector", "sqlite-vec", "sqlitevec"}:
         return None
-    return LiteLLMEmbedder(state_manager=state_manager)
+    # Fall back to a fresh StateManager only when the caller didn't pass
+    # one — LiteLLMEmbedder enforces that *something* is supplied, so we
+    # surface a construction error rather than silently spawning a racing
+    # writer.
+    return LiteLLMEmbedder(state_manager=state_manager or StateManager())
 
 
 __all__ = ["LiteLLMEmbedder", "build_default_embedder"]

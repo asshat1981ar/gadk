@@ -4,9 +4,9 @@ Spins up 8 processes that simultaneously mutate the same task and verifies:
   (a) state.json is always valid JSON (never a partial write)
   (b) no events are lost from events.jsonl
 """
+
 import json
 import multiprocessing
-import os
 import time
 
 import pytest
@@ -23,6 +23,7 @@ POLL_INTERVAL_SECONDS = 0.005  # how often to sample state.json during concurren
 # Worker run in each subprocess
 # ---------------------------------------------------------------------------
 
+
 def _writer_worker(state_json: str, events_jsonl: str, worker_id: int, n_writes: int) -> None:
     """Perform *n_writes* set_task calls (all on the same shared task key)."""
     sm = StateManager(storage_type="json", filename=state_json, event_filename=events_jsonl)
@@ -38,6 +39,7 @@ def _writer_worker(state_json: str, events_jsonl: str, worker_id: int, n_writes:
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _read_json_safely(path: str):
     """Return parsed JSON or raise if the file is not valid JSON."""
     with open(path, "r") as fh:
@@ -47,6 +49,7 @@ def _read_json_safely(path: str):
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
+
 
 class TestStateAtomicity:
     def test_concurrent_writers_no_corruption(self, tmp_path):
@@ -113,12 +116,12 @@ class TestStateAtomicity:
                 try:
                     events.append(json.loads(raw))
                 except json.JSONDecodeError as exc:
-                    pytest.fail(f"events.jsonl line {lineno} is not valid JSON: {exc}\nContent: {raw!r}")
+                    pytest.fail(
+                        f"events.jsonl line {lineno} is not valid JSON: {exc}\nContent: {raw!r}"
+                    )
 
         expected_count = n_workers * n_writes_each
-        assert len(events) == expected_count, (
-            f"Expected {expected_count} events, got {len(events)}"
-        )
+        assert len(events) == expected_count, f"Expected {expected_count} events, got {len(events)}"
 
     def test_mid_flight_state_json_is_valid(self, tmp_path):
         """state.json must be parseable while writers are still running."""
@@ -161,4 +164,6 @@ class TestStateAtomicity:
             "state.json was never successfully read while writers were active; "
             "the mid-flight check did not exercise any concurrent reads"
         )
-        assert not errors, "state.json was invalid JSON during concurrent writes:\n" + "\n".join(errors)
+        assert not errors, "state.json was invalid JSON during concurrent writes:\n" + "\n".join(
+            errors
+        )

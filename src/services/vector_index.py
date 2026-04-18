@@ -203,27 +203,48 @@ class SqliteVecBackend:
 
     def upsert(self, doc_id: str, text: str, metadata: dict[str, Any] | None = None) -> None:
         vector = self._embed_single(text)
-        row = self._conn.execute(
-            f"SELECT rowid FROM {self._META_TABLE} WHERE doc_id = ?", (doc_id,)
-        ).fetchone()
-        if row is not None:
+        # Wrap all four table mutations in a transaction so an interruption
+        # can't leave the meta table populated without a matching vector
+        # row (or vice versa). `with self._conn:` commits on success and
+        # rolls back on exception.
+        with self._conn:
+            row = self._conn.execute(
+                f"SELECT rowid FROM {self._META_TABLE} WHERE doc_id = ?", (doc_id,)
+            ).fetchone()
+            if row is not None:
+                rowid = row[0]
+                self._conn.execute(f"DELETE FROM {self._INDEX_TABLE} WHERE rowid = ?", (rowid,))
+                self._conn.execute(
+                    f"UPDATE {self._META_TABLE} SET text = ?, metadata = ? WHERE rowid = ?",
+                    (text, json.dumps(metadata or {}), rowid),
+                )
+            else:
+                cursor = self._conn.execute(
+                    f"INSERT INTO {self._META_TABLE} (doc_id, text, metadata) VALUES (?, ?, ?)",
+                    (doc_id, text, json.dumps(metadata or {})),
+                )
+                rowid = cursor.lastrowid
+            self._conn.execute(
+                f"INSERT INTO {self._INDEX_TABLE} (rowid, embedding) VALUES (?, ?)",
+                (rowid, vector),
+            )
+
+    def delete(self, doc_id: str) -> None:
+        """Remove a single document by ``doc_id``. Silent no-op if absent."""
+        with self._conn:
+            row = self._conn.execute(
+                f"SELECT rowid FROM {self._META_TABLE} WHERE doc_id = ?", (doc_id,)
+            ).fetchone()
+            if row is None:
+                return
             rowid = row[0]
             self._conn.execute(f"DELETE FROM {self._INDEX_TABLE} WHERE rowid = ?", (rowid,))
-            self._conn.execute(
-                f"UPDATE {self._META_TABLE} SET text = ?, metadata = ? WHERE rowid = ?",
-                (text, json.dumps(metadata or {}), rowid),
-            )
-        else:
-            cursor = self._conn.execute(
-                f"INSERT INTO {self._META_TABLE} (doc_id, text, metadata) VALUES (?, ?, ?)",
-                (doc_id, text, json.dumps(metadata or {})),
-            )
-            rowid = cursor.lastrowid
-        self._conn.execute(
-            f"INSERT INTO {self._INDEX_TABLE} (rowid, embedding) VALUES (?, ?)",
-            (rowid, vector),
-        )
-        self._conn.commit()
+            self._conn.execute(f"DELETE FROM {self._META_TABLE} WHERE rowid = ?", (rowid,))
+
+    def known_doc_ids(self) -> set[str]:
+        """Return every ``doc_id`` currently indexed."""
+        rows = self._conn.execute(f"SELECT doc_id FROM {self._META_TABLE}").fetchall()
+        return {row[0] for row in rows}
 
     def query(self, text: str, top_k: int = 3) -> list[SearchHit]:
         if top_k <= 0:
@@ -268,12 +289,19 @@ def resolve_vector_backend(
 ) -> VectorIndex:
     """Return a :class:`VectorIndex` for the configured backend.
 
-    The factory returns a ``NullVectorIndex`` when:
-    - a non-vector backend is requested (callers stay on keyword retrieval);
-    - ``sqlite-vec`` is not installed; or
-    - no ``embedder`` is supplied (Phase 3c will wire a LiteLLM-backed
-      default, but Phase 3b keeps it explicit so tests and production
-      stay in control of their embedding calls).
+    Behavior:
+
+    - When a non-vector backend is requested (``keyword``, ``mystery-db``,
+      etc.), raises :class:`VectorBackendUnavailable` so the caller can
+      fall back to keyword retrieval through its normal exception-handling
+      path. Callers **must** catch this exception; :func:`retrieve_context`
+      does so and emits a ``retrieval.degraded`` log.
+    - When a vector backend is requested but ``sqlite-vec`` is not
+      installed, returns :class:`NullVectorIndex` — whose ``query`` also
+      raises ``VectorBackendUnavailable`` so the same fallback path fires.
+    - When a vector backend is requested without an ``embedder``, also
+      returns :class:`NullVectorIndex` (same degraded-fallback contract).
+    - When everything is available, returns a real :class:`SqliteVecBackend`.
     """
     resolved = (backend_name or Config.RETRIEVAL_BACKEND or "keyword").strip().lower()
     if resolved not in {"vector", "sqlite-vec", "sqlitevec"}:

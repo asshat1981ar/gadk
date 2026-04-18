@@ -439,12 +439,15 @@ def main(argv=None):
         "self-prompt",
         help="Run the self-prompting gap-signal loop once (dry-run by default)",
     )
-    p_self_prompt.add_argument(
+    # --dry-run and --write are mutually exclusive so the command's
+    # behavior is unambiguous; when neither is passed, dry-run is assumed.
+    mode = p_self_prompt.add_mutually_exclusive_group()
+    mode.add_argument(
         "--dry-run",
         action="store_true",
         help="Collect signals and synthesize prompts without writing the queue (default)",
     )
-    p_self_prompt.add_argument(
+    mode.add_argument(
         "--write",
         action="store_true",
         help="Actually write synthesized prompts into the queue",

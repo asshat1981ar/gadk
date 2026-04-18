@@ -191,3 +191,155 @@ def test_set_embedder_override_wins_over_default(
         assert rc._resolve_embedder() is sentinel
     finally:
         rc.set_embedder(None)
+
+
+def test_vector_retrieve_skips_reembedding_unchanged_docs(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """Reviewer feedback on #11: avoid re-embedding the whole corpus on
+    every call. Second retrieve with unchanged files should trigger zero
+    new upsert() calls on the backend."""
+    import math
+    from collections.abc import Sequence
+
+    monkeypatch.setattr(Config, "RETRIEVAL_BACKEND", "vector")
+
+    embed_calls: list[int] = []
+
+    def _fake_embedder(texts: Sequence[str]) -> list[list[float]]:
+        embed_calls.append(len(texts))
+        out = []
+        for text in texts:
+            bucket = [0.0] * 32
+            for word in text.lower().split():
+                h = hash(word) & 0x7FFFFFFF
+                bucket[h % 32] += 1.0
+            n = math.sqrt(sum(v * v for v in bucket)) or 1.0
+            out.append([v / n for v in bucket])
+        return out
+
+    class _SpyBackend:
+        name = "spy"
+        upsert_count = 0
+
+        def __init__(self, embedder):
+            self._embedder = embedder
+            self._docs: dict[str, tuple[str, list[float]]] = {}
+
+        def upsert(self, doc_id, text, metadata=None):
+            type(self).upsert_count += 1
+            self._docs[doc_id] = (text, self._embedder([text])[0])
+
+        def query(self, text, top_k=3):
+            from src.services.vector_index import SearchHit
+
+            qv = self._embedder([text])[0]
+            scored = [
+                (doc_id, t, sum(a * b for a, b in zip(v, qv, strict=True)))
+                for doc_id, (t, v) in self._docs.items()
+            ]
+            scored.sort(key=lambda x: -x[2])
+            return [
+                SearchHit(doc_id=d, text=t, score=s, metadata={"path": d})
+                for d, t, s in scored[:top_k]
+            ]
+
+        def close(self):
+            pass
+
+        def known_doc_ids(self):
+            return set(self._docs)
+
+        def delete(self, doc_id):
+            self._docs.pop(doc_id, None)
+
+    backend_instance = _SpyBackend(_fake_embedder)
+
+    monkeypatch.setattr(rc, "resolve_vector_backend", lambda **kwargs: backend_instance)
+    rc.set_embedder(_fake_embedder)
+    rc._doc_hashes.clear()
+    try:
+        (tmp_path / "docs" / "superpowers" / "specs").mkdir(parents=True)
+        (tmp_path / "docs" / "superpowers" / "specs" / "a.md").write_text("alpha beta gamma")
+        (tmp_path / "docs" / "superpowers" / "specs" / "b.md").write_text("delta epsilon zeta")
+
+        # First call: upserts both docs.
+        rc.retrieve_context(RetrievalQuery(query="alpha"), repo_root=tmp_path)
+        first_upserts = _SpyBackend.upsert_count
+        assert first_upserts == 2, f"first call should upsert 2 docs, got {first_upserts}"
+
+        # Second call with identical files: no new upserts.
+        rc.retrieve_context(RetrievalQuery(query="alpha"), repo_root=tmp_path)
+        assert _SpyBackend.upsert_count == first_upserts, (
+            "unchanged docs must not trigger re-embedding"
+        )
+
+        # Modify one file: only that one re-upserts.
+        (tmp_path / "docs" / "superpowers" / "specs" / "a.md").write_text("alpha beta gamma NEW")
+        rc.retrieve_context(RetrievalQuery(query="alpha"), repo_root=tmp_path)
+        assert _SpyBackend.upsert_count == first_upserts + 1, "only the changed doc should re-embed"
+    finally:
+        rc.set_embedder(None)
+        rc._doc_hashes.clear()
+
+
+def test_vector_retrieve_closes_backend(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """Reviewer feedback on #11: SqliteVecBackend connections must not leak."""
+    monkeypatch.setattr(Config, "RETRIEVAL_BACKEND", "vector")
+
+    class _CloseTracker:
+        name = "closable"
+        closed = 0
+
+        def upsert(self, **kwargs):
+            pass
+
+        def query(self, *args, **kwargs):
+            return []
+
+        def close(self):
+            type(self).closed += 1
+
+        def known_doc_ids(self):
+            return set()
+
+        def delete(self, doc_id):
+            pass
+
+    monkeypatch.setattr(rc, "resolve_vector_backend", lambda **kwargs: _CloseTracker())
+    rc.set_embedder(lambda texts: [[0.0] * 32 for _ in texts])
+    rc._doc_hashes.clear()
+    try:
+        (tmp_path / "docs" / "superpowers" / "specs").mkdir(parents=True)
+        (tmp_path / "docs" / "superpowers" / "specs" / "a.md").write_text("content")
+        rc.retrieve_context(RetrievalQuery(query="q"), repo_root=tmp_path)
+        assert _CloseTracker.closed == 1, "backend.close() must be called in finally block"
+    finally:
+        rc.set_embedder(None)
+        rc._doc_hashes.clear()
+
+
+def test_retrieve_context_falls_back_on_unexpected_error(
+    monkeypatch: pytest.MonkeyPatch,
+    stub_keyword: list[str],
+    caplog: pytest.LogCaptureFixture,
+    tmp_path: Path,
+) -> None:
+    """Reviewer feedback on #11: any vector-path failure degrades cleanly
+    to keyword, not just VectorBackendUnavailable."""
+    import logging
+
+    monkeypatch.setattr(Config, "RETRIEVAL_BACKEND", "vector")
+
+    def _boom(request, resolved_root):
+        raise RuntimeError("schema migration failed")
+
+    monkeypatch.setattr(rc, "_vector_retrieve", _boom)
+
+    with caplog.at_level(logging.WARNING, logger="retrieval_context"):
+        result = rc.retrieve_context(RetrievalQuery(query="q"), repo_root=tmp_path)
+
+    assert stub_keyword == ["q"], "keyword fallback should fire on any vector-path error"
+    assert any("unexpected_error" in rec.message for rec in caplog.records)
+    assert result["sources"][0]["snippet"] == "kw:q"

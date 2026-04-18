@@ -214,6 +214,26 @@ def test_self_prompt_dry_run_does_not_write_queue(
     assert Config.SELF_PROMPT_ENABLED is False
 
 
+def test_self_prompt_rejects_dry_run_with_write(
+    capsys: pytest.CaptureFixture[str], tmp_state: tuple[Path, Path]
+) -> None:
+    """Reviewer feedback on #11: --dry-run and --write must not be
+    combinable. argparse raises SystemExit(2) on mutex violations."""
+    state, events = tmp_state
+    with pytest.raises(SystemExit):
+        swarm_cli.main(
+            [
+                "self-prompt",
+                "--dry-run",
+                "--write",
+                "--state-file",
+                str(state),
+                "--events-file",
+                str(events),
+            ]
+        )
+
+
 def test_self_prompt_write_appends_to_queue(
     capsys: pytest.CaptureFixture[str],
     tmp_state: tuple[Path, Path],
