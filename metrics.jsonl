@@ -2,10 +2,24 @@
   "agents": {},
   "tools": {
     "GitHubTool": {
-      "calls_total": 5,
+      "calls_total": 1,
       "errors_total": 0,
-      "duration_seconds_sum": 0.08844288100954145,
-      "duration_seconds_count": 5,
+      "duration_seconds_sum": 0.034266723989276215,
+      "duration_seconds_count": 1,
+      "last_error": ""
+    },
+    "ListDirectory": {
+      "calls_total": 2,
+      "errors_total": 0,
+      "duration_seconds_sum": 0.04169093399832491,
+      "duration_seconds_count": 2,
+      "last_error": ""
+    },
+    "ReadFile": {
+      "calls_total": 2,
+      "errors_total": 0,
+      "duration_seconds_sum": 0.004997936979634687,
+      "duration_seconds_count": 2,
       "last_error": ""
     }
   },
