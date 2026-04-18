@@ -11,8 +11,30 @@ Runs a continuous loop:
 import asyncio
 import json
 import os
+import re
 import time
 from typing import List, Dict, Optional
+
+# Allowed characters in generated task IDs. Collisions after slugification are
+# broader than the prefix alone implies, but this regex at least rejects
+# control chars, path separators, and other nasties before they reach the
+# state file / event log.
+_TASK_ID_RE = re.compile(r"^[a-z0-9][a-z0-9\-]{0,62}$")
+
+
+def _slugify_task_id(prefix: str, title: str, max_len: int = 40) -> str:
+    """Derive a deterministic, path-safe task_id from a title.
+
+    Validates the produced ID against ``_TASK_ID_RE``; raises ValueError
+    for titles that would yield an unsafe identifier so the caller can
+    log and skip.
+    """
+    raw = title.strip().lower()
+    slug = re.sub(r"[^a-z0-9]+", "-", raw).strip("-")[:max_len] or "untitled"
+    task_id = f"{prefix}-{slug}"
+    if not _TASK_ID_RE.match(task_id):
+        raise ValueError(f"rejected unsafe task_id derived from title: {title!r}")
+    return task_id
 
 from src.config import Config
 from src.observability.logger import configure_logging, get_logger, set_session_id, set_trace_id
@@ -126,7 +148,11 @@ class AutonomousSDLCEngine:
         ]
         # Pick fallback not recently done
         for fb in fallback_tasks:
-            tid = f"sdlc-{fb['title'].lower().replace(' ', '-')[:40]}"
+            try:
+                tid = _slugify_task_id("sdlc", fb["title"])
+            except ValueError as exc:
+                logger.warning("skipping fallback task with unsafe title: %s", exc)
+                continue
             existing = self.sm.get_task(tid)
             if not existing or existing.get("status") not in ("COMPLETED", "MERGED", "DELIVERED"):
                 return [fb]
@@ -142,14 +168,19 @@ class AutonomousSDLCEngine:
         try:
             open_prs = await self.gh.list_pull_requests(state="open")
             open_titles = {p["title"].lower() for p in open_prs}
-        except Exception:
+        except (ConnectionError, TimeoutError, KeyError, TypeError) as exc:
+            logger.warning("open-PR scan failed; proceeding without dedup: %s", exc)
             open_titles = set()
 
         for task in tasks:
             title = task.get("title", "").strip()
             if not title:
                 continue
-            task_id = f"sdlc-{title.lower().replace(' ', '-')[:40]}"
+            try:
+                task_id = _slugify_task_id("sdlc", title)
+            except ValueError as exc:
+                logger.warning("skipping task with unsafe title: %s", exc)
+                continue
             existing = self.sm.get_task(task_id)
             if existing and existing.get("status") in ("COMPLETED", "MERGED"):
                 continue

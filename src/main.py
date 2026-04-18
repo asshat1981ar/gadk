@@ -87,15 +87,16 @@ async def process_prompt(runner, session, user_query: str) -> None:
 
     try:
         async for event in events:
-            if hasattr(event, 'content') and event.content and event.content.parts:
+            if hasattr(event, "content") and event.content and event.content.parts:
                 text = event.content.parts[0].text
                 if text:
-                    print(f"Swarm: {text}")
-                    logger.info(f"Swarm response: {text}", extra={"session_id": session.id})
+                    logger.info(
+                        f"Swarm response: {text}", extra={"session_id": session.id}
+                    )
     except Exception as e:
         logger.exception("Error during swarm execution")
         if "AttributeError" not in str(e):
-            print(f"Error during swarm execution: {str(e)}")
+            logger.error("Error during swarm execution: %s", e)
 
 
 async def run_swarm_loop(session_service, session, runner) -> None:
@@ -112,7 +113,6 @@ async def run_swarm_loop(session_service, session, runner) -> None:
     while True:
         if is_shutdown_requested():
             logger.info("Shutdown sentinel detected. Exiting swarm loop.")
-            print("Shutdown requested. Exiting...")
             break
 
         # Check for injected prompts
@@ -120,8 +120,10 @@ async def run_swarm_loop(session_service, session, runner) -> None:
         for entry in prompts:
             prompt_text = entry.get("prompt", "")
             user_id = entry.get("user_id", "cli_user")
-            logger.info(f"Injected prompt from {user_id}: {prompt_text}", extra={"session_id": session.id})
-            print(f"[Injected] {user_id}: {prompt_text}")
+            logger.info(
+                f"Injected prompt from {user_id}: {prompt_text}",
+                extra={"session_id": session.id},
+            )
             await process_prompt(runner, session, prompt_text)
 
         await asyncio.sleep(2)
@@ -135,12 +137,16 @@ async def run_single(session_service, session, runner) -> None:
         for entry in prompts:
             prompt_text = entry.get("prompt", "")
             user_id = entry.get("user_id", "cli_user")
-            logger.info(f"Processing queued prompt from {user_id}: {prompt_text}", extra={"session_id": session.id})
-            print(f"[Queued] {user_id}: {prompt_text}")
+            logger.info(
+                f"Processing queued prompt from {user_id}: {prompt_text}",
+                extra={"session_id": session.id},
+            )
             await process_prompt(runner, session, prompt_text)
     else:
-        print("No prompts in queue. Exiting.")
-        logger.info("No prompts in queue. Exiting single-run mode.", extra={"session_id": session.id})
+        logger.info(
+            "No prompts in queue. Exiting single-run mode.",
+            extra={"session_id": session.id},
+        )
 
 
 async def main():
@@ -169,19 +175,19 @@ async def main():
         )
         runner.callbacks = [ObservabilityCallback()]
 
-        print("--- Cognitive Foundry Swarm Active ---")
-        print(f"Session ID: {session.id}")
+        logger.info("Cognitive Foundry Swarm Active (session=%s)", session.id)
 
         # Check for API Key (OpenRouter)
         if not os.getenv("OPENROUTER_API_KEY"):
             logger.error("OPENROUTER_API_KEY not found in environment.")
-            print("Error: OPENROUTER_API_KEY not found in environment.")
             return
 
         autonomous = os.getenv("AUTONOMOUS_MODE", "false").lower() == "true"
 
         if autonomous:
-            print("Running in autonomous loop mode. Press Ctrl+C or run 'swarm stop' to exit.")
+            logger.info(
+                "Running in autonomous loop mode. Use `swarm_cli stop` to exit."
+            )
             await run_swarm_loop(session_service, session, runner)
         else:
             await run_single(session_service, session, runner)

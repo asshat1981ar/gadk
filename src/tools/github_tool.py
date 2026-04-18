@@ -1,63 +1,34 @@
 import asyncio
 import logging
 
+from src.config import Config
+
 try:
     from github import Github
-except ImportError:
-    # Mock for environment where PyGithub is not installed
-    class Github:
-        def __init__(self, token): pass
-        def get_repo(self, name): return MockRepo()
-    class MockRepo:
-        def create_issue(self, title, body): return MockIssue()
-        def get_issues(self, state="open"): return []
-        def get_branch(self, name):
-            class MockBranch:
-                class MockCommit:
-                    sha = "mocksha"
-                commit = MockCommit()
-            return MockBranch()
-        def create_git_ref(self, ref, sha): pass
-        def create_pull(self, title, body, head, base): return MockIssue()
-        def get_pulls(self, state): return []
-        def get_pull(self, number):
-            class MockPR:
-                def create_review(self, body, event): pass
-            return MockPR()
-        def get_contents(self, path, ref=None):
-            if not path:
-                return [MockContent("README.md", "file"), MockContent("src", "dir")]
-            return MockContent(path, "file", content=b"mock content")
-    class MockContent:
-        def __init__(self, path, type, content=None):
-            self.path = path
-            self.type = type
-            self._content = content
-        @property
-        def content(self):
-            import base64
-            return base64.b64encode(self._content).decode() if self._content else ""
-        @property
-        def decoded_content(self):
-            return self._content or b""
-    class MockIssue:
-        html_url = "https://github.com/mock/repo/issues/1"
-        number = 1
-        title = "Mock Title"
-        state = "open"
-        class MockHead:
-            ref = "mock-branch"
-        head = MockHead()
+except ImportError:  # pragma: no cover — branch depends on environment
+    if Config.GITHUB_MOCK_ALLOWED or Config.TEST_MODE:
+        from src.testing.github_mocks import Github  # type: ignore[assignment]
+    else:
+        raise RuntimeError(
+            "PyGithub is not installed but Config.GITHUB_MOCK_ALLOWED is False. "
+            "Install PyGithub (`pip install pygithub`) or set GITHUB_MOCK_ALLOWED=true "
+            "for offline/test use only."
+        ) from None
 
 try:
     from google.adk import Tool
 except ImportError:
-    class Tool:
+    class Tool:  # type: ignore[no-redef]
         pass
 
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
-from src.config import Config
+try:
+    from github import GithubException  # type: ignore[import]
+except ImportError:  # pragma: no cover
+    class GithubException(Exception):  # type: ignore[no-redef]
+        """PyGithub-compatible fallback exception for offline/test mode."""
+
 from src.observability.metrics import tool_timer
 from src.tools.content_guards import (
     LEAKED_REVIEW_PLACEHOLDER,
@@ -66,6 +37,17 @@ from src.tools.content_guards import (
 )
 
 logger = logging.getLogger(__name__)
+
+#: Narrow exception tuple for GitHub API boundaries. Broader than
+#: ``GithubException`` because network and auth errors surface as other
+#: exception types, but narrower than bare ``Exception``.
+_GITHUB_API_ERRORS: tuple[type[BaseException], ...] = (
+    GithubException,
+    ConnectionError,
+    TimeoutError,
+    ValueError,
+    KeyError,
+)
 
 _GITHUB_RETRY_WAIT = wait_exponential(multiplier=0.01, min=0, max=0.05)
 
@@ -121,7 +103,10 @@ class GitHubTool(Tool):
         repo_name = Config.REPO_NAME or "unknown/repo"
         try:
             self.repo = self.gh.get_repo(repo_name)
-        except Exception:
+        except _GITHUB_API_ERRORS as exc:
+            logger.warning(
+                "GitHubTool: failed to resolve repo '%s': %s", repo_name, exc
+            )
             self.repo = None
 
     @retry(
@@ -134,7 +119,7 @@ class GitHubTool(Tool):
         """Retry narrow repository content reads without broad refactors."""
         try:
             return self.repo.get_contents(path, ref=ref)
-        except Exception as exc:
+        except _GITHUB_API_ERRORS as exc:
             raise GitHubRetryableError(str(exc)) from exc
 
     def _find_duplicate_open_issue(self, title: str):
@@ -152,7 +137,7 @@ class GitHubTool(Tool):
                     continue
                 if _normalize_title(issue.title) == target:
                     return issue
-        except Exception as exc:  # pragma: no cover — observability only
+        except _GITHUB_API_ERRORS as exc:  # pragma: no cover — observability only
             logger.warning("dedup scan failed, filing anyway: %s", exc)
         return None
 
@@ -183,8 +168,9 @@ class GitHubTool(Tool):
         try:
             issue = self.repo.create_issue(title=title, body=clean_body)
             return issue.html_url
-        except Exception as e:
-            return f"Error creating issue: {str(e)}"
+        except _GITHUB_API_ERRORS as exc:
+            logger.error("create_issue failed: %s", exc, exc_info=True)
+            return f"Error creating issue: {exc}"
 
     async def create_pull_request(self, title: str, body: str, head: str, base: str = "main") -> str:
         """Open a PR, with review-section sanitization and an empty-body guard.
@@ -212,13 +198,16 @@ class GitHubTool(Tool):
             # Ensure branch exists; if not, create it from base
             try:
                 self.repo.get_branch(head)
-            except Exception:
+            except _GITHUB_API_ERRORS:
                 default_branch = self.repo.get_branch(base)
-                self.repo.create_git_ref(ref=f"refs/heads/{head}", sha=default_branch.commit.sha)
+                self.repo.create_git_ref(
+                    ref=f"refs/heads/{head}", sha=default_branch.commit.sha
+                )
             pr = self.repo.create_pull(title=title, body=clean_body, head=head, base=base)
             return pr.html_url
-        except Exception as e:
-            return f"Error creating PR: {str(e)}"
+        except _GITHUB_API_ERRORS as exc:
+            logger.error("create_pull_request failed: %s", exc, exc_info=True)
+            return f"Error creating PR: {exc}"
 
     async def list_pull_requests(self, state: str = "open") -> list:
         if not self.repo:
@@ -235,7 +224,8 @@ class GitHubTool(Tool):
                 }
                 for p in prs
             ]
-        except Exception as e:
+        except _GITHUB_API_ERRORS as exc:
+            logger.warning("list_pull_requests failed: %s", exc)
             return []
 
     async def review_pull_request(self, pr_number: int, body: str, event: str = "COMMENT") -> str:
@@ -245,8 +235,9 @@ class GitHubTool(Tool):
             pr = self.repo.get_pull(pr_number)
             pr.create_review(body=body, event=event)
             return f"Reviewed PR #{pr_number}"
-        except Exception as e:
-            return f"Error reviewing PR: {str(e)}"
+        except _GITHUB_API_ERRORS as exc:
+            logger.error("review_pull_request(%s) failed: %s", pr_number, exc)
+            return f"Error reviewing PR: {exc}"
 
     async def merge_pull_request(self, pr_number: int, commit_message: str = None) -> str:
         if not self.repo:
@@ -255,8 +246,9 @@ class GitHubTool(Tool):
             pr = self.repo.get_pull(pr_number)
             merge_result = pr.merge(commit_message=commit_message or f"Merge PR #{pr_number}")
             return f"Merged PR #{pr_number}: {merge_result.sha}"
-        except Exception as e:
-            return f"Error merging PR: {str(e)}"
+        except _GITHUB_API_ERRORS as exc:
+            logger.error("merge_pull_request(%s) failed: %s", pr_number, exc)
+            return f"Error merging PR: {exc}"
 
     @tool_timer("GitHubTool")
     async def create_or_update_file(self, path: str, content: str, message: str, branch: str, base: str = "main") -> str:
@@ -267,9 +259,11 @@ class GitHubTool(Tool):
             # Ensure branch exists
             try:
                 self.repo.get_branch(branch)
-            except Exception:
+            except _GITHUB_API_ERRORS:
                 default_branch = self.repo.get_branch(base)
-                self.repo.create_git_ref(ref=f"refs/heads/{branch}", sha=default_branch.commit.sha)
+                self.repo.create_git_ref(
+                    ref=f"refs/heads/{branch}", sha=default_branch.commit.sha
+                )
             # Try to get existing file for sha
             try:
                 existing = self.repo.get_contents(path, ref=branch)
@@ -277,11 +271,12 @@ class GitHubTool(Tool):
                     existing = existing[0]
                 self.repo.update_file(path, message, content, existing.sha, branch=branch)
                 return f"Updated {path} in {branch}"
-            except Exception:
+            except _GITHUB_API_ERRORS:
                 self.repo.create_file(path, message, content, branch=branch)
                 return f"Created {path} in {branch}"
-        except Exception as e:
-            return f"Error creating/updating file: {str(e)}"
+        except _GITHUB_API_ERRORS as exc:
+            logger.error("create_or_update_file failed (%s): %s", path, exc, exc_info=True)
+            return f"Error creating/updating file: {exc}"
 
     @tool_timer("GitHubTool")
     async def commit_files_to_branch(self, files: dict, message: str, branch: str, base: str = "main") -> str:
@@ -312,8 +307,9 @@ class GitHubTool(Tool):
             if isinstance(content_file, list):
                 return f"Error: {path} is a directory, not a file"
             return content_file.decoded_content.decode("utf-8")
-        except Exception as e:
-            return f"Error reading file: {str(e)}"
+        except (GitHubRetryableError, *_GITHUB_API_ERRORS, UnicodeDecodeError) as exc:
+            logger.warning("read_repo_file(%s) failed: %s", path, exc)
+            return f"Error reading file: {exc}"
 
     @tool_timer("GitHubTool")
     async def list_repo_contents(self, path: str = "") -> list:
@@ -336,7 +332,8 @@ class GitHubTool(Tool):
                 {"name": c.name, "path": c.path, "type": c.type}
                 for c in contents
             ]
-        except Exception as e:
+        except (GitHubRetryableError, *_GITHUB_API_ERRORS) as exc:
+            logger.warning("list_repo_contents(%s) failed: %s", path, exc)
             return []
 
 

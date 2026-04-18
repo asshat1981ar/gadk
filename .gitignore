@@ -26,7 +26,12 @@ build/
 sessions.db
 swarm.pid
 .swarm_shutdown
+.swarm_self_prompt_off
 .swarm_history
 prompt_queue.jsonl
 state.json.bak
 events.jsonl.bak
+costs.jsonl
+coverage.xml
+.coverage
+.secrets.baseline
