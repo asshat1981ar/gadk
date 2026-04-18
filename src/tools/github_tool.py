@@ -1,4 +1,5 @@
 import asyncio
+import logging
 
 try:
     from github import Github
@@ -9,6 +10,7 @@ except ImportError:
         def get_repo(self, name): return MockRepo()
     class MockRepo:
         def create_issue(self, title, body): return MockIssue()
+        def get_issues(self, state="open"): return []
         def get_branch(self, name):
             class MockBranch:
                 class MockCommit:
@@ -57,12 +59,59 @@ from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_ex
 
 from src.config import Config
 from src.observability.metrics import tool_timer
+from src.tools.content_guards import (
+    LEAKED_REVIEW_PLACEHOLDER,
+    is_low_value_content,
+    sanitize_review,
+)
+
+logger = logging.getLogger(__name__)
 
 _GITHUB_RETRY_WAIT = wait_exponential(multiplier=0.01, min=0, max=0.05)
+
+#: Cap for the open-issue scan used by create_issue dedup. Most repos stay well
+#: under 100 open issues; scanning more would slow every create_issue call and
+#: the marginal dedup value drops fast.
+_DEDUP_OPEN_ISSUE_SCAN_LIMIT = 100
+
+#: Token used in issue bodies to mark the critic review section. Keep in sync
+#: with the body template in autonomous_sdlc.py / android_rpg_sdlc.py.
+_CRITIC_REVIEW_MARKER = "**Critic Review:**"
+_REVIEW_MARKER = "**Review:**"
 
 
 class GitHubRetryableError(RuntimeError):
     """Raised for transient GitHub content reads that should be retried."""
+
+
+def _sanitize_review_section(body: str) -> str:
+    """Run sanitize_review over the content after a Critic Review / Review marker.
+
+    The SDLC pipelines build issue and PR bodies like::
+
+        **Critic Review:**
+        <raw agent output, possibly JSON leakage>
+
+    We walk the body, find the marker, sanitize everything after it up to the
+    next ``---`` separator (or end of body), and splice the clean version
+    back in. If no marker is found, the body is returned unchanged.
+    """
+    for marker in (_CRITIC_REVIEW_MARKER, _REVIEW_MARKER):
+        idx = body.find(marker)
+        if idx == -1:
+            continue
+        head = body[: idx + len(marker)]
+        tail = body[idx + len(marker) :]
+        # Review runs until a trailing separator (Feature Discovery footer etc.)
+        # or the end of the body.
+        sep_idx = tail.find("\n---")
+        if sep_idx == -1:
+            review_part, footer = tail, ""
+        else:
+            review_part, footer = tail[:sep_idx], tail[sep_idx:]
+        cleaned = sanitize_review(review_part)
+        return f"{head}\n{cleaned}{footer}"
+    return body
 
 
 class GitHubTool(Tool):
@@ -88,19 +137,77 @@ class GitHubTool(Tool):
         except Exception as exc:
             raise GitHubRetryableError(str(exc)) from exc
 
+    def _find_duplicate_open_issue(self, title: str):
+        """Return an existing open issue whose title matches ``title`` (case-insensitive,
+        whitespace-normalized), or None. Swallows errors — dedup is best-effort."""
+        from src.tools.content_guards import _normalize_title  # local to keep public API small
+        target = _normalize_title(title)
+        try:
+            # PyGithub's get_issues is paginated and lazy; slice to bound the scan.
+            for idx, issue in enumerate(self.repo.get_issues(state="open")):
+                if idx >= _DEDUP_OPEN_ISSUE_SCAN_LIMIT:
+                    break
+                # Skip pull requests — they show up in issues/ but we dedup those separately.
+                if getattr(issue, "pull_request", None):
+                    continue
+                if _normalize_title(issue.title) == target:
+                    return issue
+        except Exception as exc:  # pragma: no cover — observability only
+            logger.warning("dedup scan failed, filing anyway: %s", exc)
+        return None
+
     @tool_timer("GitHubTool")
     async def create_issue(self, title, body):
+        """Create an issue, with dedup against open issues + review-section sanitization.
+
+        If an open issue with the same title (normalized) already exists,
+        returns that issue's URL instead of filing a duplicate. The body is
+        scanned for a ``**Critic Review:**`` section and any tool-call-JSON
+        leakage in that section is replaced with a placeholder marker before
+        the issue is filed.
+        """
         if not self.repo:
             return "Error: Repository not configured or not found"
+
+        # Dedup: don't file a new issue if an equivalent open one exists.
+        existing = await asyncio.to_thread(self._find_duplicate_open_issue, title)
+        if existing is not None:
+            logger.info(
+                "create_issue: skipping duplicate of open issue #%s (%s)",
+                existing.number,
+                existing.html_url,
+            )
+            return existing.html_url
+
+        clean_body = _sanitize_review_section(body or "")
         try:
-            issue = self.repo.create_issue(title=title, body=body)
+            issue = self.repo.create_issue(title=title, body=clean_body)
             return issue.html_url
         except Exception as e:
             return f"Error creating issue: {str(e)}"
 
     async def create_pull_request(self, title: str, body: str, head: str, base: str = "main") -> str:
+        """Open a PR, with review-section sanitization and an empty-body guard.
+
+        Refuses to file the PR if the body (after sanitization) contains nothing
+        but the leaked-review placeholder — that's the signal that the Critic
+        produced no usable review and the pipeline should not have reached this
+        call. Pipelines are expected to check ``is_low_value_content`` on the
+        generated code before calling this, but we defend in depth here anyway.
+        """
         if not self.repo:
             return "Error: Repository not configured or not found"
+
+        clean_body = _sanitize_review_section(body or "")
+
+        # Defense in depth: if the only thing the body has to say is "the
+        # review was leakage", refuse to ship. Real PRs have task description
+        # text around the review section.
+        if is_low_value_content(clean_body.replace(LEAKED_REVIEW_PLACEHOLDER, ""), min_bytes=40):
+            msg = "Error creating PR: body is empty or contains only leaked review"
+            logger.warning("create_pull_request refused: %s (head=%s)", msg, head)
+            return msg
+
         try:
             # Ensure branch exists; if not, create it from base
             try:
@@ -108,7 +215,7 @@ class GitHubTool(Tool):
             except Exception:
                 default_branch = self.repo.get_branch(base)
                 self.repo.create_git_ref(ref=f"refs/heads/{head}", sha=default_branch.commit.sha)
-            pr = self.repo.create_pull(title=title, body=body, head=head, base=base)
+            pr = self.repo.create_pull(title=title, body=clean_body, head=head, base=base)
             return pr.html_url
         except Exception as e:
             return f"Error creating PR: {str(e)}"
