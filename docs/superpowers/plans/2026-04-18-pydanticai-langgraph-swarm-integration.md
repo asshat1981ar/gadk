@@ -277,7 +277,6 @@ class SpecialistRegistry:
 pydantic_ai_enabled: bool = False
 instructor_enabled: bool = True
 langgraph_enabled: bool = False
-llamaindex_enabled: bool = False
 ```
 
 - [ ] **Step 4: Run test to verify it passes**

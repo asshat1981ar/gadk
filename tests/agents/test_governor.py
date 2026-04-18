@@ -84,7 +84,7 @@ def test_register_external_gate_skipped_when_client_missing(
     import sys as _sys
 
     # Ensure the client module is not resolvable.
-    _sys.modules.pop("src.mcp.sdlc_client", None)
+    monkeypatch.delitem(_sys.modules, "src.mcp.sdlc_client", raising=False)
     # Make the import fail cleanly.
     orig_import = (
         __builtins__["__import__"] if isinstance(__builtins__, dict) else __builtins__.__import__

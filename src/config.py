@@ -46,7 +46,6 @@ class Settings(BaseSettings):
     pydantic_ai_enabled: bool = False
     instructor_enabled: bool = False
     langgraph_enabled: bool = False
-    llamaindex_enabled: bool = False
     token_quota_per_task: int = 50000
 
     langfuse_enabled: bool = False
@@ -112,7 +111,6 @@ class Config:
     PYDANTIC_AI_ENABLED = _settings.pydantic_ai_enabled
     INSTRUCTOR_ENABLED = _settings.instructor_enabled
     LANGGRAPH_ENABLED = _settings.langgraph_enabled
-    LLAMAINDEX_ENABLED = _settings.llamaindex_enabled
     TOKEN_QUOTA_PER_TASK = _settings.token_quota_per_task
     LANGFUSE_ENABLED = _settings.langfuse_enabled
     HELICONE_ENABLED = _settings.helicone_enabled

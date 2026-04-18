@@ -325,7 +325,10 @@ def cmd_self_prompt(args):
         return 0
 
     # Write path: use run_once with the configured queue.
-    written = sp.run_once(sm=sm, coverage_xml=coverage_path, queue_path=queue_path)
+    sentinel_dir = Path(args.sentinel_dir) if args.sentinel_dir else None
+    written = sp.run_once(
+        sm=sm, coverage_xml=coverage_path, queue_path=queue_path, sentinel_dir=sentinel_dir
+    )
     print(f"wrote {len(written)} prompt(s) to {queue_path}")
     for prompt in written:
         print(
@@ -456,6 +459,11 @@ def main(argv=None):
     p_self_prompt.add_argument("--queue-file", default=QUEUE_PATH)
     p_self_prompt.add_argument("--state-file", help="Path to state JSON file")
     p_self_prompt.add_argument("--events-file", help="Path to events JSONL file")
+    p_self_prompt.add_argument(
+        "--sentinel-dir",
+        default=None,
+        help="Directory to check for off-switch sentinels (default: current working directory)",
+    )
     p_self_prompt.set_defaults(func=cmd_self_prompt)
 
     # If no args provided, enter interactive mode

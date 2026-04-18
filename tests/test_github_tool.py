@@ -87,25 +87,8 @@ def test_pygithub_missing_raises_when_mock_not_allowed(monkeypatch: pytest.Monke
     monkeypatch.setattr(config_mod.Config, "GITHUB_MOCK_ALLOWED", False)
     monkeypatch.setattr(config_mod.Config, "TEST_MODE", False)
 
-    saved_github = sys.modules.get("github")
-    sys.modules["github"] = None  # type: ignore[assignment]
-    sys.modules.pop("src.tools.github_tool", None)
-    try:
-        with pytest.raises(RuntimeError, match="PyGithub is not installed"):
-            importlib.import_module("src.tools.github_tool")
-    finally:
-        if saved_github is not None:
-            sys.modules["github"] = saved_github
-        else:
-            sys.modules.pop("github", None)
-        sys.modules.pop("src.tools.github_tool", None)
-        # Re-enable the mock path so subsequent test collection succeeds
-        # even though monkeypatch teardown has not yet run.
-        import os as _os
+    monkeypatch.delitem(sys.modules, "src.tools.github_tool", raising=False)
+    monkeypatch.setitem(sys.modules, "github", None)  # type: ignore[arg-type]
 
-        _os.environ["GITHUB_MOCK_ALLOWED"] = "true"
-        _os.environ["TEST_MODE"] = "true"
-        config_mod.get_settings.cache_clear()
-        config_mod.Config.GITHUB_MOCK_ALLOWED = True
-        config_mod.Config.TEST_MODE = True
+    with pytest.raises(RuntimeError, match="PyGithub is not installed"):
         importlib.import_module("src.tools.github_tool")

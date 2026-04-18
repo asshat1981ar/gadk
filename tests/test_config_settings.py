@@ -3,8 +3,7 @@ import importlib
 import src.config as config_module
 
 
-def _reload_config_module(monkeypatch, tmp_path):
-    monkeypatch.chdir(tmp_path)
+def _reload_config_module(monkeypatch):
     return importlib.reload(config_module)
 
 
@@ -36,8 +35,8 @@ def test_settings_parses_boolean_flags(monkeypatch):
     assert settings.test_mode is False
 
 
-def test_get_settings_returns_cached_settings(monkeypatch, tmp_path):
-    module = _reload_config_module(monkeypatch, tmp_path)
+def test_get_settings_returns_cached_settings(monkeypatch):
+    module = _reload_config_module(monkeypatch)
     monkeypatch.setenv("OPENROUTER_MODEL", "openrouter/test-model")
     module.get_settings.cache_clear()
 
@@ -48,12 +47,12 @@ def test_get_settings_returns_cached_settings(monkeypatch, tmp_path):
     assert first.openrouter_model == "openrouter/test-model"
 
 
-def test_config_preserves_legacy_uppercase_attributes(monkeypatch, tmp_path):
+def test_config_preserves_legacy_uppercase_attributes(monkeypatch):
     monkeypatch.setenv("TEST_MODE", "true")
     monkeypatch.setenv("OPENROUTER_MODEL", "openrouter/compat-model")
     monkeypatch.setenv("OPENROUTER_TOOL_MODEL", "openrouter/tool-compat-model")
 
-    module = _reload_config_module(monkeypatch, tmp_path)
+    module = _reload_config_module(monkeypatch)
 
     assert module.Config.TEST_MODE is True
     assert module.Config.OPENROUTER_MODEL == "openrouter/compat-model"

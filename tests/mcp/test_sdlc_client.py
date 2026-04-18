@@ -45,7 +45,7 @@ async def test_submit_quality_gate_routes_timeout(monkeypatch: pytest.MonkeyPatc
     class _FakeModule:
         call_smithery_tool = staticmethod(_slow_tool)
 
-    sys.modules["src.tools.smithery_bridge"] = _FakeModule  # type: ignore[assignment]
+    monkeypatch.setitem(sys.modules, "src.tools.smithery_bridge", _FakeModule)  # type: ignore[arg-type]
     # Shrink the timeout for testing
     orig_wait = _asyncio.wait_for
 
@@ -56,7 +56,6 @@ async def test_submit_quality_gate_routes_timeout(monkeypatch: pytest.MonkeyPatc
 
     out = await sdlc_client.submit_quality_gate(pr_number=1, gates=[])
     assert out["status"] == "timeout"
-    sys.modules.pop("src.tools.smithery_bridge", None)
 
 
 def test_submit_gate_decision_skipped_when_flag_off(monkeypatch: pytest.MonkeyPatch) -> None:

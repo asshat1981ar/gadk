@@ -61,3 +61,26 @@ class TestAgentDecisions:
     def test_normalize_review_verdict_rejects_invalid_payload(self):
         with pytest.raises(ValueError, match="summary"):
             normalize_review_verdict({"status": "pass"})
+
+
+# ---------------------------------------------------------------------------
+# Config.PYDANTIC_AI_ENABLED True-branch coverage
+# ---------------------------------------------------------------------------
+
+
+def test_choose_delegate_pydantic_ai_enabled_sets_fallback_reason(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Config.PYDANTIC_AI_ENABLED=True + library absent → specific fallback reason."""
+    import src.services.agent_decisions as ad_mod
+
+    monkeypatch.setattr(ad_mod.Config, "PYDANTIC_AI_ENABLED", True)
+    monkeypatch.setattr(ad_mod, "PYDANTIC_AI_AVAILABLE", False)
+
+    decision = choose_delegate(
+        user_goal="ship the requested change",  # no keyword match → fallback path
+        available_agents=["Builder"],
+    )
+
+    assert decision.target_agent == "Builder"
+    assert decision.reason == "pydantic-ai decisioning unavailable; using deterministic fallback"
