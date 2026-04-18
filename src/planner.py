@@ -227,7 +227,11 @@ def _parse_tool_calls(text: str) -> list[dict[str, Any]]:
                 continue
             start = cm.end()
             # Guard against pathologically large content fields (DoS / O(n) scan).
-            if len(raw) - start > Config.PLANNER_MAX_CONTENT_BYTES:
+            # Measure in UTF-8 bytes to match the top-level text guard and
+            # ``PLANNER_MAX_CONTENT_BYTES`` (byte-denominated by name + docstring).
+            # ``len(str)`` returns codepoints which undercounts for non-ASCII input
+            # and would let slightly-over-limit payloads slip past.
+            if len(raw[start:].encode("utf-8")) > Config.PLANNER_MAX_CONTENT_BYTES:
                 continue
             # The content string ends at the last '"' in the slice; everything
             # after it is JSON closing syntax (e.g. '"}}').  rfind is O(n) but

@@ -141,22 +141,38 @@ def test_parse_tool_calls_parametrized(text, expected_calls):
 
 
 def test_parse_tool_calls_caps_pathological_content_size():
-    """Oversized content must not produce a huge ``write_file`` tool call.
+    """Oversized content must not produce a huge ``write_file`` tool call,
+    and parsing must stay fast (~O(1) relative to content size).
 
-    This exercises the size cap used to avoid pathological parsing behavior on
-    very large payloads and verifies the resulting tool calls stay within the
-    expected guardrails.
+    Exercises the two-layer size cap in ``_parse_tool_calls``:
+      * The top-level guard skips fenced-block scans when total text exceeds
+        ``PLANNER_MAX_CONTENT_BYTES`` (primary DoS defence).
+      * The per-block walker cap in Fallback 3 rejects individual
+        write_file blocks whose content slice exceeds the same limit.
+
+    The ~10 MB payload below blew past 1s of parsing before the guards
+    landed; with them it should complete in well under 100 ms.
     """
+    import time as _time
+
     big_content = "X" * 10_000_001  # ~10 million bytes
     text = '```json\n{"write_file": 1, "path": "big.txt", "content": "' + big_content + '"}\n```'
 
+    start = _time.monotonic()
     calls = planner._parse_tool_calls(text)
+    elapsed_sec = _time.monotonic() - start
+
     # The oversized block must not produce a write_file call with the huge content.
     assert not any(
         c.get("tool_name") == "write_file"
         and len(c.get("args", {}).get("content", "")) > Config.PLANNER_MAX_CONTENT_BYTES
         for c in calls
     )
+    # Timing guardrail — loose enough to avoid CI flake but tight enough to
+    # catch regressions where the guards stop working (pre-fix: ~1s, post-fix: ~1ms).
+    assert (
+        elapsed_sec < 0.5
+    ), f"parser took {elapsed_sec:.3f}s on a 10 MB payload; DoS guard may be broken"
 
 
 @pytest.mark.asyncio
