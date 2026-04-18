@@ -5,6 +5,7 @@ from tenacity import wait_none
 
 import src.tools.smithery_bridge as smithery_bridge
 
+
 @pytest.mark.asyncio
 async def test_call_smithery_tool_error_handling():
     # Test error when smithery command is missing or fails
@@ -22,7 +23,7 @@ async def test_call_smithery_tool_mock_success():
         mock_proc.communicate = AsyncMock(return_value=(b'{"status": "success"}', b''))
         mock_proc.returncode = 0
         mocked_exec.return_value = mock_proc
-        
+
         result = await smithery_bridge.call_smithery_tool("test-server", "test-tool", {"key": "val"})
         assert '{"status": "success"}' in result
 
@@ -34,7 +35,7 @@ async def test_call_smithery_tool_mock_error():
         mock_proc.communicate = AsyncMock(return_value=(b'', b'Tool not found'))
         mock_proc.returncode = 1
         mocked_exec.return_value = mock_proc
-        
+
         result = await smithery_bridge.call_smithery_tool("test-server", "wrong-tool", {})
         assert "Smithery Error" in result
         assert "Tool not found" in result

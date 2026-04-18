@@ -1,6 +1,7 @@
-import pytest
-import asyncio
 import os
+
+import pytest
+
 from src.services.session_store import SQLiteSessionService
 
 TEST_DB = "test_sessions.db"

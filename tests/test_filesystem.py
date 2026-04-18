@@ -1,7 +1,5 @@
 """Tests for filesystem tools with guardrails."""
 
-import os
-import tempfile
 
 import pytest
 
