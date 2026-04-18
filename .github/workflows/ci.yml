@@ -41,8 +41,11 @@ jobs:
           python-version: "3.11"
           cache: pip
       - run: pip install -r requirements.txt mypy==1.11.1
-      # Blocking: strict-mode modules must stay fully typed.
-      - run: mypy src/services/sdlc_phase.py src/services/quality_gates.py src/services/phase_controller.py
+      # Blocking: strict-mode modules must stay fully typed. ``--follow-imports=silent``
+      # limits strict checking to these 3 files only — their transitive imports
+      # (state.py, workflow_graphs.py, file_lock.py) are covered by the advisory
+      # ``mypy src`` step below and don't need to be strict-annotated yet.
+      - run: mypy --follow-imports=silent src/services/sdlc_phase.py src/services/quality_gates.py src/services/phase_controller.py
       # Advisory: remainder of src; strict enforcement deferred to Phase 5.
       - run: mypy src
         continue-on-error: true
