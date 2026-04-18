@@ -74,38 +74,27 @@ async def test_create_issue_returns_not_configured_when_repo_missing() -> None:
 
 
 def test_pygithub_missing_raises_when_mock_not_allowed(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Prod default: import-time failure if PyGithub is missing and mock is off."""
-    # Force a fresh config read with both flags off.
-    monkeypatch.delenv("GITHUB_MOCK_ALLOWED", raising=False)
-    monkeypatch.setenv("GITHUB_MOCK_ALLOWED", "false")
-    monkeypatch.setenv("TEST_MODE", "false")
+    """Prod default: constructor-time failure if PyGithub is missing and mock is off.
 
-    # Rebuild Config so the new env is visible.
+    After the validator refactor, the PyGithub availability check was deferred
+    from module import to ``GitHubTool.__init__`` so a late
+    ``os.environ["GITHUB_MOCK_ALLOWED"]="true"`` is honoured. The regression
+    guard therefore has to instantiate the tool, not just import the module.
+    """
     import src.config as config_mod
+    import src.tools.github_tool as gh_mod
 
-    config_mod.get_settings.cache_clear()
     monkeypatch.setattr(config_mod.Config, "GITHUB_MOCK_ALLOWED", False)
     monkeypatch.setattr(config_mod.Config, "TEST_MODE", False)
+    # Force ``_PYGITHUB_AVAILABLE=False`` so __init__ hits the missing-PyGithub
+    # branch even in envs where the package is installed.
+    monkeypatch.setattr(gh_mod, "_PYGITHUB_AVAILABLE", False)
+    # Reset the cached settings so the constructor re-reads the overridden flags.
+    config_mod.get_settings.cache_clear()
+    # github_tool imports ``get_settings`` at module scope, so patch the
+    # reference bound in ``gh_mod`` (not just ``config_mod``).
+    fake_settings = config_mod.Settings(github_mock_allowed=False, test_mode=False)
+    monkeypatch.setattr(gh_mod, "get_settings", lambda: fake_settings)
 
-    saved_github = sys.modules.get("github")
-    sys.modules["github"] = None  # type: ignore[assignment]
-    sys.modules.pop("src.tools.github_tool", None)
-    try:
-        with pytest.raises(RuntimeError, match="PyGithub is not installed"):
-            importlib.import_module("src.tools.github_tool")
-    finally:
-        if saved_github is not None:
-            sys.modules["github"] = saved_github
-        else:
-            sys.modules.pop("github", None)
-        sys.modules.pop("src.tools.github_tool", None)
-        # Re-enable the mock path so subsequent test collection succeeds
-        # even though monkeypatch teardown has not yet run.
-        import os as _os
-
-        _os.environ["GITHUB_MOCK_ALLOWED"] = "true"
-        _os.environ["TEST_MODE"] = "true"
-        config_mod.get_settings.cache_clear()
-        config_mod.Config.GITHUB_MOCK_ALLOWED = True
-        config_mod.Config.TEST_MODE = True
-        importlib.import_module("src.tools.github_tool")
+    with pytest.raises(RuntimeError, match="PyGithub is not installed"):
+        gh_mod.GitHubTool()
