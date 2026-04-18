@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import os
+import re
 from functools import lru_cache
+from typing import Literal
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -57,6 +59,14 @@ class Settings(BaseSettings):
 
     openrouter_api_key: str | None = None
     openrouter_api_base: str = "https://openrouter.ai/api/v1"
+
+    @field_validator("openrouter_api_base")
+    @classmethod
+    def _validate_openrouter_api_base(cls, v: str) -> str:
+        if not re.match(r"^https?://", v):
+            raise ValueError(f"openrouter_api_base must be a valid HTTP or HTTPS URL, got: {v!r}")
+        return v
+
     openrouter_model: str = "openrouter/elephant-alpha"
     openrouter_tool_model: str = "openrouter/elephant-alpha"
     fallback_models: list[str] = Field(default_factory=_default_fallback_models)
@@ -78,9 +88,16 @@ class Settings(BaseSettings):
     sdlc_mcp_enabled: bool = False
 
     # Phase 3 retrieval memory
-    retrieval_backend: str = "keyword"  # "keyword" | "vector"
+    retrieval_backend: Literal["keyword", "vector", "sqlite-vec", "sqlitevec"] = "keyword"
     embed_model: str = "openrouter/openai/text-embedding-3-small"
     embed_daily_token_cap: int = 200_000
+
+    @field_validator("embed_model")
+    @classmethod
+    def _validate_embed_model(cls, v: str) -> str:
+        if not v.startswith("openrouter/"):
+            raise ValueError(f"embed_model must start with 'openrouter/', got: {v!r}")
+        return v
 
     # Stabilization round 2: centralized runtime tunables. All four use
     # constrained pydantic fields so a misconfigured env (``=0``, negative
