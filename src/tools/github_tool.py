@@ -1,19 +1,13 @@
 import asyncio
 import logging
 
-from src.config import Config
+from src.config import Config, get_settings
 
+_PYGITHUB_AVAILABLE = True
 try:
     from github import Github
 except ImportError:  # pragma: no cover — branch depends on environment
-    if Config.GITHUB_MOCK_ALLOWED or Config.TEST_MODE:
-        from src.testing.github_mocks import Github  # type: ignore[assignment]
-    else:
-        raise RuntimeError(
-            "PyGithub is not installed but Config.GITHUB_MOCK_ALLOWED is False. "
-            "Install PyGithub (`pip install pygithub`) or set GITHUB_MOCK_ALLOWED=true "
-            "for offline/test use only."
-        ) from None
+    _PYGITHUB_AVAILABLE = False
 
 try:
     from google.adk import Tool
@@ -104,7 +98,22 @@ def _sanitize_review_section(body: str) -> str:
 
 class GitHubTool(Tool):
     def __init__(self):
-        self.gh = Github(Config.GITHUB_TOKEN)
+        # Resolve the Github class at constructor time so that a late
+        # os.environ["GITHUB_MOCK_ALLOWED"]="true" (or TEST_MODE) is
+        # honoured even when PyGithub was unavailable at module-import time.
+        if _PYGITHUB_AVAILABLE:
+            _gh_cls = Github
+        else:  # pragma: no cover — branch depends on environment
+            settings = get_settings()
+            if settings.github_mock_allowed or settings.test_mode:
+                from src.testing.github_mocks import Github as _gh_cls  # type: ignore[assignment]
+            else:
+                raise RuntimeError(
+                    "PyGithub is not installed but GITHUB_MOCK_ALLOWED is False. "
+                    "Install PyGithub (`pip install pygithub`) or set GITHUB_MOCK_ALLOWED=true "
+                    "for offline/test use only."
+                ) from None
+        self.gh = _gh_cls(Config.GITHUB_TOKEN)
         # Handle case where repo name might not be set
         repo_name = Config.REPO_NAME or "unknown/repo"
         try:
