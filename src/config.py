@@ -8,12 +8,23 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 def _default_fallback_models() -> list[str]:
-    """Return the fallback model chain with legacy defaults preserved."""
+    """Return the fallback model chain.
+
+    All entries MUST be prefixed with `openrouter/` so LiteLLM routes
+    through OpenRouter (which uses an OpenAI-compatible /chat/completions
+    endpoint) rather than dispatching to provider-native handlers
+    (which use incompatible endpoint paths like Anthropic's /v1/messages
+    and cause 404s against the OpenRouter api_base).
+    """
+    tool_model = os.getenv("OPENROUTER_TOOL_MODEL", "openrouter/openai/gpt-4o")
+    # Defensive: if the env var was set without the openrouter/ prefix, add it
+    if not tool_model.startswith("openrouter/"):
+        tool_model = f"openrouter/{tool_model}"
     return [
-        os.getenv("OPENROUTER_TOOL_MODEL", "openai/gpt-4o"),
-        "google/gemini-2.5-flash",
-        "google/gemini-2.0-flash-001",
-        "anthropic/claude-sonnet-4",
+        tool_model,
+        "openrouter/google/gemini-2.5-flash",
+        "openrouter/google/gemini-2.0-flash-001",
+        "openrouter/anthropic/claude-sonnet-4",
         "openrouter/elephant-alpha",
     ]
 
