@@ -1,9 +1,13 @@
 import json
 import os
 import tempfile
+import threading
 from datetime import UTC, datetime
 
-from src.utils.file_lock import locked_append
+from src.observability.logger import get_logger
+from src.utils.file_lock import locked_append, locked_file
+
+logger = get_logger("state")
 
 
 class StateManager:
@@ -12,6 +16,7 @@ class StateManager:
         self.filename = filename
         self.event_filename = event_filename
         self.data = {}
+        self._lock = threading.Lock()
         if self.storage_type == "json" and os.path.exists(self.filename):
             with open(self.filename) as f:
                 try:
@@ -50,15 +55,73 @@ class StateManager:
         """
         locked_append(path, line)
 
+    def _locked_persist_json(self, mutate_fn) -> dict:
+        """Apply *mutate_fn* to the on-disk state under a cross-process exclusive lock.
+
+        Holds an exclusive ``fcntl.flock`` (on a companion ``.lock`` file) for
+        the entire read-modify-write cycle so concurrent processes never
+        silently drop each other's updates.  ``_atomic_write_json`` is used
+        for the write step so readers always see a complete JSON file — never
+        an empty or partially-written one.
+
+        **Failure semantics** — on a read/parse failure the exception is
+        logged and re-raised; the write is aborted. ``set_task``/
+        ``delete_task`` do NOT catch these — the process-level caller is
+        expected to handle the rare transient case, because silently
+        continuing on corrupted on-disk state would destroy the audit
+        trail. (Prior docstring mentioning caller-side in-memory fallback
+        was misleading; corrected to reflect the propagate-and-log
+        behavior actually implemented here.)
+
+        *mutate_fn* receives the on-disk ``dict`` and must mutate it in place.
+        Returns the merged ``dict`` so the caller can sync its in-memory view.
+        """
+        lock_path = self.filename + ".lock"
+
+        # locked_file("a") creates the companion file if missing and holds
+        # LOCK_EX for the duration of the context.  We don't write anything
+        # to the lock file — it is purely a serialisation token.
+        with locked_file(lock_path, "a"):
+            on_disk: dict = {}
+            if os.path.exists(self.filename):
+                try:
+                    with open(self.filename) as sf:
+                        raw = sf.read()
+                    if raw.strip():
+                        loaded = json.loads(raw)
+                        if not isinstance(loaded, dict):
+                            raise ValueError(f"state file {self.filename!r} contains non-dict JSON")
+                        on_disk = loaded
+                except (OSError, json.JSONDecodeError, ValueError) as exc:
+                    # Log and re-raise. Silent fallback to empty dict would
+                    # destroy on-disk state on a transient I/O hiccup.
+                    logger.error(
+                        "state.persist.read_failed path=%s reason=%s",
+                        self.filename,
+                        exc,
+                        exc_info=True,
+                    )
+                    raise
+
+            mutate_fn(on_disk)
+            # Atomic write via tmpfile + os.replace so readers outside the
+            # lock never observe a partially-written or empty file.
+            self._atomic_write_json(self.filename, on_disk)
+
+        return on_disk
+
     # ------------------------------------------------------------------
     # Public mutators
     # ------------------------------------------------------------------
 
     def set_task(self, task_id: str, task_data: dict, agent: str = "") -> None:
-        old = self.data.get(task_id, {})
-        self.data[task_id] = task_data
-        if self.storage_type == "json":
-            self._atomic_write_json(self.filename, self.data)
+        with self._lock:
+            old = self.data.get(task_id, {})
+            if self.storage_type == "json":
+                merged = self._locked_persist_json(lambda d: d.update({task_id: task_data}))
+                self.data = merged
+            else:
+                self.data[task_id] = task_data
         self._append_event(
             {
                 "timestamp": datetime.now(UTC).isoformat(),
@@ -76,9 +139,13 @@ class StateManager:
         return dict(self.data)
 
     def delete_task(self, task_id: str, agent: str = "") -> None:
-        old = self.data.pop(task_id, None)
-        if self.storage_type == "json":
-            self._atomic_write_json(self.filename, self.data)
+        with self._lock:
+            old = self.data.get(task_id)
+            if self.storage_type == "json":
+                merged = self._locked_persist_json(lambda d: d.pop(task_id, None))
+                self.data = merged
+            else:
+                self.data.pop(task_id, None)
         self._append_event(
             {
                 "timestamp": datetime.now(UTC).isoformat(),
