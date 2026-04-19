@@ -83,7 +83,7 @@ def collect_coverage_signals(coverage_xml: Path) -> list[GapSignal]:
     try:
         import xml.etree.ElementTree as ET
 
-        root = ET.parse(coverage_xml).getroot()
+        root = ET.parse(coverage_xml).getroot()  # nosec B314 — coverage.xml is generated locally by our own CI, not untrusted input
     except ET.ParseError as exc:
         logger.warning("coverage.xml parse failed: %s", exc)
         return []

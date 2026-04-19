@@ -126,7 +126,7 @@ def run_interactive() -> int:
             continue
 
         if command == "clear":
-            os.system("clear" if os.name != "nt" else "cls")
+            os.system("clear" if os.name != "nt" else "cls")  # nosec B605 — hardcoded literal command, no user input
             continue
 
         if command not in COMMANDS:
