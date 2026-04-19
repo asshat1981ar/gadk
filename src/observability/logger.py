@@ -45,6 +45,61 @@ class _ContextFilter(logging.Filter):
         return True
 
 
+#: Standard ``LogRecord`` attributes set by the logging framework itself plus
+#: the ones our ``_ContextFilter`` populates. Anything else on the record was
+#: caller-supplied via ``extra={...}`` and should be forwarded to structured
+#: output — otherwise ``logger.info("...", extra={"cycle_id": ...})`` silently
+#: drops the field.
+_LOGRECORD_STANDARD_ATTRS = frozenset(
+    {
+        # stdlib LogRecord attrs (see logging.makeLogRecord + handler machinery)
+        "name",
+        "msg",
+        "args",
+        "levelname",
+        "levelno",
+        "pathname",
+        "filename",
+        "module",
+        "exc_info",
+        "exc_text",
+        "stack_info",
+        "lineno",
+        "funcName",
+        "created",
+        "msecs",
+        "relativeCreated",
+        "thread",
+        "threadName",
+        "processName",
+        "process",
+        "message",
+        "asctime",
+        "taskName",
+        # injected by _ContextFilter above
+        "trace_id",
+        "session_id",
+        "task_id",
+        "agent",
+        "tool",
+    }
+)
+
+
+def _extract_extra_fields(record: logging.LogRecord) -> dict[str, object]:
+    """Return user-supplied ``extra={...}`` fields from a LogRecord.
+
+    Nests them under a single ``extra`` key in the JSON output so the
+    top-level schema (timestamp/level/message/trace_id/...) stays stable
+    as call sites add new fields.
+    """
+    return {
+        key: value
+        for key, value in record.__dict__.items()
+        if key not in _LOGRECORD_STANDARD_ATTRS and not key.startswith("_")
+    }
+
+
 class JsonFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
         log_obj = {
@@ -58,9 +113,30 @@ class JsonFormatter(logging.Formatter):
             "agent": getattr(record, "agent", ""),
             "tool": getattr(record, "tool", ""),
         }
+        extras = _extract_extra_fields(record)
+        if extras:
+            log_obj["extra"] = extras
         if record.exc_info:
             log_obj["exception"] = self.formatException(record.exc_info)
         return json.dumps(log_obj, default=str)
+
+
+class _PlainTextFormatterWithExtras(logging.Formatter):
+    """Plain-text formatter that appends user-supplied ``extra={...}`` fields.
+
+    The stock ``logging.Formatter`` format string can only reference attribute
+    names it knows about at setup time, so ``extra`` fields silently drop out
+    of plain-text output. We render them as trailing ``key=value`` pairs so
+    grep-based log inspection sees the same values the JSON formatter carries.
+    """
+
+    def format(self, record: logging.LogRecord) -> str:
+        base = super().format(record)
+        extras = _extract_extra_fields(record)
+        if not extras:
+            return base
+        suffix = " ".join(f"{k}={v}" for k, v in sorted(extras.items()))
+        return f"{base} | {suffix}"
 
 
 def get_logger(name: str) -> logging.Logger:
@@ -73,7 +149,7 @@ def configure_logging(level: int = logging.INFO, json_format: bool = True) -> No
     if json_format:
         formatter: logging.Formatter = JsonFormatter()
     else:
-        formatter = logging.Formatter(
+        formatter = _PlainTextFormatterWithExtras(
             "%(asctime)s [%(levelname)s] %(name)s %(agent)s%(tool)s| trace=%(trace_id)s session=%(session_id)s task=%(task_id)s | %(message)s"
         )
     handler.setFormatter(formatter)

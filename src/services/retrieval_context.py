@@ -310,6 +310,11 @@ def retrieve_context(
                 "retrieval.degraded backend=%s reason=%s falling_back=keyword",
                 backend_name,
                 exc,
+                extra={
+                    "top_k": request.top_k,
+                    "corpus": request.corpus,
+                    "reason": str(exc),
+                },
             )
             sources = _keyword_retrieve(request, resolved_root)
         except Exception as exc:  # noqa: BLE001
@@ -318,11 +323,16 @@ def retrieve_context(
             # The documented contract is best-effort fallback to keyword;
             # surface the actual exception on the same `retrieval.degraded`
             # channel so it's still visible in logs.
+            reason = f"{type(exc).__name__}:{exc}"
             logger.warning(
-                "retrieval.degraded backend=%s unexpected_error=%s:%s falling_back=keyword",
+                "retrieval.degraded backend=%s unexpected_error=%s falling_back=keyword",
                 backend_name,
-                type(exc).__name__,
-                exc,
+                reason,
+                extra={
+                    "top_k": request.top_k,
+                    "corpus": request.corpus,
+                    "reason": reason,
+                },
             )
             sources = _keyword_retrieve(request, resolved_root)
     else:
