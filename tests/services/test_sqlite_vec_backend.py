@@ -225,3 +225,46 @@ def test_resolve_keyword_still_raises(tmp_path: Path) -> None:
 def test_search_hit_metadata_defaults_to_empty() -> None:
     hit = SearchHit(doc_id="x", text="t", score=0.5)
     assert hit.metadata == {}
+
+
+# ---------------------------------------------------------------------------
+# sqlite_vec.load failure — logging and exception chaining
+# ---------------------------------------------------------------------------
+
+
+def test_open_db_load_failure_logs_warning_and_sets_cause(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    """_open_db logs at WARNING and raises VectorBackendUnavailable with __cause__ set."""
+    import src.services.vector_index as vec_mod
+
+    original_error = OSError("extension not loadable in this process")
+
+    def _bad_load(_conn) -> None:
+        raise original_error
+
+    monkeypatch.setattr(vec_mod._sqlite_vec, "load", _bad_load)
+
+    # vector_index.py binds its logger as `get_logger("vector_index")`, so
+    # caplog must filter on the same short name — not the module dotted path.
+    with caplog.at_level("WARNING", logger="vector_index"):
+        with pytest.raises(VectorBackendUnavailable) as exc_info:
+            SqliteVecBackend(
+                embedder=_make_fake_embedder(dim=32),
+                db_path=tmp_path / "fail.db",
+                dim=32,
+            )
+
+    raised = exc_info.value
+    # __cause__ must point to the original exception.
+    assert raised.__cause__ is original_error
+
+    # A WARNING containing the type name and message must have been emitted.
+    # ``LogRecord.getMessage()`` renders the formatted message reliably;
+    # ``LogRecord.message`` is only set by ``logging.Formatter.format()`` and
+    # may be absent in caplog's raw capture path.
+    warning_messages = [r.getMessage() for r in caplog.records if r.levelname == "WARNING"]
+    assert any(
+        "sqlite_vec.load failed" in m for m in warning_messages
+    ), f"expected 'sqlite_vec.load failed' in warnings; got: {warning_messages}"
+    assert any("OSError" in m for m in warning_messages)

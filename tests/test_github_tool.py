@@ -97,3 +97,72 @@ def test_pygithub_missing_raises_when_mock_not_allowed(monkeypatch: pytest.Monke
 
     with pytest.raises(RuntimeError, match="PyGithub is not installed"):
         gh_mod.GitHubTool()
+
+
+class _PRStubRepo:
+    """Stub for PR creation tests."""
+
+    class _Branch:
+        class _Commit:
+            sha = "deadbeef"
+
+        commit = _Commit()
+
+    def get_branch(self, name: str):
+        if name == "main":
+            return self._Branch()
+        raise ConnectionError("branch not found")
+
+    def create_git_ref(self, ref: str, sha: str):
+        raise TimeoutError("network flap")
+
+    def create_pull(self, **kwargs):
+        raise AssertionError("should not reach create_pull")
+
+
+@pytest.mark.asyncio
+async def test_create_pull_request_chains_create_git_ref_error(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """create_pull_request must log the create_git_ref error with __cause__ set
+    to the original branch-not-found error.
+
+    The function catches _GITHUB_API_ERRORS and logs via ``exc_info=True``,
+    so the exception chain lives on the LogRecord. Capture that record and
+    assert on ``record.exc_info[1].__cause__`` to exercise the production
+    code path (the earlier version of this test constructed a chained
+    exception outside the SUT, which always passed regardless).
+    """
+    tool = github_tool.GitHubTool.__new__(github_tool.GitHubTool)
+    tool.repo = _PRStubRepo()  # type: ignore[attr-defined]
+    tool.gh = None  # type: ignore[attr-defined]
+
+    with caplog.at_level("ERROR", logger="src.tools.github_tool"):
+        result = await tool.create_pull_request(
+            title="My PR",
+            body="A" * 50,  # long enough to pass is_low_value_content guard
+            head="feature-branch",
+            base="main",
+        )
+
+    # The function returns an error string (does not propagate the exception).
+    assert result.startswith("Error creating PR:")
+
+    # Find the ERROR record with an attached exception chain.
+    failed_records = [
+        r for r in caplog.records if r.levelname == "ERROR" and r.exc_info is not None
+    ]
+    assert failed_records, (
+        "expected create_pull_request to log an ERROR with exc_info; "
+        f"got records: {[(r.levelname, r.message) for r in caplog.records]}"
+    )
+
+    logged_exc = failed_records[0].exc_info[1]
+    assert logged_exc is not None, "log record must carry the caught exception"
+    assert (
+        logged_exc.__cause__ is not None
+    ), "create_git_ref error must chain the original branch error via `raise ... from`"
+    assert isinstance(logged_exc.__cause__, ConnectionError), (
+        f"expected __cause__ to be the original branch ConnectionError; "
+        f"got {type(logged_exc.__cause__).__name__}"
+    )

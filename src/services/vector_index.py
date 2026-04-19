@@ -158,7 +158,12 @@ class SqliteVecBackend:
     def _open_db(self) -> sqlite3.Connection:
         conn = sqlite3.connect(self._db_path)
         conn.enable_load_extension(True)
-        _sqlite_vec.load(conn)
+        try:
+            _sqlite_vec.load(conn)
+        except Exception as exc:
+            conn.close()
+            logger.warning("sqlite_vec.load failed: %s %s", type(exc).__name__, exc)
+            raise VectorBackendUnavailable(f"sqlite-vec extension failed to load: {exc}") from exc
         conn.enable_load_extension(False)
         return conn
 

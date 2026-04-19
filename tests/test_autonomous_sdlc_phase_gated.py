@@ -522,3 +522,64 @@ async def test_run_cycle_degrades_when_adr_synthesis_fails(
     assert "ARCHITECT" in targets
     # But payload has no `architecture` key since synthesis degraded.
     assert "architecture" not in item.payload
+
+
+@pytest.mark.asyncio
+async def test_plan_caps_open_pr_scan_and_logs_warning(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """_plan stops iterating open PRs after GITHUB_DEDUP_ISSUE_SCAN_LIMIT and logs a warning."""
+    import logging
+
+    import src.config as config_mod
+    from src import autonomous_sdlc as mod
+    from src.state import StateManager
+
+    # Use a tiny cap so we can test with a small list.
+    monkeypatch.setattr(config_mod.Config, "GITHUB_DEDUP_ISSUE_SCAN_LIMIT", 2)
+
+    # Return 5 PRs — only the first 2 should be used for dedup.
+    prs = [
+        {"number": i, "title": f"pr-title-{i}", "state": "open", "url": "", "head": "b"}
+        for i in range(5)
+    ]
+
+    class _CapFakeGitHub:
+        async def list_pull_requests(self, state: str = "open") -> list:
+            return prs
+
+    sm = StateManager(
+        storage_type="json",
+        filename=str(tmp_path / "state.json"),
+        event_filename=str(tmp_path / "events.jsonl"),
+    )
+    engine = mod.AutonomousSDLCEngine.__new__(mod.AutonomousSDLCEngine)
+    engine.sm = sm
+    engine.gh = _CapFakeGitHub()
+
+    # A task whose title matches a PR that would only appear beyond the cap.
+    tasks = [{"title": "pr-title-3", "priority": "HIGH", "description": "x"}]
+
+    log_records: list[logging.LogRecord] = []
+
+    class _Capture(logging.Handler):
+        def emit(self, record: logging.LogRecord) -> None:
+            log_records.append(record)
+
+    handler = _Capture()
+    sdlc_logger = logging.getLogger("autonomous_sdlc")
+    sdlc_logger.addHandler(handler)
+    try:
+        selected = await engine._plan(tasks)
+    finally:
+        sdlc_logger.removeHandler(handler)
+
+    # Cap was applied: the "pr-title-3" PR was beyond the cap, so the task is
+    # NOT skipped and gets selected.
+    assert selected is not None
+    assert selected["title"] == "pr-title-3"
+
+    # A warning about the cap must have been emitted.
+    cap_warnings = [r for r in log_records if "github.open_pr_scan_capped" in r.getMessage()]
+    assert cap_warnings, "expected github.open_pr_scan_capped warning"
