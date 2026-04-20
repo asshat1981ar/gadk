@@ -12,9 +12,11 @@ if Config.TEST_MODE:
 else:
     from google.adk.models.lite_llm import LiteLlm
 
+from src.agents.architect import architect_agent
 from src.agents.builder import builder_agent
 from src.agents.critic import critic_agent
 from src.agents.finops import finops_agent
+from src.agents.governor import governor_agent
 from src.agents.ideator import create_structured_task, ideator_agent
 from src.agents.pulse import pulse_agent
 
@@ -29,7 +31,7 @@ def route_task(task_id: str, agent_name: str | None = None, user_goal: str | Non
     if user_goal:
         decision = choose_delegate(
             user_goal=user_goal,
-            available_agents=["Ideator", "Builder", "Critic", "Pulse", "FinOps"],
+            available_agents=["Ideator", "Architect", "Builder", "Critic", "Governor", "Pulse", "FinOps"],
         )
         agent_name = decision.target_agent
 
@@ -46,8 +48,10 @@ orchestrator_agent = Agent(
 
 Delegate tasks to your specialized sub-agents based on the user's request:
 - For ideation, trend scouting, or proactive planning, transfer to Ideator.
+- For architecture notes and ADR drafting (ARCHITECT phase), transfer to Architect.
 - For building new tools or code, transfer to Builder.
-- For reviewing code or safety checks, transfer to Critic.
+- For reviewing code or safety checks (REVIEW phase), transfer to Critic.
+- For release readiness, budget review, and governance (GOVERN phase), transfer to Governor.
 - For health checks or status reports, transfer to Pulse.
 - For budget or cost questions, transfer to FinOps.
 
@@ -67,8 +71,10 @@ You also have access to the Smithery marketplace when an external tool is needed
     ],
     sub_agents=[
         ideator_agent,
+        architect_agent,
         builder_agent,
         critic_agent,
+        governor_agent,
         pulse_agent,
         finops_agent,
     ],

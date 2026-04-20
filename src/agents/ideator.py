@@ -1,5 +1,5 @@
 import asyncio
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import List
 
 from google.adk.agents import Agent
@@ -65,7 +65,7 @@ async def create_structured_task(
         acceptance_criteria=acceptance_criteria,
         suggested_agent=suggested_agent,
     )
-    task_id = f"task-{int(asyncio.get_event_loop().time())}-{proposal.title.lower().replace(' ', '-')[:20]}"
+    task_id = f"task-{int(asyncio.get_running_loop().time())}-{proposal.title.lower().replace(' ', '-')[:20]}"
     task_data = {
         "title": proposal.title,
         "description": proposal.description,
@@ -75,7 +75,7 @@ async def create_structured_task(
         "complexity": complexity,
         "suggested_agent": proposal.recommended_agent,
         "tags": tags or [],
-        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_at": datetime.now(UTC).isoformat(),
         "source": "Ideator",
     }
 

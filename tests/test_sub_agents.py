@@ -21,14 +21,16 @@ def test_all_agents_are_adk_agents():
 
 def test_orchestrator_has_sub_agents():
     assert hasattr(orchestrator_agent, "sub_agents")
-    assert len(orchestrator_agent.sub_agents) == 5
+    assert len(orchestrator_agent.sub_agents) == 7
 
 
 def test_orchestrator_sub_agent_names():
     names = [a.name for a in orchestrator_agent.sub_agents]
     assert "Ideator" in names
+    assert "Architect" in names
     assert "Builder" in names
     assert "Critic" in names
+    assert "Governor" in names
     assert "Pulse" in names
     assert "FinOps" in names
 

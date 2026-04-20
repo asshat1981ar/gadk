@@ -64,16 +64,30 @@ If you don't need any tools, just respond normally without JSON blocks.
 """
 
 
-# Recognized tool names for permissive parsing
-_KNOWN_TOOLS = {
-    "read_file",
-    "write_file",
-    "list_directory",
-    "read_repo_file",
-    "list_repo_contents",
-    "search_web",
-    "execute_python_code",
-}
+# Base set of recognized tool names for permissive parsing.
+# This set is supplemented at parse time with the live _TOOL_REGISTRY keys
+# so tools registered after import are also recognised (see _get_known_tools()).
+_KNOWN_TOOLS_BASE: frozenset[str] = frozenset(
+    {
+        "read_file",
+        "write_file",
+        "list_directory",
+        "read_repo_file",
+        "list_repo_contents",
+        "search_web",
+        "execute_python_code",
+    }
+)
+
+
+def _get_known_tools() -> frozenset[str]:
+    """Return the union of the base tool set and the live registry.
+
+    Called at parse time so tools registered after module import (e.g. via
+    ``register_tool`` in ``main.py``) are also accepted by the planner's
+    permissive parser.
+    """
+    return _KNOWN_TOOLS_BASE | frozenset(_TOOL_REGISTRY.keys())
 
 _PLANNER_RETRY_WAIT = wait_exponential(multiplier=0.01, min=0, max=0.05)
 
@@ -113,7 +127,7 @@ def repair_and_validate_tool_json(raw: str) -> PlannerToolCall | None:
     except (ValidationError, TypeError, ValueError):
         return None
 
-    if candidate.tool_name not in _KNOWN_TOOLS:
+    if candidate.tool_name not in _get_known_tools():
         return None
     return candidate
 
@@ -140,7 +154,7 @@ def _extract_tool_calls_from_obj(data: Any) -> list[dict[str, Any]]:
             return calls
         # Format 2/3b: {"action": "write_file", "args": {...}} or {"action": "list_directory", "arguments": {...}}
         action = data.get("action", "")
-        if action in _KNOWN_TOOLS:
+        if action in _get_known_tools():
             args = (
                 data.get("args")
                 or data.get("arguments")
@@ -154,7 +168,7 @@ def _extract_tool_calls_from_obj(data: Any) -> list[dict[str, Any]]:
                 if isinstance(tool, dict):
                     name = tool.get("name") or tool.get("tool_name")
                     args = tool.get("arguments") or tool.get("args", {})
-                    if name in _KNOWN_TOOLS:
+                    if name in _get_known_tools():
                         calls.append({"tool_name": name, "args": args})
             return calls
         # Format 4: {"tool_name": "...", "args": {...}} at root level

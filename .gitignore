@@ -30,6 +30,7 @@ swarm.pid
 .swarm_history
 prompt_queue.jsonl
 events.jsonl
+state.json
 state.json.bak
 events.jsonl.bak
 costs.jsonl
@@ -38,6 +39,9 @@ test_metrics.jsonl
 coverage.xml
 .coverage
 .secrets.baseline
+# Runtime log files
+logs/*.log
+*.log
 # Metrics snapshots — rewritten by every swarm / e2e test run.
 metrics.jsonl
 test_metrics.jsonl
