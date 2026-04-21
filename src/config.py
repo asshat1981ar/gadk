@@ -132,7 +132,7 @@ _settings = get_settings()
 class Config:
     """Backward-compatible uppercase settings shim for existing imports."""
 
-    GITHUB_TOKEN=_settings.github_token
+    GITHUB_TOKEN = _settings.github_token
     REPO_NAME = _settings.repo_name
     STATE_TABLE_TYPE = _settings.state_table_type
     AUTONOMOUS_MODE = _settings.autonomous_mode
@@ -141,13 +141,13 @@ class Config:
     INSTRUCTOR_ENABLED = _settings.instructor_enabled
     LANGGRAPH_ENABLED = _settings.langgraph_enabled
     LLAMAINDEX_ENABLED = _settings.llamaindex_enabled
-    TOKEN_QUOTA_PER_TASK=_settings.token_quota_per_task
+    TOKEN_QUOTA_PER_TASK = _settings.token_quota_per_task
     LANGFUSE_ENABLED = _settings.langfuse_enabled
     HELICONE_ENABLED = _settings.helicone_enabled
     AGENTOPS_ENABLED = _settings.agentops_enabled
     MLFLOW_ENABLED = _settings.mlflow_enabled
     SENTRY_DSN = _settings.sentry_dsn
-    OPENROUTER_API_KEY=_settings.openrouter_api_key
+    OPENROUTER_API_KEY = _settings.openrouter_api_key
     OPENROUTER_API_BASE = _settings.openrouter_api_base
     OPENROUTER_MODEL = _settings.openrouter_model
     OPENROUTER_TOOL_MODEL = _settings.openrouter_tool_model
@@ -164,7 +164,7 @@ class Config:
     SDLC_MCP_ENABLED = _settings.sdlc_mcp_enabled
     RETRIEVAL_BACKEND = _settings.retrieval_backend
     EMBED_MODEL = _settings.embed_model
-    EMBED_DAILY_TOKEN_CAP=_settings.embed_daily_token_cap
+    EMBED_DAILY_TOKEN_CAP = _settings.embed_daily_token_cap
     SWARM_LOOP_POLL_SEC = _settings.swarm_loop_poll_sec
     SELF_PROMPT_TICK_INTERVAL_SEC = _settings.self_prompt_tick_interval_sec
     GATE_SUBPROCESS_TIMEOUT_SEC = _settings.gate_subprocess_timeout_sec
