@@ -22,6 +22,9 @@ build/
 *.swp
 .DS_Store
 
+# --- nested repositories: must never be mixed into gadk git history ---
+1/
+
 # --- gadk runtime artifacts (churn on every swarm run) ---
 sessions.db
 swarm.pid
