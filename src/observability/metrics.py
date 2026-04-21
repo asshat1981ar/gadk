@@ -199,3 +199,57 @@ def tool_timer(tool_name: str) -> Callable:
         return sync_wrapper
 
     return decorator
+
+
+# Counter metrics storage
+_counters: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
+
+
+def increment_counter(name: str, labels: dict[str, str] | None = None, value: int = 1) -> None:
+    """Increment a counter metric.
+
+    Args:
+        name: The metric name.
+        labels: Label dictionary to identify the counter.
+        value: Amount to increment by.
+    """
+    label_key = ",".join(f"{k}={v}" for k, v in sorted((labels or {}).items()))
+    _counters[name][label_key] += value
+
+
+def record_histogram(
+    name: str, value: float, labels: dict[str, str] | None = None
+) -> None:
+    """Record a histogram observation.
+
+    Args:
+        name: The metric name.
+        value: The value to record.
+        labels: Label dictionary for the observation.
+    """
+    # Simple implementation - in production would use proper histogram buckets
+    label_key = ",".join(f"{k}={v}" for k, v in sorted((labels or {}).items()))
+    # Store as running sum and count for avg calculation
+    if name not in _counters:
+        _counters[name] = defaultdict(int)
+    _counters[name][f"{label_key}:sum"] += value
+    _counters[name][f"{label_key}:count"] += 1
+
+
+def get_counter_value(name: str, labels: dict[str, str] | None = None) -> int:
+    """Get the current value of a counter.
+
+    Args:
+        name: The metric name.
+        labels: Label dictionary.
+
+    Returns:
+        The current counter value.
+    """
+    label_key = ",".join(f"{k}={v}" for k, v in sorted((labels or {}).items()))
+    return _counters[name].get(label_key, 0)
+
+
+def reset_counters() -> None:
+    """Reset all counters."""
+    _counters.clear()

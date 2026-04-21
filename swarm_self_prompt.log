@@ -1,0 +1,296 @@
+/home/westonaaron675/gadk/venv/lib/python3.11/site-packages/google/adk/features/_feature_decorator.py:72: UserWarning: [EXPERIMENTAL] feature FeatureName.PLUGGABLE_AUTH is enabled.
+  check_feature_enabled()
+{"timestamp": "2026-04-18T19:39:27.982214+00:00", "level": "INFO", "logger": "main", "message": "Cognitive Foundry Swarm Active", "trace_id": "bc5a2d1f-afc0-4204-9474-8ba1a7a4047c", "session_id": "f704ad45-1269-4829-a6d4-5422e63eb076", "task_id": "", "agent": "", "tool": ""}
+{"timestamp": "2026-04-18T19:39:27.982462+00:00", "level": "INFO", "logger": "main", "message": "Cognitive Foundry Swarm Active (session=f704ad45-1269-4829-a6d4-5422e63eb076)", "trace_id": "bc5a2d1f-afc0-4204-9474-8ba1a7a4047c", "session_id": "f704ad45-1269-4829-a6d4-5422e63eb076", "task_id": "", "agent": "", "tool": ""}
+{"timestamp": "2026-04-18T19:39:27.982508+00:00", "level": "INFO", "logger": "main", "message": "Running in autonomous loop mode. Use `swarm_cli stop` to exit.", "trace_id": "bc5a2d1f-afc0-4204-9474-8ba1a7a4047c", "session_id": "f704ad45-1269-4829-a6d4-5422e63eb076", "task_id": "", "agent": "", "tool": ""}
+{"timestamp": "2026-04-18T19:39:27.982701+00:00", "level": "INFO", "logger": "planner", "message": "Planner iteration 1/8", "trace_id": "bc5a2d1f-afc0-4204-9474-8ba1a7a4047c", "session_id": "f704ad45-1269-4829-a6d4-5422e63eb076", "task_id": "", "agent": "", "tool": ""}
+[92m14:39:28 - LiteLLM:INFO[0m: utils.py:4011 - 
+LiteLLM completion() model= elephant-alpha; provider = openrouter
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+{"timestamp": "2026-04-18T19:39:28.001988+00:00", "level": "INFO", "logger": "LiteLLM", "message": "\nLiteLLM completion() model= elephant-alpha; provider = openrouter", "trace_id": "bc5a2d1f-afc0-4204-9474-8ba1a7a4047c", "session_id": "f704ad45-1269-4829-a6d4-5422e63eb076", "task_id": "", "agent": "", "tool": ""}
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+{"timestamp": "2026-04-18T19:39:28.942041+00:00", "level": "INFO", "logger": "planner", "message": "LLM response length: 194 chars", "trace_id": "bc5a2d1f-afc0-4204-9474-8ba1a7a4047c", "session_id": "f704ad45-1269-4829-a6d4-5422e63eb076", "task_id": "", "agent": "", "tool": ""}
+{"timestamp": "2026-04-18T19:39:28.942182+00:00", "level": "INFO", "logger": "planner", "message": "LLM raw response: I'll start by exploring the project-chimera repository to understand its current state and identify areas for improvement.\n```json\n{\"action\": \"list_repo_contents\", \"arguments\": {\"path\": \"\"}}\n```...", "trace_id": "bc5a2d1f-afc0-4204-9474-8ba1a7a4047c", "session_id": "f704ad45-1269-4829-a6d4-5422e63eb076", "task_id": "", "agent": "", "tool": ""}
+{"timestamp": "2026-04-18T19:39:28.942514+00:00", "level": "INFO", "logger": "planner", "message": "Detected 1 tool call(s): ['list_repo_contents']", "trace_id": "bc5a2d1f-afc0-4204-9474-8ba1a7a4047c", "session_id": "f704ad45-1269-4829-a6d4-5422e63eb076", "task_id": "", "agent": "", "tool": ""}
+{"timestamp": "2026-04-18T19:39:29.281372+00:00", "level": "INFO", "logger": "planner", "message": "Planner iteration 2/8", "trace_id": "bc5a2d1f-afc0-4204-9474-8ba1a7a4047c", "session_id": "f704ad45-1269-4829-a6d4-5422e63eb076", "task_id": "", "agent": "", "tool": ""}
+[92m14:39:29 - LiteLLM:INFO[0m: utils.py:4011 - 
+LiteLLM completion() model= elephant-alpha; provider = openrouter
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+{"timestamp": "2026-04-18T19:39:29.282599+00:00", "level": "INFO", "logger": "LiteLLM", "message": "\nLiteLLM completion() model= elephant-alpha; provider = openrouter", "trace_id": "bc5a2d1f-afc0-4204-9474-8ba1a7a4047c", "session_id": "f704ad45-1269-4829-a6d4-5422e63eb076", "task_id": "", "agent": "", "tool": ""}
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+{"timestamp": "2026-04-18T19:39:29.895548+00:00", "level": "INFO", "logger": "planner", "message": "LLM response length: 105 chars", "trace_id": "bc5a2d1f-afc0-4204-9474-8ba1a7a4047c", "session_id": "f704ad45-1269-4829-a6d4-5422e63eb076", "task_id": "", "agent": "", "tool": ""}
+{"timestamp": "2026-04-18T19:39:29.895713+00:00", "level": "INFO", "logger": "planner", "message": "LLM raw response: Let me try with a specific path:\n```json\n{\"action\": \"list_repo_contents\", \"arguments\": {\"path\": \".\"}}\n```...", "trace_id": "bc5a2d1f-afc0-4204-9474-8ba1a7a4047c", "session_id": "f704ad45-1269-4829-a6d4-5422e63eb076", "task_id": "", "agent": "", "tool": ""}
+{"timestamp": "2026-04-18T19:39:29.895894+00:00", "level": "INFO", "logger": "planner", "message": "Detected 1 tool call(s): ['list_repo_contents']", "trace_id": "bc5a2d1f-afc0-4204-9474-8ba1a7a4047c", "session_id": "f704ad45-1269-4829-a6d4-5422e63eb076", "task_id": "", "agent": "", "tool": ""}
+{"timestamp": "2026-04-18T19:39:29.897662+00:00", "level": "INFO", "logger": "planner", "message": "Planner iteration 3/8", "trace_id": "bc5a2d1f-afc0-4204-9474-8ba1a7a4047c", "session_id": "f704ad45-1269-4829-a6d4-5422e63eb076", "task_id": "", "agent": "", "tool": ""}
+[92m14:39:29 - LiteLLM:INFO[0m: utils.py:4011 - 
+LiteLLM completion() model= elephant-alpha; provider = openrouter
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+{"timestamp": "2026-04-18T19:39:29.901363+00:00", "level": "INFO", "logger": "LiteLLM", "message": "\nLiteLLM completion() model= elephant-alpha; provider = openrouter", "trace_id": "bc5a2d1f-afc0-4204-9474-8ba1a7a4047c", "session_id": "f704ad45-1269-4829-a6d4-5422e63eb076", "task_id": "", "agent": "", "tool": ""}
+[92m14:39:31 - LiteLLM:INFO[0m: utils.py:4011 - 
+LiteLLM completion() model= elephant-alpha; provider = openrouter
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+
+[1;31mGive Feedback / Get Help: https://github.com/BerriAI/litellm/issues/new[0m
+LiteLLM.Info: If you need to debug this error, use `litellm._turn_on_debug()'.
+
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+{"timestamp": "2026-04-18T19:39:31.136083+00:00", "level": "INFO", "logger": "LiteLLM", "message": "\nLiteLLM completion() model= elephant-alpha; provider = openrouter", "trace_id": "bc5a2d1f-afc0-4204-9474-8ba1a7a4047c", "session_id": "f704ad45-1269-4829-a6d4-5422e63eb076", "task_id": "", "agent": "", "tool": ""}
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+{"timestamp": "2026-04-18T19:39:31.810321+00:00", "level": "INFO", "logger": "planner", "message": "LLM response length: 138 chars", "trace_id": "bc5a2d1f-afc0-4204-9474-8ba1a7a4047c", "session_id": "f704ad45-1269-4829-a6d4-5422e63eb076", "task_id": "", "agent": "", "tool": ""}
+{"timestamp": "2026-04-18T19:39:31.810410+00:00", "level": "INFO", "logger": "planner", "message": "LLM raw response: Let me try a different approach and read the README directly:\n```json\n{\"action\": \"read_repo_file\", \"arguments\": {\"path\": \"README.md\"}}\n```...", "trace_id": "bc5a2d1f-afc0-4204-9474-8ba1a7a4047c", "session_id": "f704ad45-1269-4829-a6d4-5422e63eb076", "task_id": "", "agent": "", "tool": ""}
+{"timestamp": "2026-04-18T19:39:31.810561+00:00", "level": "INFO", "logger": "planner", "message": "Detected 1 tool call(s): ['read_repo_file']", "trace_id": "bc5a2d1f-afc0-4204-9474-8ba1a7a4047c", "session_id": "f704ad45-1269-4829-a6d4-5422e63eb076", "task_id": "", "agent": "", "tool": ""}
+{"timestamp": "2026-04-18T19:39:31.812279+00:00", "level": "INFO", "logger": "planner", "message": "Planner iteration 4/8", "trace_id": "bc5a2d1f-afc0-4204-9474-8ba1a7a4047c", "session_id": "f704ad45-1269-4829-a6d4-5422e63eb076", "task_id": "", "agent": "", "tool": ""}
+[92m14:39:31 - LiteLLM:INFO[0m: utils.py:4011 - 
+LiteLLM completion() model= elephant-alpha; provider = openrouter
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+{"timestamp": "2026-04-18T19:39:31.813526+00:00", "level": "INFO", "logger": "LiteLLM", "message": "\nLiteLLM completion() model= elephant-alpha; provider = openrouter", "trace_id": "bc5a2d1f-afc0-4204-9474-8ba1a7a4047c", "session_id": "f704ad45-1269-4829-a6d4-5422e63eb076", "task_id": "", "agent": "", "tool": ""}
+[92m14:39:33 - LiteLLM:INFO[0m: utils.py:4011 - 
+LiteLLM completion() model= elephant-alpha; provider = openrouter
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+
+[1;31mGive Feedback / Get Help: https://github.com/BerriAI/litellm/issues/new[0m
+LiteLLM.Info: If you need to debug this error, use `litellm._turn_on_debug()'.
+
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+{"timestamp": "2026-04-18T19:39:33.024328+00:00", "level": "INFO", "logger": "LiteLLM", "message": "\nLiteLLM completion() model= elephant-alpha; provider = openrouter", "trace_id": "bc5a2d1f-afc0-4204-9474-8ba1a7a4047c", "session_id": "f704ad45-1269-4829-a6d4-5422e63eb076", "task_id": "", "agent": "", "tool": ""}
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+{"timestamp": "2026-04-18T19:39:33.645667+00:00", "level": "INFO", "logger": "planner", "message": "LLM response length: 104 chars", "trace_id": "bc5a2d1f-afc0-4204-9474-8ba1a7a4047c", "session_id": "f704ad45-1269-4829-a6d4-5422e63eb076", "task_id": "", "agent": "", "tool": ""}
+{"timestamp": "2026-04-18T19:39:33.645809+00:00", "level": "INFO", "logger": "planner", "message": "LLM raw response: Let me try without a path parameter:\n```json\n{\"action\": \"read_repo_file\", \"arguments\": {\"path\": \"\"}}\n```...", "trace_id": "bc5a2d1f-afc0-4204-9474-8ba1a7a4047c", "session_id": "f704ad45-1269-4829-a6d4-5422e63eb076", "task_id": "", "agent": "", "tool": ""}
+{"timestamp": "2026-04-18T19:39:33.646011+00:00", "level": "INFO", "logger": "planner", "message": "Detected 1 tool call(s): ['read_repo_file']", "trace_id": "bc5a2d1f-afc0-4204-9474-8ba1a7a4047c", "session_id": "f704ad45-1269-4829-a6d4-5422e63eb076", "task_id": "", "agent": "", "tool": ""}
+{"timestamp": "2026-04-18T19:39:33.648049+00:00", "level": "INFO", "logger": "planner", "message": "Planner iteration 5/8", "trace_id": "bc5a2d1f-afc0-4204-9474-8ba1a7a4047c", "session_id": "f704ad45-1269-4829-a6d4-5422e63eb076", "task_id": "", "agent": "", "tool": ""}
+[92m14:39:33 - LiteLLM:INFO[0m: utils.py:4011 - 
+LiteLLM completion() model= elephant-alpha; provider = openrouter
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+{"timestamp": "2026-04-18T19:39:33.649593+00:00", "level": "INFO", "logger": "LiteLLM", "message": "\nLiteLLM completion() model= elephant-alpha; provider = openrouter", "trace_id": "bc5a2d1f-afc0-4204-9474-8ba1a7a4047c", "session_id": "f704ad45-1269-4829-a6d4-5422e63eb076", "task_id": "", "agent": "", "tool": ""}
+[92m14:39:34 - LiteLLM:INFO[0m: utils.py:4011 - 
+LiteLLM completion() model= elephant-alpha; provider = openrouter
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+
+[1;31mGive Feedback / Get Help: https://github.com/BerriAI/litellm/issues/new[0m
+LiteLLM.Info: If you need to debug this error, use `litellm._turn_on_debug()'.
+
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+{"timestamp": "2026-04-18T19:39:34.911513+00:00", "level": "INFO", "logger": "LiteLLM", "message": "\nLiteLLM completion() model= elephant-alpha; provider = openrouter", "trace_id": "bc5a2d1f-afc0-4204-9474-8ba1a7a4047c", "session_id": "f704ad45-1269-4829-a6d4-5422e63eb076", "task_id": "", "agent": "", "tool": ""}
+[92m14:39:37 - LiteLLM:INFO[0m: utils.py:4011 - 
+LiteLLM completion() model= elephant-alpha; provider = openrouter
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+
+[1;31mGive Feedback / Get Help: https://github.com/BerriAI/litellm/issues/new[0m
+LiteLLM.Info: If you need to debug this error, use `litellm._turn_on_debug()'.
+
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+{"timestamp": "2026-04-18T19:39:37.133820+00:00", "level": "INFO", "logger": "LiteLLM", "message": "\nLiteLLM completion() model= elephant-alpha; provider = openrouter", "trace_id": "bc5a2d1f-afc0-4204-9474-8ba1a7a4047c", "session_id": "f704ad45-1269-4829-a6d4-5422e63eb076", "task_id": "", "agent": "", "tool": ""}
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+{"timestamp": "2026-04-18T19:39:37.789366+00:00", "level": "INFO", "logger": "planner", "message": "LLM response length: 107 chars", "trace_id": "bc5a2d1f-afc0-4204-9474-8ba1a7a4047c", "session_id": "f704ad45-1269-4829-a6d4-5422e63eb076", "task_id": "", "agent": "", "tool": ""}
+{"timestamp": "2026-04-18T19:39:37.789497+00:00", "level": "INFO", "logger": "planner", "message": "LLM raw response: Let me try to read the root directory:\n```json\n{\"action\": \"read_repo_file\", \"arguments\": {\"path\": \"/\"}}\n```...", "trace_id": "bc5a2d1f-afc0-4204-9474-8ba1a7a4047c", "session_id": "f704ad45-1269-4829-a6d4-5422e63eb076", "task_id": "", "agent": "", "tool": ""}
+{"timestamp": "2026-04-18T19:39:37.789730+00:00", "level": "INFO", "logger": "planner", "message": "Detected 1 tool call(s): ['read_repo_file']", "trace_id": "bc5a2d1f-afc0-4204-9474-8ba1a7a4047c", "session_id": "f704ad45-1269-4829-a6d4-5422e63eb076", "task_id": "", "agent": "", "tool": ""}
+{"timestamp": "2026-04-18T19:39:37.792052+00:00", "level": "INFO", "logger": "planner", "message": "Planner iteration 6/8", "trace_id": "bc5a2d1f-afc0-4204-9474-8ba1a7a4047c", "session_id": "f704ad45-1269-4829-a6d4-5422e63eb076", "task_id": "", "agent": "", "tool": ""}
+[92m14:39:37 - LiteLLM:INFO[0m: utils.py:4011 - 
+LiteLLM completion() model= elephant-alpha; provider = openrouter
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+{"timestamp": "2026-04-18T19:39:37.793746+00:00", "level": "INFO", "logger": "LiteLLM", "message": "\nLiteLLM completion() model= elephant-alpha; provider = openrouter", "trace_id": "bc5a2d1f-afc0-4204-9474-8ba1a7a4047c", "session_id": "f704ad45-1269-4829-a6d4-5422e63eb076", "task_id": "", "agent": "", "tool": ""}
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+{"timestamp": "2026-04-18T19:39:38.553684+00:00", "level": "INFO", "logger": "planner", "message": "LLM response length: 197 chars", "trace_id": "bc5a2d1f-afc0-4204-9474-8ba1a7a4047c", "session_id": "f704ad45-1269-4829-a6d4-5422e63eb076", "task_id": "", "agent": "", "tool": ""}
+{"timestamp": "2026-04-18T19:39:38.553793+00:00", "level": "INFO", "logger": "planner", "message": "LLM raw response: I'm encountering issues with the repository tools. Let me try to search for information about the project:\n```json\n{\"action\": \"search_web\", \"arguments\": {\"query\": \"project-chimera repository\"}}\n```...", "trace_id": "bc5a2d1f-afc0-4204-9474-8ba1a7a4047c", "session_id": "f704ad45-1269-4829-a6d4-5422e63eb076", "task_id": "", "agent": "", "tool": ""}
+{"timestamp": "2026-04-18T19:39:38.553981+00:00", "level": "INFO", "logger": "planner", "message": "Detected 1 tool call(s): ['search_web']", "trace_id": "bc5a2d1f-afc0-4204-9474-8ba1a7a4047c", "session_id": "f704ad45-1269-4829-a6d4-5422e63eb076", "task_id": "", "agent": "", "tool": ""}
+/home/westonaaron675/gadk/src/tools/web_search.py:28: RuntimeWarning: This package (`duckduckgo_search`) has been renamed to `ddgs`! Use `pip install ddgs` instead.
+  client = DDGS()
+{"timestamp": "2026-04-18T19:39:38.778539+00:00", "level": "INFO", "logger": "primp", "message": "response: https://www.bing.com/search?q=project-chimera+repository 200", "trace_id": "bc5a2d1f-afc0-4204-9474-8ba1a7a4047c", "session_id": "f704ad45-1269-4829-a6d4-5422e63eb076", "task_id": "", "agent": "", "tool": ""}
+{"timestamp": "2026-04-18T19:39:38.895287+00:00", "level": "INFO", "logger": "planner", "message": "Planner iteration 7/8", "trace_id": "bc5a2d1f-afc0-4204-9474-8ba1a7a4047c", "session_id": "f704ad45-1269-4829-a6d4-5422e63eb076", "task_id": "", "agent": "", "tool": ""}
+[92m14:39:38 - LiteLLM:INFO[0m: utils.py:4011 - 
+LiteLLM completion() model= elephant-alpha; provider = openrouter
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+{"timestamp": "2026-04-18T19:39:38.898510+00:00", "level": "INFO", "logger": "LiteLLM", "message": "\nLiteLLM completion() model= elephant-alpha; provider = openrouter", "trace_id": "bc5a2d1f-afc0-4204-9474-8ba1a7a4047c", "session_id": "f704ad45-1269-4829-a6d4-5422e63eb076", "task_id": "", "agent": "", "tool": ""}
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+{"timestamp": "2026-04-18T19:39:39.573662+00:00", "level": "INFO", "logger": "planner", "message": "LLM response length: 119 chars", "trace_id": "bc5a2d1f-afc0-4204-9474-8ba1a7a4047c", "session_id": "f704ad45-1269-4829-a6d4-5422e63eb076", "task_id": "", "agent": "", "tool": ""}
+{"timestamp": "2026-04-18T19:39:39.573807+00:00", "level": "INFO", "logger": "planner", "message": "LLM raw response: Let me try to explore the local file system first:\n```json\n{\"action\": \"list_directory\", \"arguments\": {\"path\": \".\"}}\n```...", "trace_id": "bc5a2d1f-afc0-4204-9474-8ba1a7a4047c", "session_id": "f704ad45-1269-4829-a6d4-5422e63eb076", "task_id": "", "agent": "", "tool": ""}
+{"timestamp": "2026-04-18T19:39:39.573987+00:00", "level": "INFO", "logger": "planner", "message": "Detected 1 tool call(s): ['list_directory']", "trace_id": "bc5a2d1f-afc0-4204-9474-8ba1a7a4047c", "session_id": "f704ad45-1269-4829-a6d4-5422e63eb076", "task_id": "", "agent": "", "tool": ""}
+{"timestamp": "2026-04-18T19:39:39.575602+00:00", "level": "INFO", "logger": "filesystem_tools", "message": "list_directory: .", "trace_id": "bc5a2d1f-afc0-4204-9474-8ba1a7a4047c", "session_id": "f704ad45-1269-4829-a6d4-5422e63eb076", "task_id": "", "agent": "", "tool": "list_directory"}
+{"timestamp": "2026-04-18T19:39:39.576375+00:00", "level": "INFO", "logger": "planner", "message": "Planner iteration 8/8", "trace_id": "bc5a2d1f-afc0-4204-9474-8ba1a7a4047c", "session_id": "f704ad45-1269-4829-a6d4-5422e63eb076", "task_id": "", "agent": "", "tool": ""}
+[92m14:39:39 - LiteLLM:INFO[0m: utils.py:4011 - 
+LiteLLM completion() model= elephant-alpha; provider = openrouter
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+{"timestamp": "2026-04-18T19:39:39.578554+00:00", "level": "INFO", "logger": "LiteLLM", "message": "\nLiteLLM completion() model= elephant-alpha; provider = openrouter", "trace_id": "bc5a2d1f-afc0-4204-9474-8ba1a7a4047c", "session_id": "f704ad45-1269-4829-a6d4-5422e63eb076", "task_id": "", "agent": "", "tool": ""}
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+{"timestamp": "2026-04-18T19:39:40.349278+00:00", "level": "INFO", "logger": "planner", "message": "LLM response length: 167 chars", "trace_id": "bc5a2d1f-afc0-4204-9474-8ba1a7a4047c", "session_id": "f704ad45-1269-4829-a6d4-5422e63eb076", "task_id": "", "agent": "", "tool": ""}
+{"timestamp": "2026-04-18T19:39:40.349400+00:00", "level": "INFO", "logger": "planner", "message": "LLM raw response: Good! Now I can see the repository structure. Let me read the README to understand the project:\n```json\n{\"action\": \"read_file\", \"arguments\": {\"path\": \"README.md\"}}\n```...", "trace_id": "bc5a2d1f-afc0-4204-9474-8ba1a7a4047c", "session_id": "f704ad45-1269-4829-a6d4-5422e63eb076", "task_id": "", "agent": "", "tool": ""}
+{"timestamp": "2026-04-18T19:39:40.349661+00:00", "level": "INFO", "logger": "planner", "message": "Detected 1 tool call(s): ['read_file']", "trace_id": "bc5a2d1f-afc0-4204-9474-8ba1a7a4047c", "session_id": "f704ad45-1269-4829-a6d4-5422e63eb076", "task_id": "", "agent": "", "tool": ""}
+{"timestamp": "2026-04-18T19:39:40.355888+00:00", "level": "INFO", "logger": "filesystem_tools", "message": "read_file: README.md", "trace_id": "bc5a2d1f-afc0-4204-9474-8ba1a7a4047c", "session_id": "f704ad45-1269-4829-a6d4-5422e63eb076", "task_id": "", "agent": "", "tool": "read_file"}
+{"timestamp": "2026-04-18T19:39:40.356944+00:00", "level": "WARNING", "logger": "planner", "message": "Max iterations reached. Requesting final response without more tool calls.", "trace_id": "bc5a2d1f-afc0-4204-9474-8ba1a7a4047c", "session_id": "f704ad45-1269-4829-a6d4-5422e63eb076", "task_id": "", "agent": "", "tool": ""}
+[92m14:39:40 - LiteLLM:INFO[0m: utils.py:4011 - 
+LiteLLM completion() model= elephant-alpha; provider = openrouter
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+{"timestamp": "2026-04-18T19:39:40.358761+00:00", "level": "INFO", "logger": "LiteLLM", "message": "\nLiteLLM completion() model= elephant-alpha; provider = openrouter", "trace_id": "bc5a2d1f-afc0-4204-9474-8ba1a7a4047c", "session_id": "f704ad45-1269-4829-a6d4-5422e63eb076", "task_id": "", "agent": "", "tool": ""}
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+{"timestamp": "2026-04-18T19:39:41.601985+00:00", "level": "WARNING", "logger": "planner", "message": "Planner finalization still returned tool calls. Returning latest tool results instead.", "trace_id": "bc5a2d1f-afc0-4204-9474-8ba1a7a4047c", "session_id": "f704ad45-1269-4829-a6d4-5422e63eb076", "task_id": "", "agent": "", "tool": ""}
+Swarm: Tool 'read_file': success → # GADK — Cognitive Foundry Swarm
+
+Multi-agent SDLC system on Google ADK. Agents discover, plan, build, review, and govern work against a target repository (default: `project-chimera`) via GitHub.
+
+Work items traverse an explicit phase ledger — **PLAN → ARCHITECT → IMPLEMENT → REVIEW → GOVERN → OPERATE** — under pluggable quality gates, with a REVIEW↔IMPLEMENT rework edge for bounded retry. An opt-in self-prompting loop synthesizes gap signals (coverage holes, blocked transitions, stale backlog) into new prompts.
+
+## Agents
+
+| Role | File | Phase |
+|---|---|---|
+| Orchestrator | `src/agents/orchestrator.py` | routing |
+| Ideator | `src/agents/ideator.py` | PLAN |
+| Architect | `src/agents/architect.py` | ARCHITECT |
+| Builder | `src/agents/builder.py` | IMPLEMENT |
+| Critic | `src/agents/critic.py` | REVIEW |
+| Governor | `src/agents/governor.py` | GOVERN |
+| Pulse | `src/agents/pulse.py` | OPERATE |
+| FinOps | `src/agents/finops.py` | OPERATE |
+
+Phase ownership is registered in `src/services/specialist_registry.py::DEFAULT_PHASE_OWNERS`.
+
+## Install
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+pip install -e ".[dev]"           # dev tooling (ruff, mypy, pip-audit, bandit, pre-commit)
+pip install -e ".[memory]"        # (optional) sqlite-vec for vector retrieval
+pre-commit install
+```
+
+Copy `.env.example` to `.env` and populate `OPENROUTER_API_KEY`, `GITHUB_TOKEN`, `REPO_NAME`.
+
+## Run
+
+```bash
+python3 -m src.main                              # start the swarm
+python3 -m src.cli.swarm_cli status              # health check
+python3 -m src.cli.swarm_cli tasks                # list tracked tasks
+python3 -m src.cli.swarm_cli queue                # inspect prompt queue
+
+# Phase-gate operations
+python3 -m src.cli.swarm_cli phase status <id>            # current phase + history
+python3 -m src.cli.swarm_cli phase advance <id> ARCHITECT # advance a work item
+python3 -m src.cli.swarm_cli phase advance <id> REVIEW --force --reason "override"
+
+# Self-prompt loop (opt-in, dry-run by default)
+python3 -m src.cli.swarm_cli self-prompt --dry-run        # preview synthesized prompts
+python3 -m src.cli.swarm_cli self-prompt --write          # append to prompt_queue.jsonl
+```
+
+## Configuration knobs
+
+Settings resolve from env → `.env` → pydantic defaults. Non-obvious ones:
+
+| Flag | Default | Effect |
+|---|---|---|
+| `GITHUB_MOCK_ALLOWED` | `false` | Allow the in-process `GitHubTool` mock when PyGithub is missing. **Production must keep this off.** |
+| `TEST_MODE` | `false` | Uses `MockLiteLlm` and the GitHub mocks; skips the default embedder. |
+| `PROJECT_ID` | `chimera` | Single-tenant scope placeholder; future multi-tenant work namespaces state by this. |
+| `SELF_PROMPT_ENABLED` | `false` | Runs the background gap-signal synthesizer. Stop with `.swarm_shutdown` or `.swarm_self_prompt_off`. |
+| `SELF_PROMPT_MAX_PER_HOUR` | `6` | Rate-limits self-prompt writes. |
+| `SDLC_MCP_ENABLED` | `false` | Governor may forward gate verdicts to the external `chimera_*` / `sdlc_*` MCP server. Dormant by default. |
+| `RETRIEVAL_BACKEND` | `keyword` | Set to `vector` / `sqlite-vec` to enable the sqlite-vec retrieval path. Falls back to keyword on any failure with a `retrieval.degraded` log. |
+| `EMBED_MODEL` | `openrouter/openai/text-embedding-3-small` | Model used by `LiteLLMEmbedder`. |
+| `EMBED_DAILY_TOKEN_CAP` | `200000` | Daily token budget enforced by `EmbedQuota`; over-cap calls raise `VectorBackendUnavailable`. |
+
+## Test
+
+```bash
+pytest -q                                 # full suite
+pytest tests/services -q                  # scoped
+ruff check src tests                      # lint
+ruff format --check src tests             # format check
+mypy src                                  # typecheck (advisory)
+pip-audit                                 # dependency CVE scan
+coverage run -m pytest -q && coverage report --fail-under=35
+```
+
+CI (`.github/workflows/ci.yml`) runs lint + typecheck + tests (py3.11 + 3.12) + security scans on every PR.
+
+## Architecture
+
+See `docs/` and `.github/copilot-instructions.md`. Key entry points:
+
+- `src/main.py` — swarm runtime, registers tools, processes `prompt_queue.jsonl`, runs the opt-in `_self_prompt_tick` coroutine.
+- `src/autonomous_sdlc.py` — discover → plan → build → review → deliver loop.
+- `src/services/workflow_graphs.py` — bounded review→rework cycles (LangGraph-optional).
+- `src/services/sdlc_phase.py` — `Phase` enum, `WorkItem`, transition rules (`ALLOWED_TRANSITIONS`).
+- `src/services/phase_controller.py` — `PhaseController.advance(item, target)` evaluates gates per transition and emits `phase.transition` events.
+- `src/services/quality_gates.py` — `QualityGate` ABC plus `ContentGuardGate`, `LintGate`, `TypecheckGate`, `SecurityScanGate`, `TestCoverageGate`, `CriticReviewGate`.
+- `src/services/phase_store.py` — `WorkItem` persistence on top of `StateManager` (used by the CLI `phase` subcommands).
+- `src/services/self_prompt.py` — gap-driven self-prompting loop (coverage, event log, stale backlog).
+- `src/services/vector_index.py` — `VectorIndex` protocol + `NullVectorIndex` + `SqliteVecBackend`.
+- `src/services/embedder.py` — `LiteLLMEmbedder` with `build_default_embedder()` factory.
+- `src/services/embed_quota.py` — `EmbedQuota` daily token tracker.
+- `src/mcp/server.py` — FastMCP stdio surface (`swarm.status`, `repo.*`).
+- `src/mcp/sdlc_client.py` — dormant adapter for the external SDLC MCP server.
+
+Task state lives in `state.json`, events in `events.jsonl`, session data in `sessions.db`, pending prompts in `prompt_queue.jsonl`. `StateManager` performs atomic JSON writes (`tempfile` + `os.replace`) and advisory-locked appends (`fcntl.flock` on POSIX) so concurrent writers from the SDLC loop, self-prompt tick, and CLI commands don't corrupt state. The swarm shuts down cleanly when `.swarm_shutdown` appears in the working directory.
+
+## Contributing
+
+- Branch from `main`; open PRs early.
+- All changes must pass `pre-commit run --all-files`, `ruff check src tests`, `ruff format --check src tests`, and `pytest -q` before merge.
+- Add structured logs via `src/observability/logger.py`; do not use `print()` in library code (CLI commands are the one exception).
+- New gates extend `QualityGate` in `src/services/quality_gates.py`.
+- Work items flow through `PhaseController`; never mutate a `WorkItem.phase` directly.
+- New agents follow the Architect/Governor pattern: pure tool functions at module scope, ADK wrapper behind a conditional import so the module stays testable without `google-adk`.
+
+{"timestamp": "2026-04-18T19:39:41.602124+00:00", "level": "INFO", "logger": "main", "message": "Swarm response: Tool 'read_file': success \u2192 # GADK \u2014 Cognitive Foundry Swarm\n\nMulti-agent SDLC system on Google ADK. Agents discover, plan, build, review, and govern work against a target repository (default: `project-chimera`) via GitHub.\n\nWork items traverse an explicit phase ledger \u2014 **PLAN \u2192 ARCHITECT \u2192 IMPLEMENT \u2192 REVIEW \u2192 GOVERN \u2192 OPERATE** \u2014 under pluggable quality gates, with a REVIEW\u2194IMPLEMENT rework edge for bounded retry. An opt-in self-prompting loop synthesizes gap signals (coverage holes, blocked transitions, stale backlog) into new prompts.\n\n## Agents\n\n| Role | File | Phase |\n|---|---|---|\n| Orchestrator | `src/agents/orchestrator.py` | routing |\n| Ideator | `src/agents/ideator.py` | PLAN |\n| Architect | `src/agents/architect.py` | ARCHITECT |\n| Builder | `src/agents/builder.py` | IMPLEMENT |\n| Critic | `src/agents/critic.py` | REVIEW |\n| Governor | `src/agents/governor.py` | GOVERN |\n| Pulse | `src/agents/pulse.py` | OPERATE |\n| FinOps | `src/agents/finops.py` | OPERATE |\n\nPhase ownership is registered in `src/services/specialist_registry.py::DEFAULT_PHASE_OWNERS`.\n\n## Install\n\n```bash\npython3 -m venv .venv\nsource .venv/bin/activate\npip install -r requirements.txt\npip install -e \".[dev]\"           # dev tooling (ruff, mypy, pip-audit, bandit, pre-commit)\npip install -e \".[memory]\"        # (optional) sqlite-vec for vector retrieval\npre-commit install\n```\n\nCopy `.env.example` to `.env` and populate `OPENROUTER_API_KEY`, `GITHUB_TOKEN`, `REPO_NAME`.\n\n## Run\n\n```bash\npython3 -m src.main                              # start the swarm\npython3 -m src.cli.swarm_cli status              # health check\npython3 -m src.cli.swarm_cli tasks                # list tracked tasks\npython3 -m src.cli.swarm_cli queue                # inspect prompt queue\n\n# Phase-gate operations\npython3 -m src.cli.swarm_cli phase status <id>            # current phase + history\npython3 -m src.cli.swarm_cli phase advance <id> ARCHITECT # advance a work item\npython3 -m src.cli.swarm_cli phase advance <id> REVIEW --force --reason \"override\"\n\n# Self-prompt loop (opt-in, dry-run by default)\npython3 -m src.cli.swarm_cli self-prompt --dry-run        # preview synthesized prompts\npython3 -m src.cli.swarm_cli self-prompt --write          # append to prompt_queue.jsonl\n```\n\n## Configuration knobs\n\nSettings resolve from env \u2192 `.env` \u2192 pydantic defaults. Non-obvious ones:\n\n| Flag | Default | Effect |\n|---|---|---|\n| `GITHUB_MOCK_ALLOWED` | `false` | Allow the in-process `GitHubTool` mock when PyGithub is missing. **Production must keep this off.** |\n| `TEST_MODE` | `false` | Uses `MockLiteLlm` and the GitHub mocks; skips the default embedder. |\n| `PROJECT_ID` | `chimera` | Single-tenant scope placeholder; future multi-tenant work namespaces state by this. |\n| `SELF_PROMPT_ENABLED` | `false` | Runs the background gap-signal synthesizer. Stop with `.swarm_shutdown` or `.swarm_self_prompt_off`. |\n| `SELF_PROMPT_MAX_PER_HOUR` | `6` | Rate-limits self-prompt writes. |\n| `SDLC_MCP_ENABLED` | `false` | Governor may forward gate verdicts to the external `chimera_*` / `sdlc_*` MCP server. Dormant by default. |\n| `RETRIEVAL_BACKEND` | `keyword` | Set to `vector` / `sqlite-vec` to enable the sqlite-vec retrieval path. Falls back to keyword on any failure with a `retrieval.degraded` log. |\n| `EMBED_MODEL` | `openrouter/openai/text-embedding-3-small` | Model used by `LiteLLMEmbedder`. |\n| `EMBED_DAILY_TOKEN_CAP` | `200000` | Daily token budget enforced by `EmbedQuota`; over-cap calls raise `VectorBackendUnavailable`. |\n\n## Test\n\n```bash\npytest -q                                 # full suite\npytest tests/services -q                  # scoped\nruff check src tests                      # lint\nruff format --check src tests             # format check\nmypy src                                  # typecheck (advisory)\npip-audit                                 # dependency CVE scan\ncoverage run -m pytest -q && coverage report --fail-under=35\n```\n\nCI (`.github/workflows/ci.yml`) runs lint + typecheck + tests (py3.11 + 3.12) + security scans on every PR.\n\n## Architecture\n\nSee `docs/` and `.github/copilot-instructions.md`. Key entry points:\n\n- `src/main.py` \u2014 swarm runtime, registers tools, processes `prompt_queue.jsonl`, runs the opt-in `_self_prompt_tick` coroutine.\n- `src/autonomous_sdlc.py` \u2014 discover \u2192 plan \u2192 build \u2192 review \u2192 deliver loop.\n- `src/services/workflow_graphs.py` \u2014 bounded review\u2192rework cycles (LangGraph-optional).\n- `src/services/sdlc_phase.py` \u2014 `Phase` enum, `WorkItem`, transition rules (`ALLOWED_TRANSITIONS`).\n- `src/services/phase_controller.py` \u2014 `PhaseController.advance(item, target)` evaluates gates per transition and emits `phase.transition` events.\n- `src/services/quality_gates.py` \u2014 `QualityGate` ABC plus `ContentGuardGate`, `LintGate`, `TypecheckGate`, `SecurityScanGate`, `TestCoverageGate`, `CriticReviewGate`.\n- `src/services/phase_store.py` \u2014 `WorkItem` persistence on top of `StateManager` (used by the CLI `phase` subcommands).\n- `src/services/self_prompt.py` \u2014 gap-driven self-prompting loop (coverage, event log, stale backlog).\n- `src/services/vector_index.py` \u2014 `VectorIndex` protocol + `NullVectorIndex` + `SqliteVecBackend`.\n- `src/services/embedder.py` \u2014 `LiteLLMEmbedder` with `build_default_embedder()` factory.\n- `src/services/embed_quota.py` \u2014 `EmbedQuota` daily token tracker.\n- `src/mcp/server.py` \u2014 FastMCP stdio surface (`swarm.status`, `repo.*`).\n- `src/mcp/sdlc_client.py` \u2014 dormant adapter for the external SDLC MCP server.\n\nTask state lives in `state.json`, events in `events.jsonl`, session data in `sessions.db`, pending prompts in `prompt_queue.jsonl`. `StateManager` performs atomic JSON writes (`tempfile` + `os.replace`) and advisory-locked appends (`fcntl.flock` on POSIX) so concurrent writers from the SDLC loop, self-prompt tick, and CLI commands don't corrupt state. The swarm shuts down cleanly when `.swarm_shutdown` appears in the working directory.\n\n## Contributing\n\n- Branch from `main`; open PRs early.\n- All changes must pass `pre-commit run --all-files`, `ruff check src tests`, `ruff format --check src tests`, and `pytest -q` before merge.\n- Add structured logs via `src/observability/logger.py`; do not use `print()` in library code (CLI commands are the one exception).\n- New gates extend `QualityGate` in `src/services/quality_gates.py`.\n- Work items flow through `PhaseController`; never mutate a `WorkItem.phase` directly.\n- New agents follow the Architect/Governor pattern: pure tool functions at module scope, ADK wrapper behind a conditional import so the module stays testable without `google-adk`.\n", "trace_id": "bc5a2d1f-afc0-4204-9474-8ba1a7a4047c", "session_id": "f704ad45-1269-4829-a6d4-5422e63eb076", "task_id": "", "agent": "", "tool": ""}
+{"timestamp": "2026-04-18T19:43:15.859345+00:00", "level": "INFO", "logger": "main", "message": "Shutdown sentinel detected. Exiting swarm loop.", "trace_id": "bc5a2d1f-afc0-4204-9474-8ba1a7a4047c", "session_id": "f704ad45-1269-4829-a6d4-5422e63eb076", "task_id": "", "agent": "", "tool": ""}
+{"timestamp": "2026-04-18T19:43:15.859742+00:00", "level": "INFO", "logger": "main", "message": "Swarm exited cleanly.", "trace_id": "bc5a2d1f-afc0-4204-9474-8ba1a7a4047c", "session_id": "f704ad45-1269-4829-a6d4-5422e63eb076", "task_id": "", "agent": "", "tool": ""}
+/usr/lib/python3.11/asyncio/selector_events.py:843: ResourceWarning: unclosed transport <_SelectorSocketTransport fd=7>
+  _warn(f"unclosed transport {self!r}", ResourceWarning, source=self)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/usr/lib/python3.11/asyncio/sslproto.py:119: ResourceWarning: unclosed transport <asyncio._SSLProtocolTransport object>
+  _warnings.warn(

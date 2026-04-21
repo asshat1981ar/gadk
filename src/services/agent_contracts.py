@@ -58,7 +58,68 @@ class SpecialistRegistration(BaseModel):
     tags: list[str] = Field(default_factory=list)
 
 
+class AgentDecision(BaseModel):
+    """Structured decision output for all agents with PydanticAI integration.
+
+    This model provides a unified contract for agent handoffs, enabling
+    typed decisions, confidence scoring, cost estimation, and approval workflows.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    confidence: float = Field(
+        ge=0.0,
+        le=1.0,
+        description="Confidence score between 0.0 and 1.0"
+    )
+    reasoning: str = Field(
+        min_length=1,
+        description="Detailed reasoning for the decision"
+    )
+    action: str = Field(
+        min_length=1,
+        description="The action to take (e.g., 'delegate', 'complete', 'retry')"
+    )
+    payload: dict = Field(
+        default_factory=dict,
+        description="Structured data payload for the action"
+    )
+    estimated_cost_usd: float = Field(
+        ge=0.0,
+        default=0.0,
+        description="Estimated cost in USD for this decision"
+    )
+    estimated_duration_seconds: int = Field(
+        ge=0,
+        default=0,
+        description="Estimated duration in seconds"
+    )
+    required_approvals: list[str] = Field(
+        default_factory=list,
+        description="List of approval roles required (empty if none)"
+    )
+
+
+class AgentMemory(BaseModel):
+    """Persistent memory entry for agents across sessions."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    agent_id: str = Field(min_length=1, description="Unique agent identifier")
+    memory_type: Literal["context", "learning", "preference", "interaction"] = Field(
+        description="Type of memory entry"
+    )
+    content: dict = Field(description="Structured memory content")
+    timestamp: str = Field(description="ISO 8601 timestamp")
+    ttl: int | None = Field(
+        default=None,
+        description="Time-to-live in seconds (None for persistent)"
+    )
+
+
 __all__ = [
+    "AgentDecision",
+    "AgentMemory",
     "DelegationDecision",
     "ReviewStatus",
     "ReviewVerdict",

@@ -2,15 +2,28 @@ import json
 import os
 import tempfile
 from datetime import UTC, datetime
+from typing import Optional
 
 from src.utils.file_lock import locked_append
 
 
 class StateManager:
-    def __init__(self, storage_type="json", filename="state.json", event_filename="events.jsonl"):
+    def __init__(
+        self,
+        storage_type="json",
+        filename="state.json",
+        event_filename="events.jsonl",
+        tenant_id: Optional[str] = None,
+    ):
         self.storage_type = storage_type
-        self.filename = filename
-        self.event_filename = event_filename
+        self.base_filename = filename
+        self.base_event_filename = event_filename
+        self.tenant_id = tenant_id or "default"
+
+        # Compute tenant-specific filenames
+        self.filename = self._get_tenant_filename(filename, self.tenant_id)
+        self.event_filename = self._get_tenant_event_filename(event_filename, self.tenant_id)
+
         self.data = {}
         if self.storage_type == "json" and os.path.exists(self.filename):
             with open(self.filename) as f:
@@ -18,6 +31,49 @@ class StateManager:
                     self.data = json.load(f)
                 except json.JSONDecodeError:
                     self.data = {}
+
+    def _get_tenant_filename(self, base_filename: str, tenant_id: str) -> str:
+        """Generate tenant-specific state filename.
+
+        For default tenant: state.json
+        For other tenants: state.{tenant_id}.json
+        """
+        if tenant_id == "default":
+            return base_filename
+        # Insert tenant_id before the extension
+        base, ext = os.path.splitext(base_filename)
+        return f"{base}.{tenant_id}{ext}"
+
+    def _get_tenant_event_filename(self, base_filename: str, tenant_id: str) -> str:
+        """Generate tenant-specific events filename.
+
+        For default tenant: events.jsonl
+        For other tenants: events.{tenant_id}.jsonl
+        """
+        if tenant_id == "default":
+            return base_filename
+        # Insert tenant_id before the extension
+        base, ext = os.path.splitext(base_filename)
+        return f"{base}.{tenant_id}{ext}"
+
+    def for_tenant(self, tenant_id: str) -> "StateManager":
+        """Create a new StateManager instance for a specific tenant.
+
+        This allows tenant-specific state operations while maintaining
+        backward compatibility with single-tenant usage.
+
+        Args:
+            tenant_id: The tenant identifier
+
+        Returns:
+            New StateManager instance configured for the tenant
+        """
+        return StateManager(
+            storage_type=self.storage_type,
+            filename=self.base_filename,
+            event_filename=self.base_event_filename,
+            tenant_id=tenant_id,
+        )
 
     # ------------------------------------------------------------------
     # Atomic / safe I/O helpers

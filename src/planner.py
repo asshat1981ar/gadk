@@ -12,6 +12,7 @@ from typing import Any, TypeVar
 
 from json_repair import repair_json
 from litellm import acompletion
+from litellm.exceptions import RateLimitError
 from pydantic import BaseModel, Field, ValidationError
 from tenacity import AsyncRetrying, retry_if_exception_type, stop_after_attempt, wait_exponential
 
@@ -75,7 +76,7 @@ _KNOWN_TOOLS = {
     "execute_python_code",
 }
 
-_PLANNER_RETRY_WAIT = wait_exponential(multiplier=0.01, min=0, max=0.05)
+_PLANNER_RETRY_WAIT = wait_exponential(multiplier=1, min=1, max=8)
 
 
 class PlannerToolCall(BaseModel):
@@ -102,6 +103,7 @@ _PLANNER_RETRYABLE_EXCEPTIONS = (
     TimeoutError,
     ConnectionError,
     OSError,
+    RateLimitError,
 )
 
 

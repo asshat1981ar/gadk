@@ -70,6 +70,10 @@ class Settings(BaseSettings):
     # Phase 1 phase-gate framework
     project_id: str = "chimera"  # single-tenant scope (v1)
 
+    # Multi-tenant support
+    tenant_id: str = "default"  # Current tenant ID
+    multi_tenant_enabled: bool = False  # Enable multi-tenant mode
+
     # Phase 4 self-prompting loop
     self_prompt_enabled: bool = False
     self_prompt_max_per_hour: int = 6
@@ -104,7 +108,7 @@ _settings = get_settings()
 class Config:
     """Backward-compatible uppercase settings shim for existing imports."""
 
-    GITHUB_TOKEN = _settings.github_token
+    GITHUB_TOKEN=_settings.github_token
     REPO_NAME = _settings.repo_name
     STATE_TABLE_TYPE = _settings.state_table_type
     AUTONOMOUS_MODE = _settings.autonomous_mode
@@ -113,13 +117,13 @@ class Config:
     INSTRUCTOR_ENABLED = _settings.instructor_enabled
     LANGGRAPH_ENABLED = _settings.langgraph_enabled
     LLAMAINDEX_ENABLED = _settings.llamaindex_enabled
-    TOKEN_QUOTA_PER_TASK = _settings.token_quota_per_task
+    TOKEN_QUOTA_PER_TASK=_settings.token_quota_per_task
     LANGFUSE_ENABLED = _settings.langfuse_enabled
     HELICONE_ENABLED = _settings.helicone_enabled
     AGENTOPS_ENABLED = _settings.agentops_enabled
     MLFLOW_ENABLED = _settings.mlflow_enabled
     SENTRY_DSN = _settings.sentry_dsn
-    OPENROUTER_API_KEY = _settings.openrouter_api_key
+    OPENROUTER_API_KEY=_settings.openrouter_api_key
     OPENROUTER_API_BASE = _settings.openrouter_api_base
     OPENROUTER_MODEL = _settings.openrouter_model
     OPENROUTER_TOOL_MODEL = _settings.openrouter_tool_model
@@ -129,16 +133,66 @@ class Config:
     GITHUB_MOCK_ALLOWED = _settings.github_mock_allowed
     WORKSPACE_ROOT = _settings.workspace_root
     PROJECT_ID = _settings.project_id
+    TENANT_ID = _settings.tenant_id
+    MULTI_TENANT_ENABLED = _settings.multi_tenant_enabled
     SELF_PROMPT_ENABLED = _settings.self_prompt_enabled
     SELF_PROMPT_MAX_PER_HOUR = _settings.self_prompt_max_per_hour
     SDLC_MCP_ENABLED = _settings.sdlc_mcp_enabled
     RETRIEVAL_BACKEND = _settings.retrieval_backend
     EMBED_MODEL = _settings.embed_model
-    EMBED_DAILY_TOKEN_CAP = _settings.embed_daily_token_cap
+    EMBED_DAILY_TOKEN_CAP=_settings.embed_daily_token_cap
     SWARM_LOOP_POLL_SEC = _settings.swarm_loop_poll_sec
     SELF_PROMPT_TICK_INTERVAL_SEC = _settings.self_prompt_tick_interval_sec
     GATE_SUBPROCESS_TIMEOUT_SEC = _settings.gate_subprocess_timeout_sec
     GITHUB_DEDUP_ISSUE_SCAN_LIMIT = _settings.github_dedup_issue_scan_limit
+
+    # Model capability mappings for intelligent routing
+    # Maps capabilities to preferred models (in priority order)
+    MODEL_CAPABILITY_MAP = {
+        "code": [
+            "openrouter/openai/gpt-4o",
+            "openrouter/anthropic/claude-sonnet-4",
+            "openrouter/google/gemini-2.5-pro",
+            "openrouter/elephant-alpha",
+        ],
+        "review": [
+            "openrouter/anthropic/claude-sonnet-4",
+            "openrouter/openai/gpt-4o",
+            "openrouter/google/gemini-2.5-pro",
+            "openrouter/elephant-alpha",
+        ],
+        "analysis": [
+            "openrouter/anthropic/claude-sonnet-4",
+            "openrouter/openai/gpt-4o",
+            "openrouter/google/gemini-2.5-pro",
+            "openrouter/google/gemini-2.5-flash",
+            "openrouter/elephant-alpha",
+        ],
+        "creative": [
+            "openrouter/openai/gpt-4o",
+            "openrouter/google/gemini-2.5-pro",
+            "openrouter/anthropic/claude-sonnet-4",
+            "openrouter/elephant-alpha",
+        ],
+        "quick": [
+            "openrouter/openai/gpt-4o-mini",
+            "openrouter/google/gemini-2.0-flash-001",
+            "openrouter/google/gemini-2.5-flash",
+            "openrouter/openai/gpt-4o",
+        ],
+    }
+
+    # Cost per 1K tokens (USD) for cost-aware routing
+    MODEL_COST_MAP = {
+        "openrouter/openai/gpt-4o": 0.005,
+        "openrouter/openai/gpt-4o-mini": 0.00015,
+        "openrouter/anthropic/claude-sonnet-4": 0.003,
+        "openrouter/anthropic/claude-opus-4": 0.015,
+        "openrouter/google/gemini-2.5-flash": 0.0006,
+        "openrouter/google/gemini-2.0-flash-001": 0.00035,
+        "openrouter/google/gemini-2.5-pro": 0.0035,
+        "openrouter/elephant-alpha": 0.005,
+    }
 
 
 __all__ = ["Config", "Settings", "get_settings"]

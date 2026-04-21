@@ -2,6 +2,7 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 import pytest
+from litellm.exceptions import RateLimitError
 from tenacity import wait_none
 
 import src.planner as planner
@@ -60,6 +61,27 @@ async def test_llm_turn_retries_empty_response(monkeypatch):
     content = await planner._llm_turn(
         messages=[{"role": "user", "content": "hello"}],
         model="test-model",
+        retries=1,
+    )
+
+    assert content == "final response"
+    assert mocked_completion.await_count == 2
+
+
+@pytest.mark.asyncio
+async def test_llm_turn_retries_rate_limit_errors(monkeypatch):
+    monkeypatch.setattr(planner, "_PLANNER_RETRY_WAIT", wait_none())
+    mocked_completion = AsyncMock(
+        side_effect=[
+            RateLimitError("retry later", "openrouter", "openrouter/elephant-alpha"),
+            _mock_response("final response"),
+        ]
+    )
+    monkeypatch.setattr(planner, "acompletion", mocked_completion)
+
+    content = await planner._llm_turn(
+        messages=[{"role": "user", "content": "hello"}],
+        model="openrouter/elephant-alpha",
         retries=1,
     )
 

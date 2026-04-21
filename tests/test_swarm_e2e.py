@@ -1,3 +1,4 @@
+import json
 import os
 import signal
 import subprocess
@@ -5,6 +6,23 @@ import sys
 import time
 
 import pytest
+
+
+def _matches_startup_line(line: str) -> bool:
+    """Check if a log line indicates swarm startup.
+    
+    Handles both JSON formatted logs (default) and plain text logs.
+    """
+    if "Cognitive Foundry Swarm Active" in line:
+        return True
+    # Also check if it's in JSON format
+    try:
+        log_obj = json.loads(line)
+        if "Cognitive Foundry Swarm Active" in log_obj.get("message", ""):
+            return True
+    except (json.JSONDecodeError, ValueError):
+        pass
+    return False
 
 
 @pytest.fixture
@@ -27,7 +45,8 @@ def swarm_process():
         text=True,
     )
 
-    # Wait for startup (look for "Swarm Active")
+    # Wait for startup (look for "Cognitive Foundry Swarm Active")
+    # The log message can be in JSON format (with "message" field) or plain text
     start_time = time.time()
     startup_detected = False
     while time.time() - start_time < 60:
@@ -37,7 +56,7 @@ def swarm_process():
 
         # We don't want to block forever on readline, but for tests this is simpler
         line = proc.stdout.readline()
-        if "--- Cognitive Foundry Swarm Active ---" in line:
+        if _matches_startup_line(line):
             startup_detected = True
             break
         time.sleep(0.1)
@@ -125,3 +144,29 @@ async def test_swarm_state_update_on_ideation(swarm_process):
         time.sleep(0.5)
 
     assert found_state, "State file was not updated with quantum task"
+
+
+def test_startup_line_matching():
+    """Test that _matches_startup_line correctly detects startup messages in various formats."""
+    # JSON format with message field (default logging format)
+    json_log = '{"timestamp":"2024-01-20T10:00:00Z","level":"INFO","logger":"main","message":"Cognitive Foundry Swarm Active","session_id":"test-123"}'
+    assert _matches_startup_line(json_log) is True
+    
+    # JSON format with the message in session field
+    json_log2 = '{"timestamp":"2024-01-20T10:00:00Z","level":"INFO","logger":"main","message":"Cognitive Foundry Swarm Active (session=test-456)","session_id":"test-456"}'
+    assert _matches_startup_line(json_log2) is True
+    
+    # Plain text format
+    plain_log = "2024-01-20 10:00:00 [INFO] main | session=test-789 | Cognitive Foundry Swarm Active"
+    assert _matches_startup_line(plain_log) is True
+    
+    # Non-matching logs
+    non_startup_log = '{"timestamp":"2024-01-20T10:00:00Z","level":"INFO","message":"Some other message"}'
+    assert _matches_startup_line(non_startup_log) is False
+    
+    # Invalid JSON that doesn't contain the message
+    invalid_log = "This is not a startup message"
+    assert _matches_startup_line(invalid_log) is False
+    
+    # Empty line
+    assert _matches_startup_line("") is False

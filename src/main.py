@@ -8,6 +8,14 @@ from google.genai import types
 from src.agents.orchestrator import orchestrator_agent
 from src.capabilities.contracts import CapabilityRequest, CapabilityResult
 from src.config import Config
+from src.exceptions import (
+    ConfigurationError,
+    PromptProcessingError,
+    SelfPromptError,
+    SwarmLoopError,
+    SwarmStartupError,
+    ToolExecutionError,
+)
 from src.planner import run_planner
 from src.services.retrieval_context import (
     PLANNING_RETRIEVAL_CAPABILITY,
@@ -97,14 +105,22 @@ async def _self_prompt_tick(sm: StateManager, *, interval_sec: float | None = No
         interval_sec if interval_sec is not None else Config.SELF_PROMPT_TICK_INTERVAL_SEC
     )
     logger.info("self_prompt.tick: enabled, interval=%.1fs", effective_interval)
+    tick_count = 0
     while not is_shutdown_requested() and not _self_prompt.off_switch_active():
+        tick_count += 1
         try:
             # run_once is synchronous and does blocking file I/O (state.json,
             # coverage.xml, prompt_queue.jsonl). Offload to a worker thread
             # so the swarm's event loop stays responsive.
             await asyncio.to_thread(_self_prompt.run_once, sm=sm)
-        except Exception:
+        except Exception as e:
             logger.exception("self_prompt.tick: run_once crashed; continuing")
+            # Raise as SelfPromptError for structured error handling
+            raise SelfPromptError(
+                f"Self-prompt tick failed at count {tick_count}: {e}",
+                tick_count=tick_count,
+                context={"error": str(e), "error_type": type(e).__name__},
+            ) from e
         await asyncio.sleep(effective_interval)
     logger.info("self_prompt.tick: stopped (shutdown or off-switch)")
 
@@ -192,8 +208,14 @@ async def process_prompt(runner, session, user_query: str) -> None:
                     "Planner fallback failed after ADK tool-call JSON failure",
                     extra={"session_id": session.id},
                 )
-                print(f"Error during planner fallback: {fallback_error}")
-                return
+                raise PromptProcessingError(
+                    f"Planner fallback failed: {fallback_error}",
+                    prompt=user_query,
+                    stage="planner_fallback",
+                    use_planner_fallback=True,
+                    session_id=session.id,
+                    context={"original_error": str(e), "fallback_error": str(fallback_error)},
+                ) from fallback_error
             if fallback:
                 print(f"Swarm: {fallback}")
                 logger.info(f"Swarm response: {fallback}", extra={"session_id": session.id})
@@ -202,11 +224,25 @@ async def process_prompt(runner, session, user_query: str) -> None:
                     "Planner fallback returned no response after ADK tool-call JSON failure",
                     extra={"session_id": session.id},
                 )
-                print("Error during planner fallback: no response produced")
+                raise PromptProcessingError(
+                    "Planner fallback returned empty response",
+                    prompt=user_query,
+                    stage="planner_fallback_empty",
+                    use_planner_fallback=True,
+                    session_id=session.id,
+                    context={"original_error": str(e)},
+                )
             return
+
+        # Log and wrap other exceptions for structured error handling
         logger.exception("Error during swarm execution")
-        if "AttributeError" not in str(e):
-            logger.error("Error during swarm execution: %s", e)
+        raise PromptProcessingError(
+            f"ADK execution failed: {e}",
+            prompt=user_query,
+            stage="adk_execution",
+            session_id=session.id,
+            context={"error": str(e), "error_type": type(e).__name__},
+        ) from e
 
 
 async def run_swarm_loop(session_service, session, runner) -> None:
@@ -229,18 +265,35 @@ async def run_swarm_loop(session_service, session, runner) -> None:
                 )
         else:
             await process_prompt(runner, session, initial_query)
-    except Exception:
+    except Exception as initial_exc:
         logger.exception("initial prompt crashed; continuing into main loop")
+        # Re-raise as SwarmLoopError for consistency
+        raise SwarmLoopError(
+            f"Initial prompt failed: {initial_exc}",
+            iteration=0,
+            recoverable=True,
+            session_id=session.id,
+            context={"error": str(initial_exc), "error_type": type(initial_exc).__name__},
+        ) from initial_exc
 
+    loop_iteration = 0
     while True:
+        loop_iteration += 1
         try:
             if is_shutdown_requested():
                 logger.info("Shutdown sentinel detected. Exiting swarm loop.")
                 break
-        except Exception:
+        except Exception as shutdown_exc:
             logger.exception("shutdown-check crashed; treating as not-requested")
             # Conservative: fall through and keep looping so we don't
             # exit on a transient os.path.exists failure.
+            raise SwarmLoopError(
+                f"Shutdown check failed: {shutdown_exc}",
+                iteration=loop_iteration,
+                recoverable=True,
+                session_id=session.id,
+                context={"error": str(shutdown_exc), "error_type": type(shutdown_exc).__name__},
+            ) from shutdown_exc
 
         # Check for injected prompts. Any crash here (queue file I/O,
         # prompt handler) gets logged and the loop keeps going —
@@ -255,8 +308,16 @@ async def run_swarm_loop(session_service, session, runner) -> None:
                     extra={"session_id": session.id},
                 )
                 await process_prompt(runner, session, prompt_text)
-        except Exception:
+        except Exception as loop_exc:
             logger.exception("swarm loop iteration crashed; continuing")
+            # Wrap in SwarmLoopError but mark as recoverable since we continue
+            raise SwarmLoopError(
+                f"Loop iteration failed: {loop_exc}",
+                iteration=loop_iteration,
+                recoverable=True,
+                session_id=session.id,
+                context={"error": str(loop_exc), "error_type": type(loop_exc).__name__},
+            ) from loop_exc
 
         await asyncio.sleep(Config.SWARM_LOOP_POLL_SEC)
 
@@ -289,14 +350,31 @@ async def main():
     # Wire up LiteLLM observability callbacks
     setup_callbacks()
 
+    session_service = None
+    session = None
+
     try:
         # 1. Initialize services
-        session_service = SQLiteSessionService(db_path="sessions.db")
+        try:
+            session_service = SQLiteSessionService(db_path="sessions.db")
+        except Exception as e:
+            raise SwarmStartupError(
+                f"Failed to initialize session service: {e}",
+                component="session_service",
+                context={"error": str(e), "error_type": type(e).__name__},
+            ) from e
 
         # 2. Create a session for the swarm
-        session = await session_service.create_session(
-            user_id="swarm_admin", app_name="CognitiveFoundry"
-        )
+        try:
+            session = await session_service.create_session(
+                user_id="swarm_admin", app_name="CognitiveFoundry"
+            )
+        except Exception as e:
+            raise SwarmStartupError(
+                f"Failed to create session: {e}",
+                component="session_creation",
+                context={"error": str(e), "error_type": type(e).__name__},
+            ) from e
 
         # Set observability context
         trace_id = os.getenv("TRACE_ID") or str(__import__("uuid").uuid4())
@@ -305,17 +383,28 @@ async def main():
         logger.info("Cognitive Foundry Swarm Active", extra={"session_id": session.id})
 
         # 3. Initialize the Runner with the Orchestrator
-        runner = Runner(
-            agent=orchestrator_agent, app_name="CognitiveFoundry", session_service=session_service
-        )
-        runner.callbacks = [ObservabilityCallback()]
+        try:
+            runner = Runner(
+                agent=orchestrator_agent, app_name="CognitiveFoundry", session_service=session_service
+            )
+            runner.callbacks = [ObservabilityCallback()]
+        except Exception as e:
+            raise SwarmStartupError(
+                f"Failed to initialize runner: {e}",
+                component="runner",
+                session_id=session.id,
+                context={"error": str(e), "error_type": type(e).__name__},
+            ) from e
 
         logger.info("Cognitive Foundry Swarm Active (session=%s)", session.id)
 
         # Check for API Key (OpenRouter)
         if not os.getenv("OPENROUTER_API_KEY"):
-            logger.error("OPENROUTER_API_KEY not found in environment.")
-            return
+            raise ConfigurationError(
+                "OPENROUTER_API_KEY not found in environment",
+                config_key="OPENROUTER_API_KEY",
+                session_id=session.id,
+            )
 
         autonomous = os.getenv("AUTONOMOUS_MODE", "false").lower() == "true"
 
@@ -325,15 +414,43 @@ async def main():
             self_prompt_task = asyncio.create_task(_self_prompt_tick(sm))
             try:
                 await run_swarm_loop(session_service, session, runner)
+            except SwarmLoopError as e:
+                # SwarmLoopErrors are recoverable by design, but we log them
+                logger.error(
+                    f"Swarm loop error (recoverable={e.recoverable}): {e}",
+                    extra={"session_id": session.id, **e.to_log_context()},
+                )
+                raise
             finally:
                 self_prompt_task.cancel()
                 try:
                     await self_prompt_task
-                except (asyncio.CancelledError, Exception):
+                except asyncio.CancelledError:
                     pass
+                except Exception as cancel_exc:
+                    logger.warning(f"Error during self_prompt_task cleanup: {cancel_exc}")
         else:
             await run_single(session_service, session, runner)
 
+    except SwarmStartupError as e:
+        logger.error(
+            f"Swarm startup failed in component '{e.component}': {e}",
+            extra={"component": e.component, **e.to_log_context()},
+        )
+        raise
+    except ConfigurationError as e:
+        logger.error(
+            f"Configuration error for '{e.config_key}': {e}",
+            extra={"config_key": e.config_key, **e.to_log_context()},
+        )
+        raise
+    except Exception as e:
+        # Catch-all for any unexpected errors during main execution
+        logger.exception("Unexpected error during swarm execution")
+        raise SwarmStartupError(
+            f"Unexpected error: {e}",
+            context={"error": str(e), "error_type": type(e).__name__},
+        ) from e
     finally:
         clear_pid()
         clear_shutdown()
