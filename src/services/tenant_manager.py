@@ -91,7 +91,9 @@ class TenantManager:
         """
         return self._tenants.get(tenant_id)
 
-    def get_or_create_tenant(self, tenant_id: str, name: str = "", config: Optional[dict] = None) -> Tenant:
+    def get_or_create_tenant(
+        self, tenant_id: str, name: str = "", config: Optional[dict] = None
+    ) -> Tenant:
         """Get an existing tenant or create a new one.
 
         Args:
@@ -108,7 +110,9 @@ class TenantManager:
             tenant = self.create_tenant(tenant_id, tenant_name, config)
         return tenant
 
-    def update_tenant(self, tenant_id: str, name: Optional[str] = None, config: Optional[dict] = None) -> Tenant:
+    def update_tenant(
+        self, tenant_id: str, name: Optional[str] = None, config: Optional[dict] = None
+    ) -> Tenant:
         """Update an existing tenant.
 
         Args:

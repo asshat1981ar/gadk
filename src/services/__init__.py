@@ -1,4 +1,5 @@
 """Services module providing core functionality."""
+
 from src.services.model_router import (
     ModelCapability,
     ModelPerformance,

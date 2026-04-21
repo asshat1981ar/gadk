@@ -10,6 +10,7 @@ with features like:
 - Task timeout handling
 - Task cancellation
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -20,7 +21,6 @@ from datetime import UTC, datetime
 from enum import Enum, auto
 from typing import Any
 
-from src.config import Config
 from src.observability.logger import get_logger
 from src.observability.metrics import increment_counter, record_histogram
 
@@ -452,6 +452,7 @@ class AsyncTaskQueue:
             Copy of current metrics.
         """
         from copy import deepcopy
+
         return deepcopy(self._metrics)
 
     @property

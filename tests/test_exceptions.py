@@ -42,9 +42,7 @@ class TestSwarmError:
 
     def test_log_context_combined(self):
         """Test log context combines session_id and context."""
-        exc = SwarmError(
-            "test", session_id="session-123", context={"key": "value"}
-        )
+        exc = SwarmError("test", session_id="session-123", context={"key": "value"})
         ctx = exc.to_log_context()
         assert ctx["session_id"] == "session-123"
         assert ctx["key"] == "value"

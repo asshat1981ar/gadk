@@ -13,10 +13,10 @@ Design choices:
 Example:
     # Check current spending
     costs = get_current_costs()
-    
+
     # Set a budget alert
     set_budget_alert(threshold_amount=50.0, alert_type="daily")
-    
+
     # Get cost optimization recommendations
     recommendations = get_budget_recommendations()
 """
@@ -36,25 +36,37 @@ logger = get_logger("finops")
 
 # Default budget from environment
 budget_usd = float(os.getenv("BUDGET_USD", "50.0"))
-daily_budget_usd = float(os.getenv("DAILY_BUDGET_USD", str(budget_usd / 30)))  # Default to monthly/30
+daily_budget_usd = float(
+    os.getenv("DAILY_BUDGET_USD", str(budget_usd / 30))
+)  # Default to monthly/30
 
 # File paths for persistent storage
 BUDGET_ALERTS_FILE = os.getenv("BUDGET_ALERTS_FILE", "budget_alerts.jsonl")
 MODEL_USAGE_FILE = os.getenv("MODEL_USAGE_FILE", "model_usage.jsonl")
 
 # Cost thresholds for flagging expensive operations
-EXPENSIVE_OPERATION_THRESHOLD_USD = float(
-    os.getenv("EXPENSIVE_OPERATION_THRESHOLD", "1.00")
-)
+EXPENSIVE_OPERATION_THRESHOLD_USD = float(os.getenv("EXPENSIVE_OPERATION_THRESHOLD", "1.00"))
 HIGH_COST_THRESHOLD_USD = float(os.getenv("HIGH_COST_THRESHOLD", "5.00"))
 
 # Model cost estimates (per 1K tokens) - approximate values
 MODEL_COSTS = {
     "openrouter/openai/gpt-4o": {"input": 0.005, "output": 0.015, "category": "premium"},
     "openrouter/openai/gpt-4o-mini": {"input": 0.00015, "output": 0.0006, "category": "economy"},
-    "openrouter/anthropic/claude-sonnet-4": {"input": 0.008, "output": 0.024, "category": "premium"},
-    "openrouter/google/gemini-2.5-flash": {"input": 0.0005, "output": 0.0015, "category": "standard"},
-    "openrouter/google/gemini-2.0-flash-001": {"input": 0.0004, "output": 0.0012, "category": "standard"},
+    "openrouter/anthropic/claude-sonnet-4": {
+        "input": 0.008,
+        "output": 0.024,
+        "category": "premium",
+    },
+    "openrouter/google/gemini-2.5-flash": {
+        "input": 0.0005,
+        "output": 0.0015,
+        "category": "standard",
+    },
+    "openrouter/google/gemini-2.0-flash-001": {
+        "input": 0.0004,
+        "output": 0.0012,
+        "category": "standard",
+    },
     "openrouter/elephant-alpha": {"input": 0.002, "output": 0.006, "category": "standard"},
 }
 
@@ -167,19 +179,19 @@ def get_cost_breakdown(group_by: str = "agent") -> dict[str, Any]:
         Dictionary with cost breakdown per group and total.
     """
     summary = tracker.get_summary()
-    
+
     if group_by == "agent":
         breakdown = summary.get("by_agent", {})
         result_key = "breakdown_by_agent"
     else:
         breakdown = summary.get("by_task", {})
         result_key = "breakdown_by_task"
-    
+
     logger.info(
         "Retrieved cost breakdown",
         extra={"group_by": group_by, "total_spend_usd": summary["total_spend_usd"]},
     )
-    
+
     return {
         result_key: breakdown,
         "total_spend_usd": summary["total_spend_usd"],
@@ -209,29 +221,31 @@ def estimate_task_cost(
     complexity_multipliers = {"low": 1.0, "medium": 2.5, "high": 5.0}
     base_tokens = estimated_tokens_per_call or 2000  # Default base
     multiplier = complexity_multipliers.get(expected_complexity, 2.5)
-    
+
     # Calculate estimated tokens per agent
     tokens_per_agent = int(base_tokens * multiplier)
-    
+
     breakdown = []
     total_cost = 0.0
-    
+
     # Use average model cost for estimation
     avg_cost_per_1k = 0.005  # Average across typical models
-    
+
     for agent in expected_agents:
         agent_cost = (tokens_per_agent / 1000) * avg_cost_per_1k
         total_cost += agent_cost
-        
-        breakdown.append({
-            "agent": agent,
-            "estimated_tokens": tokens_per_agent,
-            "estimated_cost_usd": round(agent_cost, 6),
-        })
-    
+
+        breakdown.append(
+            {
+                "agent": agent,
+                "estimated_tokens": tokens_per_agent,
+                "estimated_cost_usd": round(agent_cost, 6),
+            }
+        )
+
     # Add margin for uncertainty
     confidence_multiplier = 1.0 - (0.1 * complexity_multipliers[expected_complexity])
-    
+
     logger.info(
         "Estimated task cost",
         extra={
@@ -241,7 +255,7 @@ def estimate_task_cost(
             "confidence": confidence_multiplier,
         },
     )
-    
+
     return {
         "estimated_cost_usd": round(total_cost, 6),
         "confidence": round(confidence_multiplier, 2),
@@ -262,14 +276,16 @@ def check_budget_status() -> dict[str, Any]:
     current_spend = tracker.get_total_spend()
     remaining = budget_usd - current_spend
     percent_used = (current_spend / budget_usd * 100) if budget_usd > 0 else 0
-    
+
     if current_spend > budget_usd:
         status = "BUDGET_EXCEEDED"
         message = f"Budget exceeded! Spent ${current_spend:.2f} of ${budget_usd:.2f}"
         logger.warning(message, extra={"current_spend": current_spend, "budget": budget_usd})
     elif percent_used >= 90:
         status = "APPROACHING_LIMIT"
-        message = f"Budget alert: {percent_used:.1f}% used (${current_spend:.2f} / ${budget_usd:.2f})"
+        message = (
+            f"Budget alert: {percent_used:.1f}% used (${current_spend:.2f} / ${budget_usd:.2f})"
+        )
         logger.warning(message, extra={"percent_used": percent_used})
     elif percent_used >= 75:
         status = "WARNING"
@@ -277,9 +293,11 @@ def check_budget_status() -> dict[str, Any]:
         logger.info(message, extra={"percent_used": percent_used})
     else:
         status = "WITHIN_BUDGET"
-        message = f"Budget healthy: {percent_used:.1f}% used (${current_spend:.2f} / ${budget_usd:.2f})"
+        message = (
+            f"Budget healthy: {percent_used:.1f}% used (${current_spend:.2f} / ${budget_usd:.2f})"
+        )
         logger.info(message, extra={"percent_used": percent_used})
-    
+
     return {
         "status": status,
         "current_spend_usd": current_spend,
@@ -314,20 +332,21 @@ def set_budget_alert(
     """
     current_spend = tracker.get_total_spend()
     is_triggered = current_spend >= threshold_amount
-    
+
     alert = BudgetAlert(
         threshold_amount=threshold_amount,
         alert_type=alert_type,
         current_spend=current_spend,
         is_triggered=is_triggered,
         task_id=task_id,
-        message=message or f"Alert: Spending has reached ${current_spend:.2f} (threshold: ${threshold_amount:.2f})",
+        message=message
+        or f"Alert: Spending has reached ${current_spend:.2f} (threshold: ${threshold_amount:.2f})",
         triggered_at=datetime.now(UTC) if is_triggered else None,
     )
-    
+
     # Persist to file
     _append_to_jsonl(BUDGET_ALERTS_FILE, alert.to_dict())
-    
+
     logger.info(
         "Budget alert set",
         extra={
@@ -337,7 +356,7 @@ def set_budget_alert(
             "task_id": task_id,
         },
     )
-    
+
     return {
         "created": True,
         "threshold_amount": threshold_amount,
@@ -360,56 +379,64 @@ def get_budget_recommendations() -> list[dict[str, Any]]:
     summary = tracker.get_summary()
     current_spend = summary["total_spend_usd"]
     by_agent = summary.get("by_agent", {})
-    
+
     # Check overall budget utilization
     if budget_usd > 0:
         utilization = current_spend / budget_usd
-        
+
         if utilization > 0.8:
-            recommendations.append({
-                "category": "cost_control",
-                "recommendation": "Budget utilization is high. Consider reviewing task complexity assignments.",
-                "priority": "high",
-                "potential_savings_percent": 15,
-                "action": "Review high-cost tasks and consider using simpler models for routine operations",
-            })
-    
+            recommendations.append(
+                {
+                    "category": "cost_control",
+                    "recommendation": "Budget utilization is high. Consider reviewing task complexity assignments.",
+                    "priority": "high",
+                    "potential_savings_percent": 15,
+                    "action": "Review high-cost tasks and consider using simpler models for routine operations",
+                }
+            )
+
     # Agent-specific recommendations
     for agent, cost in by_agent.items():
         agent_percent = (cost / current_spend * 100) if current_spend > 0 else 0
-        
+
         if agent_percent > 50:
-            recommendations.append({
-                "category": "agent_optimization",
-                "recommendation": f"{agent} accounts for {agent_percent:.1f}% of costs. Review its usage patterns.",
-                "priority": "medium",
-                "potential_savings_percent": 10,
-                "action": f"Consider using cheaper models for {agent} operations",
-            })
-    
+            recommendations.append(
+                {
+                    "category": "agent_optimization",
+                    "recommendation": f"{agent} accounts for {agent_percent:.1f}% of costs. Review its usage patterns.",
+                    "priority": "medium",
+                    "potential_savings_percent": 10,
+                    "action": f"Consider using cheaper models for {agent} operations",
+                }
+            )
+
     # Model optimization recommendations
-    recommendations.append({
-        "category": "model_selection",
-        "recommendation": "Use 'suggest_cheaper_alternative' tool to find cost-effective model options",
-        "priority": "low",
-        "potential_savings_percent": 25,
-        "action": "Replace premium models with economy models for non-critical tasks",
-    })
-    
+    recommendations.append(
+        {
+            "category": "model_selection",
+            "recommendation": "Use 'suggest_cheaper_alternative' tool to find cost-effective model options",
+            "priority": "low",
+            "potential_savings_percent": 25,
+            "action": "Replace premium models with economy models for non-critical tasks",
+        }
+    )
+
     # Caching recommendations
-    recommendations.append({
-        "category": "caching",
-        "recommendation": "Enable response caching for repeated API calls",
-        "priority": "low",
-        "potential_savings_percent": 20,
-        "action": "Use the 'recommend_caching_strategy' tool to identify caching opportunities",
-    })
-    
+    recommendations.append(
+        {
+            "category": "caching",
+            "recommendation": "Enable response caching for repeated API calls",
+            "priority": "low",
+            "potential_savings_percent": 20,
+            "action": "Use the 'recommend_caching_strategy' tool to identify caching opportunities",
+        }
+    )
+
     logger.info(
         "Generated budget recommendations",
         extra={"recommendations_count": len(recommendations), "current_spend": current_spend},
     )
-    
+
     return recommendations
 
 
@@ -437,13 +464,13 @@ def track_model_usage(
         token_count=token_count,
         cost_usd=cost_usd,
     )
-    
+
     # Persist to file
     _append_to_jsonl(MODEL_USAGE_FILE, usage.to_dict())
-    
+
     # Also record in cost tracker
     tracker.record_cost(f"model_usage_{agent_name}", agent_name, cost_usd)
-    
+
     logger.info(
         "Model usage tracked",
         extra={
@@ -453,7 +480,7 @@ def track_model_usage(
             "cost_usd": cost_usd,
         },
     )
-    
+
     return {
         "recorded": True,
         "model_name": model_name,
@@ -483,7 +510,7 @@ def suggest_cheaper_alternative(
     """
     current_cost = MODEL_COSTS.get(model_name, {}).get("category", "unknown")
     alternatives = CHEAPER_ALTERNATIVES.get(model_name, [])
-    
+
     suggestions = []
     for alt_model in alternatives:
         alt_info = MODEL_COSTS.get(alt_model, {})
@@ -491,8 +518,10 @@ def suggest_cheaper_alternative(
             # Calculate potential savings
             current_avg = (MODEL_COSTS[model_name]["input"] + MODEL_COSTS[model_name]["output"]) / 2
             alt_avg = (alt_info["input"] + alt_info["output"]) / 2
-            savings_percent = ((current_avg - alt_avg) / current_avg * 100) if current_avg > 0 else 0
-            
+            savings_percent = (
+                ((current_avg - alt_avg) / current_avg * 100) if current_avg > 0 else 0
+            )
+
             # Determine tradeoffs based on task type
             tradeoffs = []
             if alt_info["category"] == "economy":
@@ -500,15 +529,17 @@ def suggest_cheaper_alternative(
                 tradeoffs.append("Faster response times")
             elif alt_info["category"] == "standard":
                 tradeoffs.append("Good balance of cost and capability")
-            
-            suggestions.append({
-                "model": alt_model,
-                "category": alt_info["category"],
-                "estimated_savings_percent": round(savings_percent, 1),
-                "tradeoffs": tradeoffs,
-                "best_for": ["batch processing", "routine operations", "high volume tasks"],
-            })
-    
+
+            suggestions.append(
+                {
+                    "model": alt_model,
+                    "category": alt_info["category"],
+                    "estimated_savings_percent": round(savings_percent, 1),
+                    "tradeoffs": tradeoffs,
+                    "best_for": ["batch processing", "routine operations", "high volume tasks"],
+                }
+            )
+
     logger.info(
         "Suggested cheaper alternatives",
         extra={
@@ -517,7 +548,7 @@ def suggest_cheaper_alternative(
             "task_type": task_type,
         },
     )
-    
+
     if not alternatives:
         return {
             "current_model": model_name,
@@ -525,7 +556,7 @@ def suggest_cheaper_alternative(
             "suggested_alternatives": [],
             "message": f"{model_name} is already economical or no cheaper alternatives configured",
         }
-    
+
     return {
         "current_model": model_name,
         "current_category": current_cost,
@@ -553,7 +584,7 @@ def flag_expensive_operation(
     """
     is_flagged = False
     flag_reason = None
-    
+
     if estimated_cost_usd >= HIGH_COST_THRESHOLD_USD:
         is_flagged = True
         flag_reason = f"Very high cost operation (${estimated_cost_usd:.2f}) exceeds threshold (${HIGH_COST_THRESHOLD_USD:.2f})"
@@ -567,13 +598,13 @@ def flag_expensive_operation(
             "Operation cost within normal range",
             extra={"operation_type": operation_type, "estimated_cost": estimated_cost_usd},
         )
-    
+
     recommendations = []
     if is_flagged:
         recommendations.append("Consider batching operations to reduce costs")
         recommendations.append("Review if operation can use cheaper model alternatives")
         recommendations.append("Check if caching can be applied")
-    
+
     return {
         "is_flagged": is_flagged,
         "flag_reason": flag_reason,
@@ -606,13 +637,13 @@ def recommend_caching_strategy(
     # Determine caching viability based on frequency and size
     frequency_scores = {"low": 0.2, "medium": 0.6, "high": 0.9}
     score = frequency_scores.get(repeat_frequency, 0.5)
-    
+
     # Adjust for data size (larger data = more benefit but also more storage cost)
     if data_size_mb > 100:
         score -= 0.2  # Large data might be expensive to cache
     elif data_size_mb < 1:
         score += 0.1  # Small data is cheap to cache
-    
+
     if score >= 0.7:
         strategy = "strongly_recommended"
         estimated_savings = 20 + (score * 30)
@@ -636,7 +667,7 @@ def recommend_caching_strategy(
             "type": "none",
             "reason": "Low repeat frequency or high data size may not justify caching overhead",
         }
-    
+
     logger.info(
         "Caching strategy recommendation",
         extra={
@@ -645,7 +676,7 @@ def recommend_caching_strategy(
             "estimated_savings": estimated_savings,
         },
     )
-    
+
     return {
         "strategy": strategy,
         "estimated_savings_percent": round(estimated_savings, 1),
@@ -706,6 +737,7 @@ finops_agent = None
 
 try:
     from google.adk.agents import Agent
+
     from src.config import Config
 
     if Config.TEST_MODE:

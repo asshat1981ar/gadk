@@ -1,10 +1,11 @@
 """Tests for the async task queue implementation."""
+
 from __future__ import annotations
 
 import asyncio
+from datetime import datetime
+
 import pytest
-from datetime import UTC, datetime
-from unittest.mock import AsyncMock, MagicMock, patch
 
 from src.services.task_queue import (
     AsyncTaskQueue,
@@ -299,6 +300,7 @@ class TestAsyncTaskQueueExecution:
     @pytest.mark.asyncio
     async def test_custom_task_function(self, queue):
         """Test custom task function execution."""
+
         async def custom_handler(payload):
             return {"processed": True, "data": payload}
 
@@ -343,6 +345,7 @@ class TestAsyncTaskQueueExecution:
         await queue.start()
 
         try:
+
             async def slow_task(payload):
                 await asyncio.sleep(10.0)  # Will definitely timeout
                 return {"completed": True}
@@ -572,15 +575,15 @@ class TestTaskQueueManager:
 
     def test_default_queue_set(self, manager):
         """Test default queue is set automatically."""
-        queue1 = manager.register_queue("queue-1")
+        manager.register_queue("queue-1")
         assert manager._default_queue == "queue-1"
 
         # Second queue shouldn't change default unless specified
-        queue2 = manager.register_queue("queue-2")
+        manager.register_queue("queue-2")
         assert manager._default_queue == "queue-1"
 
         # Explicitly set default
-        queue3 = manager.register_queue("queue-3", set_as_default=True)
+        manager.register_queue("queue-3", set_as_default=True)
         assert manager._default_queue == "queue-3"
 
     def test_get_nonexistent_queue(self, manager):

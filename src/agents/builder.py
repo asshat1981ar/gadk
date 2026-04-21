@@ -21,9 +21,6 @@ Design choices:
 from __future__ import annotations
 
 import asyncio
-import json
-import os
-import subprocess
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
@@ -38,8 +35,9 @@ from src.services.sdlc_phase import Phase
 logger = get_logger("builder")
 
 try:
-    from src.tools.github_tool import GitHubTool
     from src.tools.filesystem import write_file as fs_write_file
+    from src.tools.github_tool import GitHubTool
+
     GIT_AVAILABLE = True
 except ImportError:
     GIT_AVAILABLE = False
@@ -125,43 +123,43 @@ class BranchResult(BaseModel):
 
 def generate_pr_title(architecture_note: dict[str, Any] | object) -> str:
     """Generate a concise PR title from an ArchitectureNote.
-    
+
     Args:
         architecture_note: The architecture note as a dict or ArchitectureNote object
-        
+
     Returns:
         PR title string (max 256 chars per GitHub limit)
     """
     # Handle both dict and Pydantic model
     if hasattr(architecture_note, "model_dump"):
         architecture_note = architecture_note.model_dump()
-    
+
     title = architecture_note.get("title", "Untitled")
     task_id = architecture_note.get("task_id", "")
-    
+
     # Format: [IMPLEMENT-{task_id}] {title}
     pr_title = f"[IMPLEMENT-{task_id}] {title}"
-    
+
     # Truncate to 256 chars
     if len(pr_title) > 256:
         pr_title = pr_title[:253] + "..."
-    
+
     return pr_title
 
 
 def generate_pr_body(architecture_note: dict[str, Any] | object) -> str:
     """Generate a PR body from an ArchitectureNote.
-    
+
     Args:
         architecture_note: The architecture note as a dict or ArchitectureNote object
-        
+
     Returns:
         PR body as markdown string
     """
     # Handle both dict and Pydantic model
     if hasattr(architecture_note, "model_dump"):
         architecture_note = architecture_note.model_dump()
-    
+
     title = architecture_note.get("title", "Untitled")
     context = architecture_note.get("context", "")
     decision = architecture_note.get("decision", "")
@@ -169,12 +167,12 @@ def generate_pr_body(architecture_note: dict[str, Any] | object) -> str:
     alternatives = architecture_note.get("alternatives_considered", [])
     touched_paths = architecture_note.get("touched_paths", [])
     task_id = architecture_note.get("task_id", "")
-    
+
     lines = [
         f"# {title}",
         "",
         f"> **Task:** `{task_id}`  ",
-        f"> **Phase:** IMPLEMENT → REVIEW",
+        "> **Phase:** IMPLEMENT → REVIEW",
         "",
         "## Description",
         f"{context}",
@@ -186,42 +184,46 @@ def generate_pr_body(architecture_note: dict[str, Any] | object) -> str:
         f"{decision}",
         "",
     ]
-    
+
     if alternatives:
-        lines.extend([
-            "## Alternatives Considered",
-            ""] + [f"- {alt}" for alt in alternatives] + [""])
-    
+        lines.extend(
+            ["## Alternatives Considered", ""] + [f"- {alt}" for alt in alternatives] + [""]
+        )
+
     if consequences:
-        lines.extend([
-            "## Consequences",
-            ""] + [f"- {c}" for c in consequences] + [""])
-    
+        lines.extend(["## Consequences", ""] + [f"- {c}" for c in consequences] + [""])
+
     if touched_paths:
-        lines.extend([
-            "## Changes",
-            "This PR modifies the following files:",
+        lines.extend(
+            [
+                "## Changes",
+                "This PR modifies the following files:",
+                "",
+            ]
+            + [f"- `{p}`" for p in touched_paths]
+            + [""]
+        )
+
+    lines.extend(
+        [
+            "## Testing",
+            "- [ ] Unit tests pass",
+            "- [ ] Integration tests pass",
+            "- [ ] Manual testing completed",
             "",
-        ] + [f"- `{p}`" for p in touched_paths] + [""])
-    
-    lines.extend([
-        "## Testing",
-        "- [ ] Unit tests pass",
-        "- [ ] Integration tests pass",
-        "- [ ] Manual testing completed",
-        "",
-        "## Checklist",
-        "- [ ] Code follows project style guidelines",
-        "- [ ] Self-review completed",
-        "- [ ] Documentation updated (if needed)",
-    ])
-    
+            "## Checklist",
+            "- [ ] Code follows project style guidelines",
+            "- [ ] Self-review completed",
+            "- [ ] Documentation updated (if needed)",
+        ]
+    )
+
     return "\n".join(lines)
 
 
 def implementation_gate_payload(plan: dict[str, Any]) -> dict[str, Any]:
     """Shape an ImplementationPlan payload for the IMPLEMENT-phase content gate.
-    
+
     Returns dict with build results for quality gate inspection.
     """
     plan_obj = ImplementationPlan.model_validate(plan)
@@ -238,16 +240,16 @@ async def create_branch(
     base: str = "main",
 ) -> dict[str, Any]:
     """Create a feature branch for implementation.
-    
+
     Args:
         task_id: The task identifier
         base: The base branch to branch from (default: main)
-        
+
     Returns:
         BranchResult as dict
     """
     branch_name = f"feature/{task_id}"
-    
+
     try:
         if GitHubTool is None:
             return BranchResult(
@@ -256,10 +258,10 @@ async def create_branch(
                 base=base,
                 error="GitHubTool not available",
             ).model_dump(mode="json")
-        
+
         # Create branch via GitHub API
         gh = GitHubTool()
-        
+
         # Get the latest commit SHA from base branch
         try:
             base_branch = gh.repo.get_branch(base)
@@ -270,30 +272,27 @@ async def create_branch(
                 base=base,
                 error=f"Failed to get base branch: {exc}",
             ).model_dump(mode="json")
-        
+
         # Create the new branch
         try:
-            gh.repo.create_git_ref(
-                ref=f"refs/heads/{branch_name}",
-                sha=base_branch.commit.sha
-            )
+            gh.repo.create_git_ref(ref=f"refs/heads/{branch_name}", sha=base_branch.commit.sha)
         except Exception as exc:
             # Branch might already exist
             logger.warning("Branch creation may have failed or branch exists: %s", exc)
-        
+
         logger.info(
             "branch.created task=%s branch=%s base=%s",
             task_id,
             branch_name,
             base,
         )
-        
+
         return BranchResult(
             success=True,
             branch_name=branch_name,
             base=base,
         ).model_dump(mode="json")
-        
+
     except Exception as exc:
         logger.error("create_branch failed: %s", exc, exc_info=True)
         return BranchResult(
@@ -309,56 +308,53 @@ async def apply_code_changes(
     branch_name: str | None = None,
 ) -> dict[str, Any]:
     """Apply multi-file code changes atomically.
-    
+
     Args:
         changes: Dict mapping file paths to content {path: content}
         branch_name: Optional branch name (for tracking only, writes to working dir)
-        
+
     Returns:
         BuildResult with file write status
     """
     if not changes:
-        return BuildResult(
-            success=False,
-            error="No changes provided"
-        ).model_dump(mode="json")
-    
+        return BuildResult(success=False, error="No changes provided").model_dump(mode="json")
+
     results = []
     files_written = 0
-    
+
     for path, content in changes.items():
         try:
             # Resolve path relative to project root
             resolved = _PROJECT_ROOT / path
-            
+
             # Security check: ensure path is within project root
             try:
                 resolved.relative_to(_PROJECT_ROOT)
             except ValueError:
                 results.append(f"Error: Path {path} outside project root")
                 continue
-            
+
             # Create parent directories
             resolved.parent.mkdir(parents=True, exist_ok=True)
-            
+
             # Write the file
             resolved.write_text(content, encoding="utf-8")
-            
+
             results.append(f"Wrote {path}")
             files_written += 1
-            
+
         except Exception as exc:
             results.append(f"Error writing {path}: {exc}")
-    
+
     success = files_written > 0 and files_written == len(changes)
-    
+
     logger.info(
         "code_changes.applied files=%d success=%s branch=%s",
         files_written,
         success,
         branch_name or "unknown",
     )
-    
+
     return BuildResult(
         success=success,
         files_written=files_written,
@@ -371,22 +367,22 @@ async def run_tests_locally(
     timeout: int = 120,
 ) -> dict[str, Any]:
     """Run tests before pushing.
-    
+
     Args:
         test_paths: List of paths to test (e.g., ["tests/"])
         timeout: Maximum time to wait for tests
-        
+
     Returns:
         TestResult with execution status
     """
     if test_paths is None:
         test_paths = ["tests/"]
-    
+
     # Default to system pytest
     cmd = [sys.executable, "-m", "pytest"] + test_paths
-    
+
     start_time = datetime.now(UTC)
-    
+
     try:
         proc = await asyncio.create_subprocess_exec(
             *cmd,
@@ -394,27 +390,24 @@ async def run_tests_locally(
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
-        
+
         try:
-            stdout, stderr = await asyncio.wait_for(
-                proc.communicate(),
-                timeout=timeout
-            )
-            
+            stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=timeout)
+
             duration = datetime.now(UTC) - start_time
             duration_ms = int(duration.total_seconds() * 1000)
-            
+
             stdout_str = stdout.decode("utf-8", errors="replace")
             stderr_str = stderr.decode("utf-8", errors="replace")
-            
+
             success = proc.returncode == 0
-            
+
             logger.info(
                 "tests.completed success=%s duration_ms=%d",
                 success,
                 duration_ms,
             )
-            
+
             return TestResult(
                 success=success,
                 stdout=stdout_str,
@@ -422,26 +415,26 @@ async def run_tests_locally(
                 returncode=proc.returncode,
                 duration_ms=duration_ms,
             ).model_dump(mode="json")
-            
+
         except asyncio.TimeoutError:
             try:
                 proc.kill()
             except ProcessLookupError:
                 pass
-            
+
             duration = datetime.now(UTC) - start_time
             duration_ms = int(duration.total_seconds() * 1000)
-            
+
             return TestResult(
                 success=False,
                 stderr="Error: Test execution timed out",
                 duration_ms=duration_ms,
             ).model_dump(mode="json")
-            
+
     except Exception as exc:
         duration = datetime.now(UTC) - start_time
         duration_ms = int(duration.total_seconds() * 1000)
-        
+
         logger.error("run_tests_locally failed: %s", exc, exc_info=True)
         return TestResult(
             success=False,
@@ -456,12 +449,12 @@ async def create_builder_pr(
     base: str = "main",
 ) -> dict[str, Any]:
     """Create PRs with proper templates.
-    
+
     Args:
         note: ArchitectureNote as dict or Pydantic model
         branch_name: The branch name to create PR from
         base: The base branch (default: main)
-        
+
     Returns:
         PRResult with created PR info
     """
@@ -472,7 +465,7 @@ async def create_builder_pr(
         note_dict = note.dict()
     else:
         note_dict = dict(note)
-    
+
     try:
         if GitHubTool is None:
             return PRResult(
@@ -480,19 +473,19 @@ async def create_builder_pr(
                 branch_name=branch_name,
                 error="GitHubTool not available",
             ).model_dump(mode="json")
-        
+
         gh = GitHubTool()
-        
+
         title = generate_pr_title(note_dict)
         body = generate_pr_body(note_dict)
-        
+
         pr_url = await gh.create_pull_request(
             title=title,
             body=body,
             head=branch_name,
             base=base,
         )
-        
+
         # Extract PR number from URL
         pr_number = None
         if pr_url and "/pull/" in pr_url:
@@ -500,7 +493,7 @@ async def create_builder_pr(
                 pr_number = int(pr_url.split("/pull/")[-1].rstrip("/"))
             except (ValueError, IndexError):
                 pass
-        
+
         # Check for errors in the response
         if pr_url and pr_url.startswith("Error"):
             return PRResult(
@@ -508,21 +501,21 @@ async def create_builder_pr(
                 branch_name=branch_name,
                 error=pr_url,
             ).model_dump(mode="json")
-        
+
         logger.info(
             "pr.created task=%s branch=%s url=%s",
             note_dict.get("task_id", ""),
             branch_name,
             pr_url,
         )
-        
+
         return PRResult(
             success=pr_url is not None and not pr_url.startswith("Error"),
             pr_url=pr_url,
             branch_name=branch_name,
             pr_number=pr_number,
         ).model_dump(mode="json")
-        
+
     except Exception as exc:
         logger.error("create_builder_pr failed: %s", exc, exc_info=True)
         return PRResult(
@@ -543,18 +536,18 @@ async def implement_from_architecture_note(
     base: str = "main",
 ) -> dict[str, Any]:
     """Complete implementation workflow from ArchitectureNote.
-    
+
     Workflow:
     1. Create feature branch
     2. Apply code changes
     3. Run local tests
     4. Create PR with description
-    
+
     Args:
         note: ArchitectureNote as dict or Pydantic model
         changes: Dict of file changes {path: content}
         base: Base branch
-        
+
     Returns:
         Complete workflow result
     """
@@ -565,15 +558,15 @@ async def implement_from_architecture_note(
         note_dict = note.dict()
     else:
         note_dict = dict(note)
-    
+
     task_id = note_dict.get("task_id", "unknown")
-    
+
     logger.info(
         "implementation.start task=%s files=%d",
         task_id,
         len(changes),
     )
-    
+
     # Step 1: Create feature branch
     branch_result = await create_branch(task_id, base)
     if not branch_result.get("success"):
@@ -583,9 +576,9 @@ async def implement_from_architecture_note(
             "error": f"Failed to create branch: {branch_result.get('error')}",
             "step": "create_branch",
         }
-    
+
     branch_name = branch_result["branch_name"]
-    
+
     # Step 2: Apply code changes
     build_result = await apply_code_changes(changes, branch_name)
     if not build_result.get("success"):
@@ -596,22 +589,22 @@ async def implement_from_architecture_note(
             "step": "apply_code_changes",
             "branch_result": branch_result,
         }
-    
+
     # Step 3: Run local tests
     test_result = await run_tests_locally()
-    
+
     # Step 4: Create PR even if tests fail (allows for review of failing code)
     pr_result = await create_builder_pr(note_dict, branch_name, base)
-    
+
     success = pr_result.get("success", False)
-    
+
     logger.info(
         "implementation.complete task=%s success=%s pr_url=%s",
         task_id,
         success,
         pr_result.get("pr_url", "none"),
     )
-    
+
     return {
         "phase": Phase.IMPLEMENT.value,
         "success": success,
@@ -638,20 +631,20 @@ builder_agent: Any = None
 
 try:  # pragma: no cover — ADK wiring is exercised by integration tests
     from google.adk.agents import Agent
-    
+
     from src.tools.filesystem import list_directory, read_file, write_file
-    
+
     if Config.TEST_MODE:
         from src.testing.mock_llm import MockLiteLlm as LiteLlm
     else:
         from google.adk.models.lite_llm import LiteLlm
-    
+
     _model = LiteLlm(
         model=Config.OPENROUTER_MODEL,
         api_key=Config.OPENROUTER_API_KEY,
         api_base=Config.OPENROUTER_API_BASE,
     )
-    
+
     builder_agent = Agent(
         name="Builder",
         model=_model,

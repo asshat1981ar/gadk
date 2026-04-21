@@ -101,9 +101,9 @@ async def test_submit_gate_decision_tracks_pending_tasks(
         while sdlc_client._pending_tasks and (_asyncio.get_event_loop().time() - start) < 2.0:
             await _asyncio.sleep(0)
 
-        assert (
-            len(sdlc_client._pending_tasks) == 0
-        ), "Task was not removed from _pending_tasks after completion."
+        assert len(sdlc_client._pending_tasks) == 0, (
+            "Task was not removed from _pending_tasks after completion."
+        )
     finally:
         # Cancel + clear any leftovers so a partial run can't leak tasks.
         for task in list(sdlc_client._pending_tasks):

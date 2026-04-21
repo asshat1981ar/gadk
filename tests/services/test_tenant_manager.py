@@ -1,6 +1,5 @@
 """Tests for the tenant management system."""
 
-import os
 import tempfile
 
 import pytest
@@ -93,7 +92,9 @@ class TestTenantManager:
         """Test updating tenant name and config."""
         self.manager.create_tenant("update-me", "Original Name", {"key": "value"})
 
-        updated = self.manager.update_tenant("update-me", name="New Name", config={"new_key": "new_value"})
+        updated = self.manager.update_tenant(
+            "update-me", name="New Name", config={"new_key": "new_value"}
+        )
 
         assert updated.name == "New Name"
         assert updated.config == {"key": "value", "new_key": "new_value"}

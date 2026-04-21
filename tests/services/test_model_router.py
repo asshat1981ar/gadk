@@ -1,17 +1,17 @@
 """Tests for the model router with intelligent fallbacks."""
+
 from __future__ import annotations
 
 import pytest
-from unittest.mock import MagicMock, patch
 
+from src.config import Config
 from src.services.model_router import (
     ModelCapability,
+    ModelPerformance,
     ModelRegistry,
     ModelRouter,
-    ModelPerformance,
     TaskComplexity,
 )
-from src.config import Config
 
 
 class TestModelCapability:
@@ -139,7 +139,7 @@ class TestModelRegistry:
 
     def test_get_default_capabilities(self):
         """Test that default capabilities are returned."""
-        registry = ModelRegistry()
+        ModelRegistry()
 
         # Should return non-empty list of capabilities
         capabilities = list(ModelCapability)
@@ -160,8 +160,7 @@ class TestModelRouter:
         router = ModelRouter()
 
         model = router.get_model_for_task(
-            task_description="Write a Python function",
-            capability=ModelCapability.CODE
+            task_description="Write a Python function", capability=ModelCapability.CODE
         )
         assert model is not None
         assert isinstance(model, str)
@@ -193,16 +192,10 @@ class TestModelRouter:
         router = ModelRouter()
 
         # Low complexity should prefer cheaper models
-        model_low = router.route(
-            task_type=ModelCapability.QUICK,
-            complexity=TaskComplexity.LOW
-        )
+        model_low = router.route(task_type=ModelCapability.QUICK, complexity=TaskComplexity.LOW)
 
         # High complexity should prefer stronger models
-        model_high = router.route(
-            task_type=ModelCapability.CODE,
-            complexity=TaskComplexity.HIGH
-        )
+        model_high = router.route(task_type=ModelCapability.CODE, complexity=TaskComplexity.HIGH)
 
         assert model_low is not None
         assert model_high is not None
@@ -212,10 +205,7 @@ class TestModelRouter:
         router = ModelRouter()
 
         router.track_model_performance(
-            model_name="gpt-4",
-            success=True,
-            response_time=1.5,
-            tokens=100
+            model_name="gpt-4", success=True, response_time=1.5, tokens=100
         )
 
         perf = router._performance_tracking["gpt-4"]
@@ -226,11 +216,7 @@ class TestModelRouter:
         """Test tracking failed model performance."""
         router = ModelRouter()
 
-        router.track_model_performance(
-            model_name="gpt-4",
-            success=False,
-            error_type="rate_limit"
-        )
+        router.track_model_performance(model_name="gpt-4", success=False, error_type="rate_limit")
 
         perf = router._performance_tracking["gpt-4"]
         assert perf.success_count == 0
@@ -298,7 +284,6 @@ class TestModelRouter:
     @pytest.mark.asyncio
     async def test_execute_with_fallback(self):
         """Test execute_with_fallback method."""
-        import asyncio
 
         router = ModelRouter()
 
@@ -312,9 +297,7 @@ class TestModelRouter:
             return {"result": "success"}
 
         result = await router.execute_with_fallback(
-            task_description="Test task",
-            execute_fn=mock_execute,
-            models=["model-1", "model-2"]
+            task_description="Test task", execute_fn=mock_execute, models=["model-1", "model-2"]
         )
 
         assert result == {"result": "success"}
@@ -330,9 +313,7 @@ class TestModelRouter:
 
         with pytest.raises(Exception, match="All failed"):
             await router.execute_with_fallback(
-                task_description="Test task",
-                execute_fn=mock_execute,
-                models=["model-1", "model-2"]
+                task_description="Test task", execute_fn=mock_execute, models=["model-1", "model-2"]
             )
 
     def test_classify_task_complexity(self):
@@ -367,9 +348,11 @@ class TestIntegration:
 
         # Fallback models from config should be in registry
         for model in Config.FALLBACK_MODELS:
-            assert model in router.registry._capability_models.get(ModelCapability.CODE, []) or \
-                   model in router.registry._capability_models.get(ModelCapability.ANALYSIS, []) or \
-                   any(model in models for models in router.registry._capability_models.values())
+            assert (
+                model in router.registry._capability_models.get(ModelCapability.CODE, [])
+                or model in router.registry._capability_models.get(ModelCapability.ANALYSIS, [])
+                or any(model in models for models in router.registry._capability_models.values())
+            )
 
     def test_model_selection_with_rate_limit_history(self):
         """Test that models with rate limit errors are deprioritized."""
@@ -378,24 +361,17 @@ class TestIntegration:
         # Track multiple rate limit errors
         for _ in range(5):
             router.track_model_performance(
-                "model-with-rate-limits",
-                success=False,
-                error_type="rate_limit"
+                "model-with-rate-limits", success=False, error_type="rate_limit"
             )
 
         # Track good performance on another model
         for _ in range(5):
             router.track_model_performance(
-                "good-model",
-                success=True,
-                response_time=1.0,
-                tokens=100
+                "good-model", success=True, response_time=1.0, tokens=100
             )
 
         # When routing, good-model should be preferred
-        ranked = router._rank_models_by_performance(
-            ["model-with-rate-limits", "good-model"]
-        )
+        ranked = router._rank_models_by_performance(["model-with-rate-limits", "good-model"])
         assert ranked[0] == "good-model"
 
     def test_cost_performance_tradeoff(self):

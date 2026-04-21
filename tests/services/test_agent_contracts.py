@@ -9,16 +9,15 @@ from src.services.agent_contracts import (
     AgentDecision,
     AgentMemory,
     DelegationDecision,
-    ReviewStatus,
     ReviewVerdict,
     SpecialistRegistration,
     TaskProposal,
 )
 
-
 # =============================================================================
 # DelegationDecision Tests
 # =============================================================================
+
 
 class TestDelegationDecision:
     """Test cases for DelegationDecision model."""
@@ -27,7 +26,7 @@ class TestDelegationDecision:
         """Test DelegationDecision creation with minimal required fields."""
         decision = DelegationDecision(
             target_agent="Builder",
-            reason="goal requires implementation work", 
+            reason="goal requires implementation work",
         )
         assert decision.target_agent == "Builder"
         assert decision.reason == "goal requires implementation work"
@@ -80,6 +79,7 @@ class TestDelegationDecision:
 # TaskProposal Tests
 # =============================================================================
 
+
 class TestTaskProposal:
     """Test cases for TaskProposal model."""
 
@@ -131,7 +131,7 @@ class TestTaskProposal:
             TaskProposal(
                 title="title",
                 summary="",
-                description="description", 
+                description="description",
                 recommended_agent="Builder",
             )
 
@@ -171,6 +171,7 @@ class TestTaskProposal:
 # =============================================================================
 # ReviewVerdict Tests
 # =============================================================================
+
 
 class TestReviewVerdict:
     """Test cases for ReviewVerdict model."""
@@ -260,6 +261,7 @@ class TestReviewVerdict:
 # =============================================================================
 # SpecialistRegistration Tests
 # =============================================================================
+
 
 class TestSpecialistRegistration:
     """Test cases for SpecialistRegistration model."""
@@ -359,6 +361,7 @@ class TestSpecialistRegistration:
 # AgentDecision Tests
 # =============================================================================
 
+
 class TestAgentDecision:
     """Test cases for AgentDecision model."""
 
@@ -410,7 +413,7 @@ class TestAgentDecision:
         """Test confidence boundary values 0.0 and 1.0."""
         decision_min = AgentDecision(confidence=0.0, reasoning="test", action="test")
         assert decision_min.confidence == 0.0
-        
+
         decision_max = AgentDecision(confidence=1.0, reasoning="test", action="test")
         assert decision_max.confidence == 1.0
 
@@ -468,6 +471,7 @@ class TestAgentDecision:
 # =============================================================================
 # AgentMemory Tests
 # =============================================================================
+
 
 class TestAgentMemory:
     """Test cases for AgentMemory model."""
@@ -555,6 +559,7 @@ class TestAgentMemory:
 # ReviewStatus Type Tests
 # =============================================================================
 
+
 class TestReviewStatus:
     """Test cases for ReviewStatus Literal type."""
 
@@ -579,10 +584,11 @@ class TestReviewStatus:
 # Model Export Tests
 # =============================================================================
 
+
 def test_all_models_exported():
     """Test that __all__ includes all expected models."""
     from src.services import agent_contracts
-    
+
     expected_exports = [
         "AgentDecision",
         "AgentMemory",
@@ -592,9 +598,9 @@ def test_all_models_exported():
         "SpecialistRegistration",
         "TaskProposal",
     ]
-    
+
     for export in expected_exports:
         assert export in agent_contracts.__all__
-        
+
     # Ensure no duplicates and all exports exist
     assert len(set(agent_contracts.__all__)) == len(agent_contracts.__all__)

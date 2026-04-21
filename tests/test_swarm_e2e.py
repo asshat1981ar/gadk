@@ -22,7 +22,7 @@ pytestmark = pytest.mark.skip(
 
 def _matches_startup_line(line: str) -> bool:
     """Check if a log line indicates swarm startup.
-    
+
     Handles both JSON formatted logs (default) and plain text logs.
     """
     if "Cognitive Foundry Swarm Active" in line:
@@ -163,22 +163,26 @@ def test_startup_line_matching():
     # JSON format with message field (default logging format)
     json_log = '{"timestamp":"2024-01-20T10:00:00Z","level":"INFO","logger":"main","message":"Cognitive Foundry Swarm Active","session_id":"test-123"}'
     assert _matches_startup_line(json_log) is True
-    
+
     # JSON format with the message in session field
     json_log2 = '{"timestamp":"2024-01-20T10:00:00Z","level":"INFO","logger":"main","message":"Cognitive Foundry Swarm Active (session=test-456)","session_id":"test-456"}'
     assert _matches_startup_line(json_log2) is True
-    
+
     # Plain text format
-    plain_log = "2024-01-20 10:00:00 [INFO] main | session=test-789 | Cognitive Foundry Swarm Active"
+    plain_log = (
+        "2024-01-20 10:00:00 [INFO] main | session=test-789 | Cognitive Foundry Swarm Active"
+    )
     assert _matches_startup_line(plain_log) is True
-    
+
     # Non-matching logs
-    non_startup_log = '{"timestamp":"2024-01-20T10:00:00Z","level":"INFO","message":"Some other message"}'
+    non_startup_log = (
+        '{"timestamp":"2024-01-20T10:00:00Z","level":"INFO","message":"Some other message"}'
+    )
     assert _matches_startup_line(non_startup_log) is False
-    
+
     # Invalid JSON that doesn't contain the message
     invalid_log = "This is not a startup message"
     assert _matches_startup_line(invalid_log) is False
-    
+
     # Empty line
     assert _matches_startup_line("") is False

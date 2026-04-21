@@ -159,9 +159,9 @@ async def test_create_pull_request_chains_create_git_ref_error(
 
     logged_exc = failed_records[0].exc_info[1]
     assert logged_exc is not None, "log record must carry the caught exception"
-    assert (
-        logged_exc.__cause__ is not None
-    ), "create_git_ref error must chain the original branch error via `raise ... from`"
+    assert logged_exc.__cause__ is not None, (
+        "create_git_ref error must chain the original branch error via `raise ... from`"
+    )
     assert isinstance(logged_exc.__cause__, ConnectionError), (
         f"expected __cause__ to be the original branch ConnectionError; "
         f"got {type(logged_exc.__cause__).__name__}"

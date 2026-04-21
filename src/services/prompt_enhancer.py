@@ -14,11 +14,9 @@ from typing import Any, Callable
 from src.observability.logger import get_logger
 from src.services.retrieval_context import (
     RetrievalQuery,
-    retrieve_context,
-    expand_query,
-    QUERY_TYPE_CORPUS_MAP,
-    get_retrieval_metrics,
     get_retrieval_cache,
+    get_retrieval_metrics,
+    retrieve_context,
 )
 
 logger = get_logger("prompt_enhancer")
@@ -62,7 +60,9 @@ class EnhancementResult:
 AGENT_QUERY_PATTERNS: dict[str, Callable[[EnhancementContext], str]] = {
     "ideator": lambda ctx: f"similar tasks patterns {ctx.task_description}",
     "architect": lambda ctx: f"ADR architecture decision records {ctx.task_description}",
-    "builder": lambda ctx: f"code patterns implementation {ctx.current_phase or ''} {ctx.task_description}",
+    "builder": lambda ctx: (
+        f"code patterns implementation {ctx.current_phase or ''} {ctx.task_description}"
+    ),
     "critic": lambda ctx: f"review guidelines quality criteria {ctx.task_description}",
     "governor": lambda ctx: f"governance policies compliance {ctx.task_description}",
     "pulse": lambda ctx: f"health checks monitoring {ctx.task_description}",
@@ -84,8 +84,15 @@ AGENT_CORPUS_MAP: dict[str, list[str]] = {
 
 # Domain hints for common technical areas
 TECH_DOMAIN_HINTS = [
-    "python", "api", "test", "database", "validation",
-    "async", "error", "config", "schema"
+    "python",
+    "api",
+    "test",
+    "database",
+    "validation",
+    "async",
+    "error",
+    "config",
+    "schema",
 ]
 
 
@@ -150,7 +157,7 @@ def _format_retrieved_context(
 
         # Truncate snippet if needed
         if len(snippet) > max_snippet_length:
-            snippet = snippet[:max_snippet_length - 3] + "..."
+            snippet = snippet[: max_snippet_length - 3] + "..."
 
         lines.append(f"[{i}] {path} (corpus: {corpus}, relevance: {relevance:.2f})")
         lines.append(f"    {snippet}")
@@ -193,7 +200,11 @@ def enhance_prompt(
     if isinstance(task_context, dict):
         task_context = EnhancementContext(
             agent_type=agent_type,
-            **{k: v for k, v in task_context.items() if k in EnhancementContext.__dataclass_fields__}
+            **{
+                k: v
+                for k, v in task_context.items()
+                if k in EnhancementContext.__dataclass_fields__
+            },
         )
     else:
         task_context.agent_type = agent_type
@@ -284,6 +295,7 @@ def clear_enhancement_cache() -> None:
 
 
 # Convenience functions for specific agents
+
 
 def enhance_ideator_prompt(
     prompt: str,

@@ -162,9 +162,7 @@ def test_advisory_gate_does_not_block(sm: StateManager) -> None:
 
 def test_mixed_gates_blocking_prevents_advance(sm: StateManager) -> None:
     """Test with mixed blocking (fails) and advisory (fails) gates."""
-    controller = PhaseController(
-        gates=[_AlwaysFail(), _Advisory()], state_manager=sm
-    )
+    controller = PhaseController(gates=[_AlwaysFail(), _Advisory()], state_manager=sm)
     item = WorkItem(id="t1")
     report = controller.advance(item, Phase.ARCHITECT)
     assert not report.advanced
@@ -175,9 +173,7 @@ def test_mixed_gates_blocking_prevents_advance(sm: StateManager) -> None:
 
 def test_mixed_gates_advisory_fails_passing_succeeds(sm: StateManager) -> None:
     """Test with passing blocking gate and failing advisory gate."""
-    controller = PhaseController(
-        gates=[_AlwaysPass(), _Advisory()], state_manager=sm
-    )
+    controller = PhaseController(gates=[_AlwaysPass(), _Advisory()], state_manager=sm)
     item = WorkItem(id="t1")
     report = controller.advance(item, Phase.ARCHITECT)
     assert report.advanced
@@ -197,9 +193,7 @@ def test_force_overrides_block(sm: StateManager) -> None:
 
 def test_force_with_multiple_blocking_failures(sm: StateManager) -> None:
     """Test that force=True bypasses multiple blocking gate failures."""
-    controller = PhaseController(
-        gates=[_AlwaysFail(), _AlwaysFail()], state_manager=sm
-    )
+    controller = PhaseController(gates=[_AlwaysFail(), _AlwaysFail()], state_manager=sm)
     item = WorkItem(id="t1")
     report = controller.advance(item, Phase.ARCHITECT, force=True, reason="emergency")
     assert report.advanced

@@ -8,3 +8,8 @@
 {"timestamp": "2026-04-20T23:23:29.846006+00:00", "severity": "warning", "message": "API usage (85.0%) exceeds threshold (80%)", "source": "pulse.monitor.api", "task_id": "", "labels": {}}
 {"timestamp": "2026-04-20T23:23:29.846923+00:00", "severity": "error", "message": "Agent 'Builder' is unresponsive or in error state", "source": "pulse.monitor.agent", "task_id": "", "labels": {}}
 {"timestamp": "2026-04-20T23:23:29.847503+00:00", "severity": "error", "message": "Error rate (20.00%) exceeds threshold (10.00%)", "source": "pulse.monitor.errors", "task_id": "", "labels": {}}
+{"timestamp": "2026-04-21T00:18:40.326413+00:00", "severity": "warning", "message": "Queue depth (75) exceeds threshold (50)", "source": "pulse.monitor.queue", "task_id": "", "labels": {}}
+{"timestamp": "2026-04-21T00:18:40.329467+00:00", "severity": "warning", "message": "Queue depth (100) exceeds threshold (50)", "source": "pulse.monitor.queue", "task_id": "", "labels": {}}
+{"timestamp": "2026-04-21T00:18:40.330117+00:00", "severity": "warning", "message": "API usage (85.0%) exceeds threshold (80%)", "source": "pulse.monitor.api", "task_id": "", "labels": {}}
+{"timestamp": "2026-04-21T00:18:40.330952+00:00", "severity": "error", "message": "Agent 'Builder' is unresponsive or in error state", "source": "pulse.monitor.agent", "task_id": "", "labels": {}}
+{"timestamp": "2026-04-21T00:18:40.331584+00:00", "severity": "error", "message": "Error rate (20.00%) exceeds threshold (10.00%)", "source": "pulse.monitor.errors", "task_id": "", "labels": {}}

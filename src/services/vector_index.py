@@ -214,7 +214,8 @@ class SqliteVecBackend:
         # rolls back on exception.
         with self._conn:
             row = self._conn.execute(
-                f"SELECT rowid FROM {self._META_TABLE} WHERE doc_id = ?", (doc_id,)  # nosec B608 — table name is a hardcoded module constant, not user input
+                f"SELECT rowid FROM {self._META_TABLE} WHERE doc_id = ?",
+                (doc_id,),  # nosec B608 — table name is a hardcoded module constant, not user input
             ).fetchone()
             if row is not None:
                 rowid = row[0]
@@ -238,7 +239,8 @@ class SqliteVecBackend:
         """Remove a single document by ``doc_id``. Silent no-op if absent."""
         with self._conn:
             row = self._conn.execute(
-                f"SELECT rowid FROM {self._META_TABLE} WHERE doc_id = ?", (doc_id,)  # nosec B608 — table name is a hardcoded module constant, not user input
+                f"SELECT rowid FROM {self._META_TABLE} WHERE doc_id = ?",
+                (doc_id,),  # nosec B608 — table name is a hardcoded module constant, not user input
             ).fetchone()
             if row is None:
                 return

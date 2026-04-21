@@ -2,24 +2,24 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
+
 import pytest
-from datetime import datetime, UTC
 
 from src.services.sdlc_phase import (
     ALLOWED_TRANSITIONS,
     PHASE_ORDER,
     Phase,
     PhaseHistoryEntry,
-    PhaseTransitionError,
     WorkItem,
     can_advance,
     next_phase,
 )
 
-
 # =============================================================================
 # Phase Enum Tests
 # =============================================================================
+
 
 def test_phase_enum_members():
     """Test that all phase enum members exist and are accessible."""
@@ -51,6 +51,7 @@ def test_phase_enum_is_string_based():
 # PHASE_ORDER Tests
 # =============================================================================
 
+
 def test_phase_order_is_canonical() -> None:
     assert PHASE_ORDER[0] is Phase.PLAN
     assert PHASE_ORDER[-1] is Phase.OPERATE
@@ -77,6 +78,7 @@ def test_phase_order_all_phases_present() -> None:
 # =============================================================================
 # ALLOWED_TRANSITIONS Tests
 # =============================================================================
+
 
 def test_allowed_transitions_structure() -> None:
     """Test ALLOWED_TRANSITIONS has correct keys."""
@@ -105,6 +107,7 @@ def test_operate_is_terminal() -> None:
 # =============================================================================
 # can_advance() Tests
 # =============================================================================
+
 
 def test_can_advance_allows_all_valid_forward_transitions() -> None:
     """Test all valid forward transitions are allowed."""
@@ -158,6 +161,7 @@ def test_can_advance_same_phase_is_invalid() -> None:
 # next_phase() Tests
 # =============================================================================
 
+
 def test_next_phase_walks_forward() -> None:
     assert next_phase(Phase.PLAN) is Phase.ARCHITECT
     assert next_phase(Phase.ARCHITECT) is Phase.IMPLEMENT
@@ -184,6 +188,7 @@ def test_next_phase_covers_all_non_terminal_phases() -> None:
 # PhaseHistoryEntry Tests
 # =============================================================================
 
+
 def test_phase_history_entry_creation():
     """Test PhaseHistoryEntry can be created with all fields."""
     now = datetime.now(UTC)
@@ -192,7 +197,7 @@ def test_phase_history_entry_creation():
         to_phase=Phase.ARCHITECT,
         at=now,
         reason="Design ready",
-        evidence_refs=["doc-1", "doc-2"]
+        evidence_refs=["doc-1", "doc-2"],
     )
     assert entry.from_phase is Phase.PLAN
     assert entry.to_phase is Phase.ARCHITECT
@@ -211,11 +216,7 @@ def test_phase_history_entry_defaults():
 
 def test_phase_history_entry_from_phase_none():
     """Test PhaseHistoryEntry handles from_phase=None (initial entry)."""
-    entry = PhaseHistoryEntry(
-        from_phase=None,
-        to_phase=Phase.PLAN,
-        at=datetime.now(UTC)
-    )
+    entry = PhaseHistoryEntry(from_phase=None, to_phase=Phase.PLAN, at=datetime.now(UTC))
     assert entry.from_phase is None
     assert entry.to_phase is Phase.PLAN
 
@@ -223,6 +224,7 @@ def test_phase_history_entry_from_phase_none():
 # =============================================================================
 # WorkItem Tests
 # =============================================================================
+
 
 def test_work_item_defaults() -> None:
     item = WorkItem(id="task-1")
@@ -234,10 +236,7 @@ def test_work_item_defaults() -> None:
 def test_work_item_creation_with_fields():
     """Test WorkItem creation with all fields specified."""
     item = WorkItem(
-        id="task-123",
-        phase=Phase.REVIEW,
-        payload={"key": "value", "number": 42},
-        history=[]
+        id="task-123", phase=Phase.REVIEW, payload={"key": "value", "number": 42}, history=[]
     )
     assert item.id == "task-123"
     assert item.phase is Phase.REVIEW
@@ -283,7 +282,7 @@ def test_work_item_payload_arbitrary_data():
         "boolean": True,
         "list": [1, 2, 3],
         "nested": {"key": "value"},
-        "none": None
+        "none": None,
     }
     item = WorkItem(id="task-1", payload=payload)
     assert item.payload == payload
@@ -402,8 +401,12 @@ def test_work_item_rework_transition_simulation():
     item.phase = Phase.IMPLEMENT
     item.phase = Phase.REVIEW
     item.history = [  # Mock history
-        PhaseHistoryEntry(from_phase=Phase.PLAN, to_phase=Phase.IMPLEMENT,
-                          at=datetime.now(UTC), reason="skip arch"),
+        PhaseHistoryEntry(
+            from_phase=Phase.PLAN,
+            to_phase=Phase.IMPLEMENT,
+            at=datetime.now(UTC),
+            reason="skip arch",
+        ),
     ]
 
     # REVIEW → IMPLEMENT (rework)
@@ -433,6 +436,7 @@ def test_work_item_history_timestamp_is_datetime():
 # Edge Case Tests
 # =============================================================================
 
+
 @pytest.mark.parametrize("phase", list(Phase))
 def test_all_phases_have_allowed_transitions_defined(phase):
     """Test that every phase has an entry in ALLOWED_TRANSITIONS."""
@@ -444,11 +448,7 @@ def test_history_entry_prevents_extra_fields():
     from pydantic import ValidationError
 
     with pytest.raises(ValidationError) as exc_info:
-        PhaseHistoryEntry(
-            to_phase=Phase.ARCHITECT,
-            at=datetime.now(UTC),
-            extra_field="not allowed"
-        )
+        PhaseHistoryEntry(to_phase=Phase.ARCHITECT, at=datetime.now(UTC), extra_field="not allowed")
     assert "extra_field" in str(exc_info.value)
 
 

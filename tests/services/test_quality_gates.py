@@ -18,9 +18,7 @@ Each gate is tested for:
 from __future__ import annotations
 
 import subprocess
-import xml.etree.ElementTree as ET
 from pathlib import Path
-from typing import Any
 from unittest.mock import Mock, patch
 
 import pytest
@@ -37,10 +35,10 @@ from src.services.quality_gates import (
 )
 from src.services.sdlc_phase import Phase, WorkItem
 
-
 # -----------------------------------------------------------------------------
 # GateResult tests
 # -----------------------------------------------------------------------------
+
 
 def test_gate_result_is_frozen() -> None:
     """GateResult should be immutable."""
@@ -78,8 +76,10 @@ def test_gate_result_defaults() -> None:
 # QualityGate base class tests
 # -----------------------------------------------------------------------------
 
+
 def test_should_run_honours_applies_to() -> None:
     """Gate should only run for phases in applies_to."""
+
     class OnlyReview(QualityGate):
         name = "only_review"
         applies_to = frozenset({Phase.REVIEW})
@@ -95,6 +95,7 @@ def test_should_run_honours_applies_to() -> None:
 
 def test_should_run_empty_applies_to_runs_on_all_phases() -> None:
     """Gate with empty applies_to should run on all phases."""
+
     class UniversalGate(QualityGate):
         name = "universal"
         applies_to = frozenset()
@@ -109,6 +110,7 @@ def test_should_run_empty_applies_to_runs_on_all_phases() -> None:
 
 def test_should_run_multiple_phases() -> None:
     """Gate should support multiple phases in applies_to."""
+
     class MultiPhaseGate(QualityGate):
         name = "multi"
         applies_to = frozenset({Phase.REVIEW, Phase.GOVERN})
@@ -126,6 +128,7 @@ def test_should_run_multiple_phases() -> None:
 # -----------------------------------------------------------------------------
 # ContentGuardGate tests
 # -----------------------------------------------------------------------------
+
 
 class TestContentGuardGate:
     """Test ContentGuardGate for low-value content detection."""
@@ -202,6 +205,7 @@ class TestContentGuardGate:
 # _SubprocessGate base tests (shared by LintGate, TypecheckGate, SecurityScanGate)
 # -----------------------------------------------------------------------------
 
+
 class TestSubprocessGateBase:
     """Test shared behavior of subprocess-based gates."""
 
@@ -252,6 +256,7 @@ class TestSubprocessGateBase:
         with patch("subprocess.run", side_effect=capture_run):
             # Temporarily set the config attribute via a setattr on the config module
             import src.config
+
             original = getattr(src.config.Config, "GATE_SUBPROCESS_TIMEOUT_SEC", None)
             src.config.Config.GATE_SUBPROCESS_TIMEOUT_SEC = 60.0
             try:
@@ -268,6 +273,7 @@ class TestSubprocessGateBase:
 # -----------------------------------------------------------------------------
 # LintGate tests
 # -----------------------------------------------------------------------------
+
 
 class TestLintGate:
     """Test LintGate ruff integration."""
@@ -290,9 +296,7 @@ class TestLintGate:
     @patch("subprocess.run")
     def test_passes_on_clean_code(self, mock_run: Mock, tmp_path: Path) -> None:
         """Gate should pass when ruff finds no issues."""
-        mock_run.return_value = Mock(
-            returncode=0, stdout="All checks passed\n", stderr=""
-        )
+        mock_run.return_value = Mock(returncode=0, stdout="All checks passed\n", stderr="")
         gate = LintGate(cwd=tmp_path)
         result = gate.evaluate(WorkItem(id="t"))
         assert result.passed
@@ -327,6 +331,7 @@ class TestLintGate:
 # TypecheckGate tests
 # -----------------------------------------------------------------------------
 
+
 class TestTypecheckGate:
     """Test TypecheckGate mypy integration."""
 
@@ -348,9 +353,7 @@ class TestTypecheckGate:
     @patch("subprocess.run")
     def test_passes_on_clean_code(self, mock_run: Mock, tmp_path: Path) -> None:
         """Gate should pass when mypy finds no issues."""
-        mock_run.return_value = Mock(
-            returncode=0, stdout="Success: no issues found\n", stderr=""
-        )
+        mock_run.return_value = Mock(returncode=0, stdout="Success: no issues found\n", stderr="")
         gate = TypecheckGate(cwd=tmp_path)
         result = gate.evaluate(WorkItem(id="t"))
         assert result.passed
@@ -373,6 +376,7 @@ class TestTypecheckGate:
 # -----------------------------------------------------------------------------
 # SecurityScanGate tests
 # -----------------------------------------------------------------------------
+
 
 class TestSecurityScanGate:
     """Test SecurityScanGate bandit integration."""
@@ -408,9 +412,7 @@ class TestSecurityScanGate:
     @patch("subprocess.run")
     def test_passes_on_clean_code(self, mock_run: Mock, tmp_path: Path) -> None:
         """Gate should pass when bandit finds no issues."""
-        mock_run.return_value = Mock(
-            returncode=0, stdout="No issues identified.\n", stderr=""
-        )
+        mock_run.return_value = Mock(returncode=0, stdout="No issues identified.\n", stderr="")
         gate = SecurityScanGate(cwd=tmp_path)
         result = gate.evaluate(WorkItem(id="t"))
         assert result.passed
@@ -433,6 +435,7 @@ class TestSecurityScanGate:
 # -----------------------------------------------------------------------------
 # TestCoverageGate tests
 # -----------------------------------------------------------------------------
+
 
 class TestTestCoverageGate:
     """Test TestCoverageGate coverage XML parsing."""
@@ -538,11 +541,13 @@ class TestTestCoverageGate:
 # CriticReviewGate tests
 # -----------------------------------------------------------------------------
 
+
 class TestCriticReviewGate:
     """Test CriticReviewGate critic integration."""
 
     def test_passes_when_reviewer_returns_pass(self) -> None:
         """Gate should pass when reviewer returns 'pass'."""
+
         def reviewer(item: WorkItem) -> tuple[str, str]:
             return "pass", "looks good"
 
@@ -557,6 +562,7 @@ class TestCriticReviewGate:
 
     def test_fails_when_reviewer_returns_retry(self) -> None:
         """Gate should fail when reviewer returns 'retry'."""
+
         def reviewer(item: WorkItem) -> tuple[str, str]:
             return "retry", "rework requested"
 
@@ -569,6 +575,7 @@ class TestCriticReviewGate:
 
     def test_fails_when_reviewer_returns_block(self) -> None:
         """Gate should fail when reviewer returns 'block'."""
+
         def reviewer(item: WorkItem) -> tuple[str, str]:
             return "block", "critical issues found"
 
@@ -617,6 +624,7 @@ class TestCriticReviewGate:
 # Integration/Edge case tests
 # -----------------------------------------------------------------------------
 
+
 def test_all_gates_have_unique_names() -> None:
     """All gate classes should have unique names."""
     gates = [
@@ -647,6 +655,7 @@ def test_work_item_payload_can_be_any_content() -> None:
 # -----------------------------------------------------------------------------
 # Phase filtering integration tests
 # -----------------------------------------------------------------------------
+
 
 class TestPhaseFiltering:
     """Test that all gates respect applies_to phase filtering."""

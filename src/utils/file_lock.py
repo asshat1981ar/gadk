@@ -46,7 +46,7 @@ def _warn_once_if_unavailable(path: str) -> None:
     if _FLOCK_AVAILABLE or _FLOCK_WARNED:
         return
     logger.warning(
-        "fcntl unavailable on this platform; concurrent appends to %s " "will not be serialized",
+        "fcntl unavailable on this platform; concurrent appends to %s will not be serialized",
         path,
     )
     _FLOCK_WARNED = True

@@ -3,13 +3,11 @@
 from __future__ import annotations
 
 import asyncio
-import os
 import tempfile
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from pydantic import ValidationError
 
 # Import ArchitectureNote directly from architect module
 from src.agents.architect import ArchitectureNote
@@ -215,7 +213,9 @@ class TestRunTestsLocally:
             assert isinstance(result, dict)
             assert result["success"] is False
             # Check that timeout message is in stderr
-            assert "timed out" in result.get("stderr", "").lower() or "Timeout" in result.get("stderr", "")
+            assert "timed out" in result.get("stderr", "").lower() or "Timeout" in result.get(
+                "stderr", ""
+            )
 
 
 class TestGeneratePRTitle:
@@ -233,7 +233,8 @@ class TestGeneratePRTitle:
         """Test PR title truncation for long titles."""
         note = ArchitectureNote(
             task_id="t1",
-            title="A very long title that exceeds the GitHub PR title limit of 256 characters " * 10,
+            title="A very long title that exceeds the GitHub PR title limit of 256 characters "
+            * 10,
             context="test",
             decision="test",
         )
@@ -310,9 +311,7 @@ class TestCreateBuilderPR:
         """Test PR creation error handling."""
         with patch("src.agents.builder.GitHubTool") as MockGH:
             mock_gh = MagicMock()
-            mock_gh.create_pull_request = AsyncMock(
-                side_effect=Exception("GitHub API error")
-            )
+            mock_gh.create_pull_request = AsyncMock(side_effect=Exception("GitHub API error"))
             MockGH.return_value = mock_gh
 
             result = await create_builder_pr(

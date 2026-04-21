@@ -3,6 +3,7 @@
 Tracks success rates, response times, costs, and error patterns for each model
 to enable intelligent routing decisions.
 """
+
 from __future__ import annotations
 
 import json
@@ -27,6 +28,7 @@ class ModelMetrics:
     - Cost per request
     - Error rate by error type
     """
+
     model_name: str
     requests_total: int = 0
     requests_success: int = 0
@@ -305,6 +307,7 @@ class ModelPerformanceTracker:
 
         # Atomic write
         import tempfile
+
         fd, tmp_path = tempfile.mkstemp(dir=dir_name, suffix=".tmp")
         try:
             with os.fdopen(fd, "w") as f:
@@ -333,8 +336,7 @@ class ModelPerformanceTracker:
             if isinstance(payload, dict):
                 with self._lock:
                     self._metrics = {
-                        name: ModelMetrics.from_dict(data)
-                        for name, data in payload.items()
+                        name: ModelMetrics.from_dict(data) for name, data in payload.items()
                     }
             logger.debug(f"Loaded {len(self._metrics)} model metrics")
         except (OSError, json.JSONDecodeError, TypeError) as exc:

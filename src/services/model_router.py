@@ -4,6 +4,7 @@ This module provides intelligent model selection based on task type, complexity,
 and historical performance metrics. It replaces simple fallback chains with
 context-aware routing that optimizes for cost, quality, and reliability.
 """
+
 from __future__ import annotations
 
 import re
@@ -19,6 +20,7 @@ logger = get_logger("model_router")
 
 class ModelCapability(Enum):
     """Enumeration of task capabilities/models are suited for."""
+
     CODE = "code"
     REVIEW = "review"
     ANALYSIS = "analysis"
@@ -28,6 +30,7 @@ class ModelCapability(Enum):
 
 class TaskComplexity(Enum):
     """Enumeration of task complexity levels."""
+
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
@@ -46,6 +49,7 @@ class ModelPerformance:
         total_tokens: Total tokens processed through this model.
         error_counts: Dict mapping error types to their occurrence counts.
     """
+
     model_name: str
     success_count: int = 0
     failure_count: int = 0
@@ -333,9 +337,7 @@ class ModelRouter:
         if not candidates:
             # Fallback to default models if no candidates
             candidates = Config.FALLBACK_MODELS
-            logger.warning(
-                f"No models found for {task_type.value}, using fallback models"
-            )
+            logger.warning(f"No models found for {task_type.value}, using fallback models")
 
         # Filter models by complexity requirements
         filtered_candidates = self._filter_by_complexity(candidates, complexity)
@@ -346,9 +348,7 @@ class ModelRouter:
         # Apply cost/performance tradeoff based on task type and complexity
         selected = self._apply_cost_tradeoff(ranked, task_type, complexity)
 
-        logger.info(
-            f"Routed {task_type.value}/{complexity.value} task to {selected}"
-        )
+        logger.info(f"Routed {task_type.value}/{complexity.value} task to {selected}")
         return selected
 
     def _classify_task_capability(self, task_description: str) -> ModelCapability:
@@ -406,9 +406,7 @@ class ModelRouter:
 
         return TaskComplexity.MEDIUM
 
-    def _filter_by_complexity(
-        self, candidates: list[str], complexity: TaskComplexity
-    ) -> list[str]:
+    def _filter_by_complexity(self, candidates: list[str], complexity: TaskComplexity) -> list[str]:
         """Filter models based on complexity requirements.
 
         Higher complexity tasks get more capable (often more expensive) models.
@@ -507,9 +505,9 @@ class ModelRouter:
             for candidate in ranked_candidates[1:]:
                 candidate_score = self._get_quick_preference_score(candidate)
                 # If candidate is significantly cheaper with decent score, use it
-                cost_ratio = self.registry.get_model_cost(
-                    candidate
-                ) / self.registry.get_model_cost(best)
+                cost_ratio = self.registry.get_model_cost(candidate) / self.registry.get_model_cost(
+                    best
+                )
                 if cost_ratio < 0.5 and candidate_score >= best_score * 0.9:
                     return candidate
 
@@ -543,17 +541,13 @@ class ModelRouter:
             error_type: Type of error if failed.
         """
         if model_name not in self._performance_tracking:
-            self._performance_tracking[model_name] = ModelPerformance(
-                model_name=model_name
-            )
+            self._performance_tracking[model_name] = ModelPerformance(model_name=model_name)
 
         perf = self._performance_tracking[model_name]
 
         if success and response_time is not None:
             perf.record_success(response_time, tokens)
-            logger.debug(
-                f"Tracked success for {model_name}: {response_time:.2f}s, {tokens} tokens"
-            )
+            logger.debug(f"Tracked success for {model_name}: {response_time:.2f}s, {tokens} tokens")
         elif not success:
             perf.record_failure(error_type or "unknown")
             logger.debug(f"Tracked failure for {model_name}: {error_type}")
@@ -619,6 +613,7 @@ class ModelRouter:
             start_time = 0.0
             try:
                 import time
+
                 start_time = time.perf_counter()
                 result = await execute_fn(model)
 
@@ -638,9 +633,7 @@ class ModelRouter:
                     success=False,
                     error_type=type(e).__name__,
                 )
-                logger.warning(
-                    f"Model {model} failed ({i+1}/{len(models)}): {e}"
-                )
+                logger.warning(f"Model {model} failed ({i + 1}/{len(models)}): {e}")
 
         if last_exception:
             raise last_exception

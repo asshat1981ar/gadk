@@ -217,9 +217,7 @@ def increment_counter(name: str, labels: dict[str, str] | None = None, value: in
     _counters[name][label_key] += value
 
 
-def record_histogram(
-    name: str, value: float, labels: dict[str, str] | None = None
-) -> None:
+def record_histogram(name: str, value: float, labels: dict[str, str] | None = None) -> None:
     """Record a histogram observation.
 
     Args:

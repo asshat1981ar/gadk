@@ -6,6 +6,7 @@ from unittest.mock import patch
 
 import pytest
 
+from src.services.agent_contracts import DelegationDecision, ReviewVerdict, TaskProposal
 from src.services.agent_decisions import (
     PYDANTIC_AI_AVAILABLE,
     build_task_proposal,
@@ -13,12 +14,11 @@ from src.services.agent_decisions import (
     normalize_review_verdict,
     normalize_task_proposal,
 )
-from src.services.agent_contracts import DelegationDecision, ReviewVerdict, TaskProposal
-
 
 # =============================================================================
 # choose_delegate() Tests
 # =============================================================================
+
 
 class TestChooseDelegate:
     """Test cases for choose_delegate function."""
@@ -122,7 +122,9 @@ class TestChooseDelegate:
 
     def test_unknown_goal_falls_back_to_builder(self):
         """Test unknown goals fall back to Builder."""
-        decision = choose_delegate("something completely unrelated", ["Builder", "Critic", "Ideator"])
+        decision = choose_delegate(
+            "something completely unrelated", ["Builder", "Critic", "Ideator"]
+        )
         assert decision.target_agent == "Builder"
         assert "default routing" in decision.reason
 
@@ -155,6 +157,7 @@ class TestChooseDelegate:
     def test_fallback_reason_when_pydantic_ai_unavailable(self):
         """Test fallback reason when pydantic-ai is enabled but unavailable."""
         from src.services.agent_decisions import choose_delegate as cd
+
         decision = cd("unknown goal", ["Builder"])
         assert "pydantic-ai decisioning unavailable" in decision.reason
 
@@ -162,6 +165,7 @@ class TestChooseDelegate:
 # =============================================================================
 # normalize_task_proposal() Tests
 # =============================================================================
+
 
 class TestNormalizeTaskProposal:
     """Test cases for normalize_task_proposal function."""
@@ -209,6 +213,7 @@ class TestNormalizeTaskProposal:
 # =============================================================================
 # build_task_proposal() Tests
 # =============================================================================
+
 
 class TestBuildTaskProposal:
     """Test cases for build_task_proposal function."""
@@ -264,12 +269,13 @@ class TestBuildTaskProposal:
         )
         assert isinstance(result, TaskProposal)
         # Verify internal normalization was called
-        assert hasattr(result, 'title')
+        assert hasattr(result, "title")
 
 
 # =============================================================================
 # normalize_review_verdict() Tests
 # =============================================================================
+
 
 class TestNormalizeReviewVerdict:
     """Test cases for normalize_review_verdict function."""
@@ -302,7 +308,9 @@ class TestNormalizeReviewVerdict:
 
     def test_normalize_review_verdict_with_string_json(self):
         """Test normalize_review_verdict accepts JSON string input."""
-        json_str = '{"status": "block", "summary": "Critical issues found", "concerns": ["security hole"]}'
+        json_str = (
+            '{"status": "block", "summary": "Critical issues found", "concerns": ["security hole"]}'
+        )
         result = normalize_review_verdict(json_str)
         assert isinstance(result, ReviewVerdict)
         assert result.status == "block"
@@ -313,6 +321,7 @@ class TestNormalizeReviewVerdict:
 # =============================================================================
 # PYDANTIC_AI_AVAILABLE Tests
 # =============================================================================
+
 
 class TestPydanticAIAvailable:
     """Test cases for PYDANTIC_AI_AVAILABLE constant."""
@@ -330,6 +339,7 @@ class TestPydanticAIAvailable:
 # =============================================================================
 # Integration Tests
 # =============================================================================
+
 
 class TestDecisionWorkflow:
     """Integration tests for decision workflow."""
@@ -393,6 +403,7 @@ class TestDecisionWorkflow:
 # Edge Case Tests
 # =============================================================================
 
+
 class TestEdgeCases:
     """Edge case tests."""
 
@@ -425,6 +436,7 @@ class TestEdgeCases:
 # =============================================================================
 # Module Export Tests
 # =============================================================================
+
 
 def test_all_expected_functions_exported():
     """Test that all expected functions are in __all__."""

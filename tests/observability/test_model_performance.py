@@ -1,11 +1,9 @@
 """Tests for the model performance tracker."""
+
 from __future__ import annotations
 
-import json
 import os
 import tempfile
-
-import pytest
 
 from src.observability.model_performance import (
     ModelMetrics,

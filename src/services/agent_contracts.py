@@ -67,36 +67,22 @@ class AgentDecision(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    confidence: float = Field(
-        ge=0.0,
-        le=1.0,
-        description="Confidence score between 0.0 and 1.0"
-    )
-    reasoning: str = Field(
-        min_length=1,
-        description="Detailed reasoning for the decision"
-    )
+    confidence: float = Field(ge=0.0, le=1.0, description="Confidence score between 0.0 and 1.0")
+    reasoning: str = Field(min_length=1, description="Detailed reasoning for the decision")
     action: str = Field(
-        min_length=1,
-        description="The action to take (e.g., 'delegate', 'complete', 'retry')"
+        min_length=1, description="The action to take (e.g., 'delegate', 'complete', 'retry')"
     )
     payload: dict = Field(
-        default_factory=dict,
-        description="Structured data payload for the action"
+        default_factory=dict, description="Structured data payload for the action"
     )
     estimated_cost_usd: float = Field(
-        ge=0.0,
-        default=0.0,
-        description="Estimated cost in USD for this decision"
+        ge=0.0, default=0.0, description="Estimated cost in USD for this decision"
     )
     estimated_duration_seconds: int = Field(
-        ge=0,
-        default=0,
-        description="Estimated duration in seconds"
+        ge=0, default=0, description="Estimated duration in seconds"
     )
     required_approvals: list[str] = Field(
-        default_factory=list,
-        description="List of approval roles required (empty if none)"
+        default_factory=list, description="List of approval roles required (empty if none)"
     )
 
 
@@ -112,8 +98,7 @@ class AgentMemory(BaseModel):
     content: dict = Field(description="Structured memory content")
     timestamp: str = Field(description="ISO 8601 timestamp")
     ttl: int | None = Field(
-        default=None,
-        description="Time-to-live in seconds (None for persistent)"
+        default=None, description="Time-to-live in seconds (None for persistent)"
     )
 
 
