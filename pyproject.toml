@@ -87,9 +87,21 @@ check_untyped_defs = true
 ignore_missing_imports = true
 exclude = ["src/staged_agents", "build", "dist", "docs"]
 
+# Per-module strict subset. We spell out the per-module strict flags
+# rather than `strict = true` because the latter includes
+# `disallow_subclassing_any`, which trips on every `class X(BaseModel)`
+# — pydantic's mypy plugin is incompatible with our pinned mypy==1.11.1
+# (plugin requires mypy>=1.14). Flip to `strict = true` +
+# `plugins = ["pydantic.mypy"]` in pyproject when the CI mypy pin lifts.
 [[tool.mypy.overrides]]
 module = ["src.services.sdlc_phase", "src.services.quality_gates", "src.services.phase_controller"]
-strict = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+disallow_untyped_calls = true
+disallow_untyped_decorators = true
+disallow_any_generics = true
+no_implicit_optional = true
+strict_equality = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

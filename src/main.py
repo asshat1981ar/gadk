@@ -14,8 +14,8 @@ from src.exceptions import (
     SelfPromptError,
     SwarmLoopError,
     SwarmStartupError,
-    ToolExecutionError,
 )
+from src.mcp.sdlc_client import cancel_pending_tasks as _cancel_sdlc_tasks
 from src.planner import run_planner
 from src.services.retrieval_context import (
     PLANNING_RETRIEVAL_CAPABILITY,
@@ -385,7 +385,9 @@ async def main():
         # 3. Initialize the Runner with the Orchestrator
         try:
             runner = Runner(
-                agent=orchestrator_agent, app_name="CognitiveFoundry", session_service=session_service
+                agent=orchestrator_agent,
+                app_name="CognitiveFoundry",
+                session_service=session_service,
             )
             runner.callbacks = [ObservabilityCallback()]
         except Exception as e:
@@ -452,6 +454,7 @@ async def main():
             context={"error": str(e), "error_type": type(e).__name__},
         ) from e
     finally:
+        await _cancel_sdlc_tasks()
         clear_pid()
         clear_shutdown()
         logger.info("Swarm exited cleanly.")

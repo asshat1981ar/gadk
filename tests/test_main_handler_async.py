@@ -19,7 +19,7 @@ import pytest
 # test module when ADK isn't installed (local env without heavy deps).
 pytest.importorskip("google.adk")
 
-from src.capabilities.contracts import CapabilityRequest
+from src.capabilities.contracts import CapabilityRequest, CapabilityResult
 
 
 @pytest.mark.asyncio
@@ -70,4 +70,8 @@ async def test_planning_retrieval_handler_yields_event_loop(
         f"concurrent task was starved; completed after {elapsed_concurrent:.3f}s. "
         "Handler must dispatch retrieve_context through asyncio.to_thread."
     )
-    assert result == {"query": "phase gate", "corpus": ["specs"], "sources": []}
+    # Handler wraps the retrieval payload in a CapabilityResult envelope.
+    assert isinstance(result, CapabilityResult)
+    assert result.status == "success"
+    assert result.source_backend == "retrieval"
+    assert result.payload == {"query": "phase gate", "corpus": ["specs"], "sources": []}

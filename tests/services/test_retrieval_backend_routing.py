@@ -271,9 +271,9 @@ def test_vector_retrieve_skips_reembedding_unchanged_docs(
 
         # Second call with identical files: no new upserts.
         rc.retrieve_context(RetrievalQuery(query="alpha"), repo_root=tmp_path)
-        assert (
-            _SpyBackend.upsert_count == first_upserts
-        ), "unchanged docs must not trigger re-embedding"
+        assert _SpyBackend.upsert_count == first_upserts, (
+            "unchanged docs must not trigger re-embedding"
+        )
 
         # Modify one file: only that one re-upserts.
         (tmp_path / "docs" / "superpowers" / "specs" / "a.md").write_text("alpha beta gamma NEW")

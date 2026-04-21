@@ -41,8 +41,14 @@ jobs:
           python-version: "3.11"
           cache: pip
       - run: pip install -r requirements.txt mypy==1.11.1
+      # Blocking: strict-mode modules must stay fully typed. ``--follow-imports=silent``
+      # limits strict checking to these 3 files only — their transitive imports
+      # (state.py, workflow_graphs.py, file_lock.py) are covered by the advisory
+      # ``mypy src`` step below and don't need to be strict-annotated yet.
+      - run: mypy --follow-imports=silent src/services/sdlc_phase.py src/services/quality_gates.py src/services/phase_controller.py
+      # Advisory: remainder of src; strict enforcement deferred to Phase 5.
       - run: mypy src
-        continue-on-error: true  # advisory until Phase 5
+        continue-on-error: true
 
   test:
     name: Test (py${{ matrix.python-version }})
@@ -65,12 +71,10 @@ jobs:
       - run: pip install coverage[toml] pytest pytest-asyncio
       - run: coverage run -m pytest -q
       - run: coverage xml
-      # Coverage floor. Raised from 35% once the stable test subset
-      # consistently measured 52%+ on the swarm's core modules. Plan's
-      # long-term target is 65% global / 80% changed-files (Phase 5);
-      # bumping here incrementally rather than in one jump so a missing
-      # test file fails fast without trapping contributors at 0 headroom.
-      - run: coverage report --fail-under=45
+      # Coverage floor. Raised from 45% now that core-module coverage stabilised
+      # at ~58% after autonomous_sdlc.py migration; ~3 points of headroom.
+      # Long-term target: 65% global / 80% changed-files (Phase 5).
+      - run: coverage report --fail-under=55
       - uses: actions/upload-artifact@v4
         if: matrix.python-version == '3.11'
         with:
@@ -88,6 +92,5 @@ jobs:
           cache: pip
       - run: pip install bandit==1.7.9 pip-audit==2.7.3
       - run: bandit -q -r src -x src/staged_agents
-        continue-on-error: true  # advisory until Phase 5
       - run: pip-audit -r requirements.txt
         continue-on-error: true  # advisory until Phase 5

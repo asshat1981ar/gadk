@@ -33,6 +33,14 @@ events.jsonl
 state.json.bak
 events.jsonl.bak
 costs.jsonl
+metrics.jsonl
+test_metrics.jsonl
 coverage.xml
 .coverage
 .secrets.baseline
+# Metrics snapshots — rewritten by every swarm / e2e test run.
+metrics.jsonl
+test_metrics.jsonl
+# Advisory lock tokens for cross-process state serialisation
+*.json.lock
+test_metrics.jsonl

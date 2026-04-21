@@ -170,7 +170,7 @@ class TestCoverageGate(QualityGate):
         try:
             import xml.etree.ElementTree as ET
 
-            root = ET.parse(self._path).getroot()
+            root = ET.parse(self._path).getroot()  # nosec B314 — coverage.xml is generated locally by our own CI, not untrusted input
             rate = float(root.attrib.get("line-rate", 0.0))
         except (ET.ParseError, ValueError, KeyError) as exc:
             return GateResult(

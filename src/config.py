@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import os
 from functools import lru_cache
+from typing import Literal
+from urllib.parse import urlparse
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -57,6 +59,15 @@ class Settings(BaseSettings):
 
     openrouter_api_key: str | None = None
     openrouter_api_base: str = "https://openrouter.ai/api/v1"
+
+    @field_validator("openrouter_api_base")
+    @classmethod
+    def _validate_openrouter_api_base(cls, v: str) -> str:
+        parsed = urlparse(v)
+        if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+            raise ValueError(f"openrouter_api_base must be a valid HTTP or HTTPS URL, got: {v!r}")
+        return v
+
     openrouter_model: str = "openrouter/elephant-alpha"
     openrouter_tool_model: str = "openrouter/elephant-alpha"
     fallback_models: list[str] = Field(default_factory=_default_fallback_models)
@@ -82,9 +93,16 @@ class Settings(BaseSettings):
     sdlc_mcp_enabled: bool = False
 
     # Phase 3 retrieval memory
-    retrieval_backend: str = "keyword"  # "keyword" | "vector"
+    retrieval_backend: Literal["keyword", "vector", "sqlite-vec", "sqlitevec"] = "keyword"
     embed_model: str = "openrouter/openai/text-embedding-3-small"
     embed_daily_token_cap: int = 200_000
+
+    @field_validator("embed_model")
+    @classmethod
+    def _validate_embed_model(cls, v: str) -> str:
+        if not v.startswith("openrouter/"):
+            raise ValueError(f"embed_model must start with 'openrouter/', got: {v!r}")
+        return v
 
     # Stabilization round 2: centralized runtime tunables. All four use
     # constrained pydantic fields so a misconfigured env (``=0``, negative
@@ -94,6 +112,12 @@ class Settings(BaseSettings):
     self_prompt_tick_interval_sec: float = Field(default=60.0, gt=0.0)
     gate_subprocess_timeout_sec: float = Field(default=120.0, gt=0.0)
     github_dedup_issue_scan_limit: int = Field(default=100, gt=0)
+
+    # Planner safety: cap the maximum content bytes used for code-block
+    # scanning, both as a text-level guard that can skip all scans for
+    # pathologically large LLM outputs and as a per-block limit for the
+    # write_file fallback walker.
+    planner_max_content_bytes: int = Field(default=500_000, gt=0)
 
 
 @lru_cache(maxsize=1)
@@ -145,6 +169,7 @@ class Config:
     SELF_PROMPT_TICK_INTERVAL_SEC = _settings.self_prompt_tick_interval_sec
     GATE_SUBPROCESS_TIMEOUT_SEC = _settings.gate_subprocess_timeout_sec
     GITHUB_DEDUP_ISSUE_SCAN_LIMIT = _settings.github_dedup_issue_scan_limit
+    PLANNER_MAX_CONTENT_BYTES = _settings.planner_max_content_bytes
 
     # Model capability mappings for intelligent routing
     # Maps capabilities to preferred models (in priority order)

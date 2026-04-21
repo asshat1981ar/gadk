@@ -20,7 +20,7 @@ from src.state import StateManager
 POLL_INTERVAL_SECONDS = 0.005  # how often to sample state.json during concurrent writes
 
 # ---------------------------------------------------------------------------
-# Worker run in each subprocess
+# Workers run in each subprocess
 # ---------------------------------------------------------------------------
 
 
@@ -166,4 +166,69 @@ class TestStateAtomicity:
         )
         assert not errors, "state.json was invalid JSON during concurrent writes:\n" + "\n".join(
             errors
+        )
+
+
+def _distinct_writer_worker(
+    state_json: str, events_jsonl: str, worker_id: int, n_writes: int
+) -> None:
+    """Perform *n_writes* set_task calls each on a *distinct* task ID.
+
+    With 8 workers × 50 writes = 400 unique task IDs, all must be present
+    in the final state.json once the cross-process lock is in place.
+    """
+    sm = StateManager(storage_type="json", filename=state_json, event_filename=events_jsonl)
+    for i in range(n_writes):
+        sm.set_task(
+            f"task-w{worker_id}-{i}",
+            {"status": "PENDING", "worker": worker_id, "seq": i},
+            agent=f"worker-{worker_id}",
+        )
+
+
+class TestSetTaskNoLostUpdate:
+    def test_set_task_no_lost_update(self, tmp_path):
+        """8 processes × 50 distinct task IDs = 400 tasks must all survive.
+
+        Without a cross-process lock around the read-modify-write the later
+        ``os.replace`` silently drops the earlier writer's updates. This test
+        asserts that the fix (``_locked_persist_json``) closes the race.
+        """
+        state_json = str(tmp_path / "state.json")
+        events_jsonl = str(tmp_path / "events.jsonl")
+        n_workers = 8
+        n_writes_each = 50
+
+        processes = [
+            multiprocessing.Process(
+                target=_distinct_writer_worker,
+                args=(state_json, events_jsonl, wid, n_writes_each),
+            )
+            for wid in range(n_workers)
+        ]
+        for p in processes:
+            p.start()
+        # Reap each worker. If it's still alive after the timeout, terminate
+        # (SIGTERM) then kill (SIGKILL) before asserting, so a deadlocked
+        # worker doesn't leak into subsequent tests or block pytest shutdown.
+        for p in processes:
+            p.join(timeout=60)
+            if p.is_alive():
+                p.terminate()
+                p.join(timeout=5)
+                if p.is_alive():
+                    p.kill()
+                    p.join(timeout=5)
+                raise AssertionError(
+                    f"Worker process {p.pid} did not finish within 60s; killed for cleanup."
+                )
+            assert p.exitcode == 0, f"Worker process {p.pid} exited with code {p.exitcode}"
+
+        with open(state_json) as f:
+            state = json.load(f)
+
+        expected_count = n_workers * n_writes_each
+        assert len(state) == expected_count, (
+            f"Expected {expected_count} tasks in state.json, got {len(state)}. "
+            f"Missing: {expected_count - len(state)} tasks were lost due to a race."
         )

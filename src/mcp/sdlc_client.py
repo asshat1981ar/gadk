@@ -31,6 +31,12 @@ TOOL_SPRINT_OPEN = "chimera_sprint_open"
 TOOL_PHASE_COMMIT = "sdlc_phase_commit"
 TOOL_QUALITY_GATE_PR = "sdlc_quality_gate_pr"
 
+#: Module-level set of in-flight tasks created by :func:`submit_gate_decision`.
+#: Each entry is removed by a ``done_callback`` when the task completes or is
+#: cancelled, so the set only ever holds truly live tasks.  On swarm shutdown
+#: call :func:`cancel_pending_tasks` to drain the set gracefully.
+_pending_tasks: set[asyncio.Task] = set()
+
 
 def _is_enabled() -> bool:
     return bool(getattr(Config, "SDLC_MCP_ENABLED", False))
@@ -129,9 +135,29 @@ def submit_gate_decision(task_id: str, verdict: dict[str, Any]) -> dict[str, Any
     if loop is None:
         return asyncio.run(_invoke(TOOL_QUALITY_GATE_PR, payload))
 
-    # Inside a running loop: schedule and return a handle.
-    loop.create_task(_invoke(TOOL_QUALITY_GATE_PR, payload))
+    # Inside a running loop: schedule and track so the task survives until
+    # the loop shuts down and can be cancelled cleanly via cancel_pending_tasks.
+    task = loop.create_task(_invoke(TOOL_QUALITY_GATE_PR, payload))
+    _pending_tasks.add(task)
+    task.add_done_callback(_pending_tasks.discard)
     return {"status": "scheduled", "tool": TOOL_QUALITY_GATE_PR}
+
+
+async def cancel_pending_tasks(timeout: float = 5.0) -> None:
+    """Cancel all in-flight gate-decision tasks and wait for them to finish.
+
+    Should be called during swarm shutdown (after the shutdown sentinel is
+    detected) so no tasks are GC'd mid-flight with unhandled exceptions.
+    Tasks that do not finish within *timeout* seconds are logged as warnings.
+    """
+    if not _pending_tasks:
+        return
+    tasks = list(_pending_tasks)
+    for t in tasks:
+        t.cancel()
+    _done, pending = await asyncio.wait(tasks, timeout=timeout)
+    for t in pending:
+        logger.warning("sdlc_client: task %s did not finish within %.1fs drain timeout", t, timeout)
 
 
 __all__ = [
@@ -139,6 +165,7 @@ __all__ = [
     "TOOL_PHASE_COMMIT",
     "TOOL_QUALITY_GATE_PR",
     "TOOL_SPRINT_OPEN",
+    "cancel_pending_tasks",
     "commit_phase",
     "create_adr",
     "submit_gate_decision",

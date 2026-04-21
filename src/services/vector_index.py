@@ -158,17 +158,22 @@ class SqliteVecBackend:
     def _open_db(self) -> sqlite3.Connection:
         conn = sqlite3.connect(self._db_path)
         conn.enable_load_extension(True)
-        _sqlite_vec.load(conn)
+        try:
+            _sqlite_vec.load(conn)
+        except Exception as exc:
+            conn.close()
+            logger.warning("sqlite_vec.load failed: %s %s", type(exc).__name__, exc)
+            raise VectorBackendUnavailable(f"sqlite-vec extension failed to load: {exc}") from exc
         conn.enable_load_extension(False)
         return conn
 
     def _ensure_schema(self) -> None:
         self._conn.execute(
-            f"CREATE VIRTUAL TABLE IF NOT EXISTS {self._INDEX_TABLE} "
+            f"CREATE VIRTUAL TABLE IF NOT EXISTS {self._INDEX_TABLE} "  # nosec B608 — table name is a hardcoded module constant, not user input
             f"USING vec0(embedding FLOAT[{self._dim}])"
         )
         self._conn.execute(
-            f"CREATE TABLE IF NOT EXISTS {self._META_TABLE} ("
+            f"CREATE TABLE IF NOT EXISTS {self._META_TABLE} ("  # nosec B608 — table name is a hardcoded module constant, not user input
             "rowid INTEGER PRIMARY KEY, "
             "doc_id TEXT UNIQUE NOT NULL, "
             "text TEXT NOT NULL, "
@@ -209,23 +214,23 @@ class SqliteVecBackend:
         # rolls back on exception.
         with self._conn:
             row = self._conn.execute(
-                f"SELECT rowid FROM {self._META_TABLE} WHERE doc_id = ?", (doc_id,)
+                f"SELECT rowid FROM {self._META_TABLE} WHERE doc_id = ?", (doc_id,)  # nosec B608 — table name is a hardcoded module constant, not user input
             ).fetchone()
             if row is not None:
                 rowid = row[0]
-                self._conn.execute(f"DELETE FROM {self._INDEX_TABLE} WHERE rowid = ?", (rowid,))
+                self._conn.execute(f"DELETE FROM {self._INDEX_TABLE} WHERE rowid = ?", (rowid,))  # nosec B608 — table name is a hardcoded module constant, not user input
                 self._conn.execute(
-                    f"UPDATE {self._META_TABLE} SET text = ?, metadata = ? WHERE rowid = ?",
+                    f"UPDATE {self._META_TABLE} SET text = ?, metadata = ? WHERE rowid = ?",  # nosec B608 — table name is a hardcoded module constant, not user input
                     (text, json.dumps(metadata or {}), rowid),
                 )
             else:
                 cursor = self._conn.execute(
-                    f"INSERT INTO {self._META_TABLE} (doc_id, text, metadata) VALUES (?, ?, ?)",
+                    f"INSERT INTO {self._META_TABLE} (doc_id, text, metadata) VALUES (?, ?, ?)",  # nosec B608 — table name is a hardcoded module constant, not user input
                     (doc_id, text, json.dumps(metadata or {})),
                 )
                 rowid = cursor.lastrowid
             self._conn.execute(
-                f"INSERT INTO {self._INDEX_TABLE} (rowid, embedding) VALUES (?, ?)",
+                f"INSERT INTO {self._INDEX_TABLE} (rowid, embedding) VALUES (?, ?)",  # nosec B608 — table name is a hardcoded module constant, not user input
                 (rowid, vector),
             )
 
@@ -233,13 +238,13 @@ class SqliteVecBackend:
         """Remove a single document by ``doc_id``. Silent no-op if absent."""
         with self._conn:
             row = self._conn.execute(
-                f"SELECT rowid FROM {self._META_TABLE} WHERE doc_id = ?", (doc_id,)
+                f"SELECT rowid FROM {self._META_TABLE} WHERE doc_id = ?", (doc_id,)  # nosec B608 — table name is a hardcoded module constant, not user input
             ).fetchone()
             if row is None:
                 return
             rowid = row[0]
-            self._conn.execute(f"DELETE FROM {self._INDEX_TABLE} WHERE rowid = ?", (rowid,))
-            self._conn.execute(f"DELETE FROM {self._META_TABLE} WHERE rowid = ?", (rowid,))
+            self._conn.execute(f"DELETE FROM {self._INDEX_TABLE} WHERE rowid = ?", (rowid,))  # nosec B608 — table name is a hardcoded module constant, not user input
+            self._conn.execute(f"DELETE FROM {self._META_TABLE} WHERE rowid = ?", (rowid,))  # nosec B608 — table name is a hardcoded module constant, not user input
 
     def known_doc_ids(self, *, corpora: Iterable[str] | None = None) -> set[str]:
         """Return every ``doc_id`` currently indexed.
@@ -250,7 +255,7 @@ class SqliteVecBackend:
         never touches docs belonging to corpora that weren't part of
         the current request.
         """
-        rows = self._conn.execute(f"SELECT doc_id, metadata FROM {self._META_TABLE}").fetchall()
+        rows = self._conn.execute(f"SELECT doc_id, metadata FROM {self._META_TABLE}").fetchall()  # nosec B608 — table name is a hardcoded module constant, not user input
         if corpora is None:
             return {row[0] for row in rows}
         wanted = {c.strip().lower() for c in corpora}
@@ -277,7 +282,7 @@ class SqliteVecBackend:
             WHERE v.embedding MATCH ?
               AND k = ?
             ORDER BY v.distance
-            """,
+            """,  # nosec B608 — table names are hardcoded module constants
             (vector, int(top_k)),
         ).fetchall()
         return [
@@ -294,8 +299,8 @@ class SqliteVecBackend:
         ]
 
     def clear(self) -> None:
-        self._conn.execute(f"DELETE FROM {self._INDEX_TABLE}")
-        self._conn.execute(f"DELETE FROM {self._META_TABLE}")
+        self._conn.execute(f"DELETE FROM {self._INDEX_TABLE}")  # nosec B608 — table name is a hardcoded module constant, not user input
+        self._conn.execute(f"DELETE FROM {self._META_TABLE}")  # nosec B608 — table name is a hardcoded module constant, not user input
         self._conn.commit()
 
 

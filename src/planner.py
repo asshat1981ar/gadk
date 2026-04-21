@@ -170,19 +170,26 @@ def _parse_tool_calls(text: str) -> list[dict[str, Any]]:
     Handles multiple formats the model might emit.
     """
     calls = []
-    # Find all ```json ... ``` and ```python ... ``` blocks
-    for match in re.finditer(r"```(?:json|python)\s*(.*?)\s*```", text, re.DOTALL):
-        raw = match.group(1).strip()
-        validated_call = repair_and_validate_tool_json(raw)
-        if validated_call is not None:
-            calls.append(validated_call.to_dispatch_call())
-            continue
+    # Guard: skip the expensive DOTALL code-block scans for oversized payloads.
+    # A legitimate tool-call response never exceeds PLANNER_MAX_CONTENT_BYTES;
+    # anything larger is a pathological write_file content injection and the
+    # re.finditer DOTALL scan would itself become slow on such inputs.
+    _block_scan_ok = len(text.encode("utf-8")) <= Config.PLANNER_MAX_CONTENT_BYTES
 
-        data = _load_repaired_json(raw)
-        if data is not None:
-            calls.extend(_extract_tool_calls_from_obj(data))
-        else:
-            logger.warning(f"Failed to parse JSON block: {raw[:100]}")
+    # Find all ```json ... ``` and ```python ... ``` blocks
+    if _block_scan_ok:
+        for match in re.finditer(r"```(?:json|python)\s*(.*?)\s*```", text, re.DOTALL):
+            raw = match.group(1).strip()
+            validated_call = repair_and_validate_tool_json(raw)
+            if validated_call is not None:
+                calls.append(validated_call.to_dispatch_call())
+                continue
+
+            data = _load_repaired_json(raw)
+            if data is not None:
+                calls.extend(_extract_tool_calls_from_obj(data))
+            else:
+                logger.warning(f"Failed to parse JSON block: {raw[:100]}")
 
     # Fallback 1: look for inline {"tool_name": "...", "args": {...}} patterns
     if not calls:
@@ -206,7 +213,7 @@ def _parse_tool_calls(text: str) -> list[dict[str, Any]]:
     # Fallback 3: robust write_file extraction from malformed JSON blocks
     # The model often emits JSON with unescaped quotes in content — we extract
     # path and content by scanning the raw block character-by-character.
-    if not calls:
+    if not calls and _block_scan_ok:
         for match in re.finditer(r"```(?:json|python)\s*(.*?)\s*```", text, re.DOTALL):
             raw = match.group(1).strip()
             if '"write_file"' not in raw and '"action"' not in raw:
@@ -221,25 +228,15 @@ def _parse_tool_calls(text: str) -> list[dict[str, Any]]:
             if not cm:
                 continue
             start = cm.end()
-            # Walk backward from the end to find the closing brace of args
-            end = len(raw)
-            brace_depth = 0
-            in_string = False
-            for i in range(end - 1, start - 1, -1):
-                ch = raw[i]
-                if ch == '"' and (i == 0 or raw[i - 1] != "\\"):
-                    in_string = not in_string
-                    continue
-                if in_string:
-                    continue
-                if ch == "}":
-                    brace_depth += 1
-                elif ch == "{":
-                    brace_depth -= 1
-                if brace_depth == 0 and ch == "}":
-                    end = i
-                    break
-            content = raw[start:end]
+            # Guard against pathologically large content fields (DoS / O(n) scan).
+            if len(raw) - start > Config.PLANNER_MAX_CONTENT_BYTES:
+                continue
+            # The content string ends at the last '"' in the slice; everything
+            # after it is JSON closing syntax (e.g. '"}}').  rfind is O(n) but
+            # bounded by PLANNER_MAX_CONTENT_BYTES above.
+            content_slice = raw[start:]
+            last_quote = content_slice.rfind('"')
+            content = content_slice[:last_quote] if last_quote >= 0 else content_slice
             calls.append({"tool_name": "write_file", "args": {"path": path, "content": content}})
 
     return calls

@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import threading
 from pathlib import Path
 
 import pytest
 
+import src.services.retrieval_context as rc
 from src.services.retrieval_context import (
     PLANNING_RETRIEVAL_CAPABILITY,
     RetrievalQuery,
@@ -64,6 +66,16 @@ class TestRetrievalContext:
         with pytest.raises(ValueError, match="Unsupported retrieval corpus"):
             RetrievalQuery(query="planner contracts", corpus=["issues"])
 
+    def test_retrieve_context_empty_corpus_returns_empty(self, tmp_path: Path):
+        """An empty tmp_path (no corpus files) must return sources=[] without errors."""
+        result = retrieve_context(
+            RetrievalQuery(query="anything", corpus=["specs", "plans", "history"]),
+            repo_root=tmp_path,
+        )
+
+        assert result["sources"] == []
+        assert set(result["corpus"]) == {"specs", "plans", "history"}
+
     @pytest.mark.asyncio
     async def test_retrieve_planning_context_uses_capability_layer(self, monkeypatch):
         captured: dict[str, object] = {}
@@ -89,3 +101,89 @@ class TestRetrievalContext:
             },
         }
         assert result == {"status": "success", "payload": {"sources": []}}
+
+
+class TestDocHashesLock:
+    """Verify that concurrent _sync_corpus_to_backend calls don't trigger duplicate embeds."""
+
+    def test_concurrent_retrieves_no_duplicate_embed(self, tmp_path: Path):
+        """Two threads calling _sync_corpus_to_backend simultaneously for the
+        same doc must embed it exactly once — the _doc_hashes_lock with
+        atomic check-and-pre-mark prevents both threads from seeing a cache
+        miss and both issuing an upsert.
+        """
+        # Write a single spec file that both threads will try to embed.
+        spec_file = tmp_path / "docs" / "superpowers" / "specs" / "spec.md"
+        spec_file.parent.mkdir(parents=True, exist_ok=True)
+        spec_file.write_text("alpha beta gamma", encoding="utf-8")
+
+        upsert_calls: list[str] = []
+        upsert_lock = threading.Lock()
+        # A barrier inside upsert lets the second thread arrive and see the
+        # (already pre-marked) cache entry before the first thread finishes.
+        upsert_entered = threading.Event()
+        upsert_proceed = threading.Event()
+
+        class _TrackingBackend:
+            name = "tracking"
+
+            def upsert(self, *, doc_id: str, text: str, metadata: dict) -> None:
+                with upsert_lock:
+                    upsert_calls.append(doc_id)
+                # Signal the second thread that we're inside upsert, then
+                # wait briefly so it has time to check the hash cache.
+                upsert_entered.set()
+                upsert_proceed.wait(timeout=2)
+
+            def query(self, query: str, top_k: int = 3):
+                return []
+
+            def known_doc_ids(self, **kwargs):
+                return set()
+
+            def delete(self, doc_id: str) -> None:
+                pass
+
+        # Clear module-level cache before the test. Wrapping the whole
+        # body in try/finally so if an assertion fires before cleanup,
+        # later tests in the file still see a clean _doc_hashes cache.
+        with rc._doc_hashes_lock:
+            rc._doc_hashes.clear()
+
+        backend = _TrackingBackend()
+        barrier = threading.Barrier(2)
+        errors: list[Exception] = []
+
+        def _run():
+            try:
+                barrier.wait()  # both threads start simultaneously
+                rc._sync_corpus_to_backend(backend, tmp_path, ["specs"])
+            except Exception as exc:
+                errors.append(exc)
+
+        threads = [threading.Thread(target=_run) for _ in range(2)]
+        try:
+            for t in threads:
+                t.start()
+
+            # Once the first upsert has started, let both threads proceed.
+            upsert_entered.wait(timeout=5)
+            upsert_proceed.set()
+
+            for t in threads:
+                t.join(timeout=10)
+                assert not t.is_alive(), f"thread {t.name} deadlocked; barrier/event may be broken"
+        finally:
+            # Always restore — even if an assertion above fires, subsequent
+            # tests should see a clean cache, and make sure no signals
+            # hold threads hostage by re-releasing on the way out.
+            upsert_proceed.set()
+            with rc._doc_hashes_lock:
+                rc._doc_hashes.clear()
+
+        assert not errors, f"Threads raised exceptions: {errors}"
+        # The doc should have been upserted exactly once despite two concurrent calls.
+        assert len(upsert_calls) == 1, (
+            f"Expected 1 upsert call, got {len(upsert_calls)}. "
+            "Duplicate embed detected — _doc_hashes_lock may not be working."
+        )

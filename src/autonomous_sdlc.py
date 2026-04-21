@@ -35,20 +35,23 @@ def _slugify_task_id(prefix: str, title: str, max_len: int = 40) -> str:
     return task_id
 
 
+from src.agents.architect import draft_architecture_note
+from src.agents.governor import register_external_gate
 from src.config import Config
 from src.observability.logger import configure_logging, get_logger, set_trace_id
 from src.observability.metrics import registry
 from src.planner import run_planner, run_planner_structured
 from src.services.agent_contracts import ReviewVerdict
+from src.services.phase_controller import PhaseController
+from src.services.phase_store import ensure_work_item, save_work_item
+from src.services.sdlc_phase import Phase, WorkItem
 from src.services.structured_output import (
     format_review_verdict,
     parse_discovery_tasks,
 )
 from src.services.workflow_graphs import (
     AutonomousRetryState,
-    ReviewLoopState,
     run_autonomous_retry,
-    run_review_rework_cycle,
 )
 from src.state import StateManager
 from src.tools.content_guards import is_low_value_content
@@ -64,6 +67,53 @@ CYCLE_SLEEP_SEC = int(os.getenv("CYCLE_SLEEP_SEC", "30"))
 SHUTDOWN_FILE = os.getenv("SHUTDOWN_FILE", ".shutdown_sdlc")
 TASKS_FILE = "docs/sdlc_tasks.json"
 MAX_REVIEW_RETRIES = int(os.getenv("MAX_REVIEW_RETRIES", "2"))
+
+
+def _architecture_note_from_task(task: dict) -> dict | None:
+    """Synthesize a minimal ADR payload from an Ideator-produced task.
+
+    No LLM call — the ADR is derived from task fields already in hand.
+    Captures the Ideator→Builder handoff in structured form so
+    ``events.jsonl`` carries an auditable rationale for every
+    ARCHITECT transition. A future iteration can swap this for a real
+    Architect-agent LLM roundtrip; the `draft_architecture_note`
+    signature already matches.
+
+    Returns ``None`` if validation fails (e.g., missing required
+    fields) so the caller can degrade to a forced-skip rather than
+    halting the cycle.
+    """
+    try:
+        title = (task.get("title") or "").strip()
+        description = (task.get("description") or "").strip()
+        priority = (task.get("priority") or "MEDIUM").strip().upper()
+        file_hint = (task.get("file_hint") or "").strip()
+
+        if not title or not description:
+            return None
+
+        touched = [file_hint] if file_hint else []
+        consequences = [
+            f"Priority: {priority}",
+            "Implemented by the Builder agent; delivered through the autonomous SDLC loop.",
+        ]
+
+        return draft_architecture_note(
+            task_id=task["task_id"],
+            title=title,
+            context=description,
+            decision="Implement as specified by the Ideator; no additional architectural divergence.",
+            consequences=consequences,
+            alternatives=["Defer: leave the gap unaddressed for the next discovery cycle."],
+            touched_paths=touched,
+        )
+    except Exception as exc:  # pydantic.ValidationError + anything else
+        logger.warning(
+            "architecture.note.degraded task=%s reason=%s",
+            task.get("task_id"),
+            exc,
+        )
+        return None
 
 
 def _extract_review_status(review_text: str) -> str:
@@ -90,9 +140,37 @@ def _extract_review_status(review_text: str) -> str:
 
 
 class AutonomousSDLCEngine:
-    def __init__(self):
-        self.sm = StateManager()
-        self.gh = GitHubTool()
+    """Autonomous SDLC engine — now phase-gated.
+
+    Each cycle routes the selected task through a ``WorkItem`` advancing
+    PLAN → ARCHITECT → IMPLEMENT → REVIEW → GOVERN → OPERATE via
+    :class:`PhaseController`, so every transition emits a
+    ``phase.transition`` event in ``events.jsonl`` that operators can
+    audit. The discovery + delivery logic is unchanged; only the
+    orchestration around it is now observable.
+
+    The `ARCHITECT` phase produces a minimal ADR from task fields via
+    :func:`_architecture_note_from_task` — no extra LLM call. The ADR
+    captures the Ideator→Builder handoff in structured form so every
+    transition in ``events.jsonl`` carries an auditable rationale. If
+    the ADR synthesis fails (missing task fields, pydantic validation
+    error), the transition degrades to a forced-skip with a structured
+    warning; the cycle continues rather than halting on the audit
+    surface. A future iteration can replace the synthesis with a real
+    Architect-agent LLM call; the signature already matches
+    :func:`src.agents.architect.draft_architecture_note`.
+    """
+
+    def __init__(
+        self,
+        *,
+        state_manager: StateManager | None = None,
+        github_tool: GitHubTool | None = None,
+        phase_controller: PhaseController | None = None,
+    ) -> None:
+        self.sm = state_manager or StateManager()
+        self.gh = github_tool or GitHubTool()
+        self.controller = phase_controller or PhaseController(state_manager=self.sm)
         self.cycle = 0
         self.tasks_completed = 0
         self.tasks_failed = 0
@@ -163,10 +241,14 @@ class AutonomousSDLCEngine:
         priority_order = {"HIGH": 0, "MEDIUM": 1, "LOW": 2}
         tasks.sort(key=lambda t: priority_order.get(t.get("priority", "LOW"), 2))
 
-        # Check existing open PRs to avoid duplicates
+        # Check existing open PRs to avoid duplicates (capped to avoid memory bloat)
+        _pr_scan_limit = getattr(Config, "GITHUB_DEDUP_ISSUE_SCAN_LIMIT", 100)
         try:
             open_prs = await self.gh.list_pull_requests(state="open")
-            open_titles = {p["title"].lower() for p in open_prs}
+            capped = open_prs[:_pr_scan_limit]
+            if len(open_prs) > _pr_scan_limit:
+                logger.warning("github.open_pr_scan_capped limit=%d", _pr_scan_limit)
+            open_titles = {p["title"].lower() for p in capped}
         except (ConnectionError, TimeoutError, KeyError, TypeError) as exc:
             logger.warning("open-PR scan failed; proceeding without dedup: %s", exc)
             open_titles = set()
@@ -260,7 +342,12 @@ class AutonomousSDLCEngine:
             paths = [f"src/staged_agents/{f}" for f in staged]
             paths.sort(key=lambda p: os.path.getmtime(p), reverse=True)
             latest = paths[0]
-            logger.info(f"Builder produced: {latest}")
+            build_duration_sec = round(time.time() - build_start, 3)
+            logger.info(
+                "Builder produced: %s",
+                latest,
+                extra={"build_duration_sec": build_duration_sec, "artifact": latest},
+            )
             self.sm.set_task(task_id, {"status": "BUILT", "artifact": latest}, agent="Builder")
             return latest
 
@@ -401,80 +488,129 @@ class AutonomousSDLCEngine:
         return pr_url
 
     async def run_cycle(self) -> bool:
-        """Run one full SDLC cycle. Returns True if work was done."""
+        """Run one full SDLC cycle. Returns True if work was done.
+
+        The cycle drives a :class:`WorkItem` through the canonical phase
+        ladder; every transition writes a ``phase.transition`` event so
+        operators can reconstruct the exact path a task took from
+        ``events.jsonl``.
+        """
         self.cycle += 1
         cycle_id = f"sdlc-cycle-{self.cycle}"
         set_trace_id(cycle_id)
+        logger.info(
+            "cycle.start",
+            extra={"cycle_id": cycle_id, "trace_id": cycle_id, "max_cycles": MAX_CYCLES},
+        )
         logger.info(f"========== CYCLE {self.cycle}/{MAX_CYCLES or '∞'} ==========")
 
-        # Discover
+        # Discover — precedes PLAN; produces the backlog selection feeds.
         tasks = await self._discover()
         if not tasks:
             logger.info("No tasks discovered. Cycle complete.")
             return False
 
-        # Plan
+        # Plan — select one task and open its WorkItem at phase=PLAN.
         task = await self._plan(tasks)
         if not task:
             logger.info("No actionable tasks. Cycle complete.")
             return False
 
-        # Build
+        item: WorkItem = ensure_work_item(self.sm, task["task_id"], phase=Phase.PLAN)
+        item.payload["task"] = task
+
+        # PLAN → ARCHITECT. Build a minimal ADR from task fields (no
+        # extra LLM call) so every autonomous transition carries a
+        # structured rationale. If synthesis fails (malformed task,
+        # missing fields) we degrade to a forced skip with a
+        # `architecture.note.degraded` warning — the cycle continues
+        # rather than halting on what is meant to be an audit surface.
+        adr = _architecture_note_from_task(task)
+        if adr is not None:
+            item.payload["architecture"] = adr
+            self.controller.advance(item, Phase.ARCHITECT, reason=f"ADR drafted: {adr['title']}")
+        else:
+            self.controller.advance(
+                item,
+                Phase.ARCHITECT,
+                reason="auto-skip: ADR synthesis unavailable",
+                force=True,
+            )
+
+        # ARCHITECT → IMPLEMENT (build).
         artifact = await self._build(task)
         if not artifact:
             self.tasks_failed += 1
+            save_work_item(self.sm, item, agent="Builder")
             return False
+        item.payload["artifact"] = artifact
+        self.controller.advance(item, Phase.IMPLEMENT, reason="builder produced artifact")
 
-        # Review with bounded rework loop (LangGraph-style, ADK remains outer runtime)
+        # IMPLEMENT → REVIEW with bounded rework. The `decide_rework`
+        # helper wraps `run_review_rework_cycle` and emits its decision
+        # as a `phase.review.decision` event.
         review = await self._review(artifact, task)
-        builder_attempts = 1
+        item.payload["review"] = review
         review_status = _extract_review_status(review)
-        graph_decision = run_review_rework_cycle(
-            ReviewLoopState(
+        builder_attempts = 1
+
+        while True:
+            next_step = self.controller.decide_rework(
+                item,
                 builder_attempts=builder_attempts,
                 review_status=review_status,
                 latest_summary=review[:200],
-            ),
-            max_retries=MAX_REVIEW_RETRIES,
-        )
-
-        while graph_decision.next_step == "builder":
-            logger.info(
-                f"Rework loop: attempt {builder_attempts + 1}/{MAX_REVIEW_RETRIES} "
-                f"— {graph_decision.reason}"
+                max_retries=MAX_REVIEW_RETRIES,
             )
+            if next_step == "stop":
+                break  # review passed
+            if next_step == "critic_stop":
+                logger.warning(
+                    "cycle.review_blocked attempts=%d status=%s",
+                    builder_attempts,
+                    review_status,
+                )
+                self.tasks_failed += 1
+                self.sm.set_task(
+                    task["task_id"],
+                    {"status": "REVIEW_BLOCKED", "reason": f"critic_stop after {builder_attempts}"},
+                    agent="Critic",
+                )
+                save_work_item(self.sm, item, agent="Critic")
+                return False
+
+            # next_step == "builder" — rework
+            logger.info(f"Rework loop: attempt {builder_attempts + 1}/{MAX_REVIEW_RETRIES}")
             builder_attempts += 1
             rebuilt = await self._build(task)
             if rebuilt:
                 artifact = rebuilt
+                item.payload["artifact"] = artifact
             review = await self._review(artifact, task)
+            item.payload["review"] = review
             review_status = _extract_review_status(review)
-            graph_decision = run_review_rework_cycle(
-                ReviewLoopState(
-                    builder_attempts=builder_attempts,
-                    review_status=review_status,
-                    latest_summary=review[:200],
-                ),
-                max_retries=MAX_REVIEW_RETRIES,
-            )
 
-        if graph_decision.next_step == "critic_stop":
-            logger.warning(
-                f"Review loop stopped after {builder_attempts} attempt(s): {graph_decision.reason}"
-            )
-            self.tasks_failed += 1
-            self.sm.set_task(
-                task["task_id"],
-                {"status": "REVIEW_BLOCKED", "reason": graph_decision.reason},
-                agent="Critic",
-            )
-            return False
+        # REVIEW passed → advance to GOVERN.
+        self.controller.advance(item, Phase.REVIEW, reason="review passed")
 
-        # Deliver (graph_decision.next_step == "stop" — review passed)
+        # GOVERN — dormant unless Config.SDLC_MCP_ENABLED. The helper
+        # returns a status dict either way; we stash it on the item so
+        # the event log carries the verdict alongside the transition.
+        gate_result = register_external_gate(
+            task_id=item.id,
+            verdict={"review": review, "ready": True, "attempts": builder_attempts},
+        )
+        item.payload["governance"] = gate_result
+        self.controller.advance(item, Phase.GOVERN, reason="governance gate recorded")
+
+        # GOVERN → OPERATE (delivery).
         try:
             pr_url = await self._deliver(artifact, task, review)
+            item.payload["pr_url"] = pr_url
+            self.controller.advance(item, Phase.OPERATE, reason=f"PR opened: {pr_url}")
             self.tasks_completed += 1
             logger.info(f"Cycle {self.cycle} complete. PR: {pr_url}")
+            save_work_item(self.sm, item, agent="Builder")
             return True
         except Exception as e:
             logger.exception("Delivery failed")
@@ -482,6 +618,7 @@ class AutonomousSDLCEngine:
             self.sm.set_task(
                 task["task_id"], {"status": "FAILED", "reason": str(e)}, agent="Builder"
             )
+            save_work_item(self.sm, item, agent="Builder")
             return False
 
     async def run(self):

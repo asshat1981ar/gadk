@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import hashlib
 import re
+import threading
 import time
 from dataclasses import dataclass, field
-from functools import lru_cache
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -82,7 +82,9 @@ class RetrievalMetrics:
             "total_queries": self.total_queries,
             "cache_hits": self.cache_hits,
             "cache_misses": self.cache_misses,
-            "cache_hit_rate": self.cache_hits / self.total_queries if self.total_queries > 0 else 0.0,
+            "cache_hit_rate": self.cache_hits / self.total_queries
+            if self.total_queries > 0
+            else 0.0,
             "average_latency_ms": self.average_latency_ms,
             "average_relevance": self.average_relevance,
             "errors": self.errors,
@@ -385,6 +387,11 @@ def _resolve_embedder():
 #: meta table so it survives restarts.
 _doc_hashes: dict[str, str] = {}
 
+#: Lock serialising all reads and writes to ``_doc_hashes`` so concurrent
+#: async coroutines (e.g. two simultaneous ``retrieve_context`` calls in the
+#: same event loop) never race on the cache and trigger duplicate embeds.
+_doc_hashes_lock = threading.Lock()
+
 
 def _sha(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
@@ -423,16 +430,29 @@ def _sync_corpus_to_backend(
         doc_id = str(path.relative_to(resolved_root))
         seen_ids.add(doc_id)
         sha = _sha(text)
-        if backend_persists and _doc_hashes.get(doc_id) == sha:
+        # Atomically check and pre-mark under the lock so two coroutines
+        # racing on the same doc_id both see the updated hash and only one
+        # proceeds to the (expensive) upsert call.
+        with _doc_hashes_lock:
+            already_cached = backend_persists and _doc_hashes.get(doc_id) == sha
+            if not already_cached and backend_persists:
+                _doc_hashes[doc_id] = sha  # pre-mark to prevent duplicate embeds
+        if already_cached:
             # Unchanged since last call — skip the (costly) embed.
             continue
-        backend.upsert(
-            doc_id=doc_id,
-            text=text,
-            metadata={"corpus": corpus_name, "path": doc_id},
-        )
-        if backend_persists:
-            _doc_hashes[doc_id] = sha
+        try:
+            backend.upsert(
+                doc_id=doc_id,
+                text=text,
+                metadata={"corpus": corpus_name, "path": doc_id},
+            )
+        except Exception:
+            # Upsert failed — revert the pre-marked hash so the next call
+            # will retry the embed rather than silently skipping it.
+            if backend_persists:
+                with _doc_hashes_lock:
+                    _doc_hashes.pop(doc_id, None)
+            raise
 
     # Drop backend rows + cache entries whose source file disappeared so
     # stale embeddings don't get served in future queries. Only supported
@@ -451,7 +471,8 @@ def _sync_corpus_to_backend(
             in_scope = backend.known_doc_ids()
         for stale_id in in_scope - seen_ids:
             backend.delete(stale_id)
-            _doc_hashes.pop(stale_id, None)
+            with _doc_hashes_lock:
+                _doc_hashes.pop(stale_id, None)
 
     return len(seen_ids)
 
@@ -522,9 +543,42 @@ def retrieve_context(
     resolved_root = _repo_root(repo_root)
     backend_name = (Config.RETRIEVAL_BACKEND or "keyword").strip().lower()
 
-    # Expand query if requested
-    if expand_query_terms:
-        request.query = expand_query(request.query, domain_hints)
+    sources: list[dict[str, Any]] = []
+    if backend_name in {"vector", "sqlite-vec", "sqlitevec"}:
+        try:
+            sources = _vector_retrieve(request, resolved_root)
+        except VectorBackendUnavailable as exc:
+            logger.warning(
+                "retrieval.degraded backend=%s reason=%s falling_back=keyword",
+                backend_name,
+                exc,
+                extra={
+                    "top_k": request.top_k,
+                    "corpus": request.corpus,
+                    "reason": str(exc),
+                },
+            )
+            sources = _keyword_retrieve(request, resolved_root)
+        except Exception as exc:  # noqa: BLE001
+            # Broader safety net: sqlite-vec extension misconfigured,
+            # schema migration failures, OpenRouter transport errors, etc.
+            # The documented contract is best-effort fallback to keyword;
+            # surface the actual exception on the same `retrieval.degraded`
+            # channel so it's still visible in logs.
+            reason = f"{type(exc).__name__}:{exc}"
+            logger.warning(
+                "retrieval.degraded backend=%s unexpected_error=%s falling_back=keyword",
+                backend_name,
+                reason,
+                extra={
+                    "top_k": request.top_k,
+                    "corpus": request.corpus,
+                    "reason": reason,
+                },
+            )
+            sources = _keyword_retrieve(request, resolved_root)
+    else:
+        sources = _keyword_retrieve(request, resolved_root)
 
     # Check cache first
     if use_cache:
@@ -586,7 +640,7 @@ def retrieve_context(
         "corpus": request.corpus,
         "sources": sources,
         "metrics": {
-            "latency_ms": latency_ms if 'latency_ms' in locals() else None,
+            "latency_ms": latency_ms if "latency_ms" in locals() else None,
             "backend": backend_name,
             "sources_count": len(sources),
         },
