@@ -192,18 +192,19 @@ context = await ctx.get_context(task_id="t-1", query="authentication")
 
 **Note:** This module has had multiple fixes for retrieval logic instabilities — expect further refactoring per the v2 autonomy overhaul plan.
 
-### 4.4 Self-Prompt Engine (`src/services/self_prompt.py` — 337 lines)
+### 4.4 Self-Prompt Engine (`src/services/self_prompt.py` — DEPRECATED)
 
-Gap-driven autonomous prompt generation. Synthesizes work from queue gaps and generates new tasks:
+**Superseded by:** `src/orchestration/reflection_node.py`
+
+Gap-driven autonomous prompt generation. **All functions are deprecated** and emit `DeprecationWarning`:
 
 ```python
-from src.services.self_prompt import SelfPromptEngine
-
-engine = SelfPromptEngine()
-prompts = await engine.synthesize_and_queue(write=True)  # write to prompt queue
+from src.services.self_prompt import collect_coverage_signals  # DeprecationWarning
 ```
 
-Dry run first: `python3 -m src.cli.swarm_cli self-prompt --dry-run`
+Migration: use `ReflectionNode` instead, which provides MCP-native reflection with rule-based fallback.
+
+Dry run (deprecated): `python3 -m src.cli.swarm_cli self-prompt --dry-run`
 
 ### 4.5 Quality Gates (`src/services/quality_gates.py` — 228 lines)
 
@@ -549,16 +550,52 @@ except ImportError:
 
 ---
 
-## 17. v2 Autonomy Overhaul (In Progress)
+## 17. v2 Autonomy Overhaul
 
-Per `docs/plans/2026-04-21-gadk-v2-autonomy-overhaul.md`, the following replacements are planned:
+Per `docs/plans/2026-04-21-gadk-v2-autonomy-overhaul-v2.md`, the following replacements have been completed:
 
 | Old | Replacement | Status |
 |-----|-------------|--------|
-| `PhaseController` + `sdlc_phase` | `GraphOrchestrator` (LangGraph) | Stub (16L) |
-| `SelfPromptEngine` | Reflection + Self-Correction Node | Not started |
+| `PhaseController` + `sdlc_phase` | `GraphOrchestrator` (LangGraph) | **Implemented** |
+| `SelfPromptEngine` | `ReflectionNode` | **Implemented** |
 | `RetrievalContext` | Unified MemoryGraph (vector + semantic) | Not started |
 | `StateManager` | Persistent actor-like memory | Not started |
+
+### 17.1 New Orchestration Architecture
+
+```
+BlueprintPlanner          — keyword-based deterministic workflow routing
+    auth/secure     → Architect
+    build/feature   → Builder
+    test/coverage   → Critic
+    deploy          → Governor
+    analyze/research → Ideator
+    vague           → Ideator (default)
+
+ReflectionNode            — MCP sequential_thinking + rule-based fallback
+    errors    → retry signal
+    missing   → gap signal
+    deliver   → deliverable signal
+
+GraphOrchestrator         — 5-node autonomous workflow
+    plan → build → review → reflect → deliver
+                            ↓
+                          build (rework edge when review fails)
+
+RefactorAgentNode         — composes BlueprintPlanner + ReflectionNode
+    max_reflection_cycles=3
+```
+
+### 17.2 Dual Execution Path
+
+```
+LANGGRAPH_ENABLED=false (default)
+    → pure-Python dict workflow (always works, no LangGraph dep)
+
+LANGGRAPH_ENABLED=true
+    → full LangGraph StateGraph compiled graph
+    → identical node semantics, accelerated execution
+```
 
 This guide should be updated as each module is replaced.
 

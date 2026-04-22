@@ -54,7 +54,7 @@ SELF_PROMPT_ENABLED=false
 SDLC_MCP_ENABLED=false
 AUTONOMOUS_MODE=false
 GRAPH_MODE_ENABLED=false
-LANGGRAPH_ENABLED=false
+LANGGRAPH_ENABLED=false  # Use LangGraph for GraphOrchestrator (plan→build→review→reflect→deliver)
 
 # Budget
 BUDGET_USD=50.0
@@ -415,7 +415,7 @@ SANDBOX_ENABLED=false
 
 ### 7.4 Prompt Injection
 
-The `RetrievalContext` and `SelfPromptEngine` read from `events.jsonl` and `state.json`. A compromised event log could inject malicious prompts. Mitigate by:
+The `RetrievalContext` and `self_prompt.py` gap-collection functions (deprecated, supers by `ReflectionNode`) read from `events.jsonl` and `state.json`. A compromised event log could inject malicious prompts. Mitigate by:
 - Running with minimal permissions
 - Not logging sensitive task payloads
 - Reviewing the prompt queue before execution: `python3 -m src.cli.swarm_cli queue`
@@ -540,8 +540,7 @@ grep "sdlc-my-task" events.jsonl | jq .
 | `AUTONOMOUS_MODE` | `false` | Run continuous discovery loop |
 | `SELF_PROMPT_ENABLED` | `false` | Enable gap-driven prompt generation |
 | `SDLC_MCP_ENABLED` | `false` | Forward gates to external MCP |
-| `LANGGRAPH_ENABLED` | `false` | Use LangGraph-accelerated workflows |
-| `GRAPH_MODE_ENABLED` | `false` | Use new graph orchestrator |
+| `LANGGRAPH_ENABLED` | `false` | Use LangGraph for GraphOrchestrator (5-node autonomous workflow) |
 | `INSTRUCTOR_ENABLED` | `false` | Use Instructor for structured output |
 | `PYDANTIC_AI_ENABLED` | `false` | Use PydanticAI agent routing |
 | `RETRIEVAL_BACKEND` | `keyword` | Vector store: `keyword`, `vector`, `sqlite-vec` |
@@ -575,7 +574,7 @@ grep "sdlc-my-task" events.jsonl | jq .
 | `PromptProcessingError` | `main.py` | ADK/planner execution failure |
 | `ConfigurationError` | `main.py` | Missing env var |
 | `SwarmLoopError` | `main.py` | Loop iteration crash |
-| `SelfPromptError` | `main.py` | Self-prompt tick failed |
+| `SelfPromptError` | `main.py` | Self-prompt tick failed (DEPRECATED — use ReflectionNode) |
 | `StructuredOutputError` | `structured_output.py` | Pydantic validation failed |
 | `EmptyPlannerResponseError` | `planner.py` | LLM returned no content |
 | `RateLimitError` | LiteLLM | OpenRouter rate limit hit |

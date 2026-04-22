@@ -116,13 +116,13 @@ openrouter_tool_model: str = "openrouter/elephant-alpha"
 fallback_models: list[str] = Field(default_factory=_default_fallback_models)
 llm_timeout: int = 30
 llm_retries: int = 3
-self_prompt_enabled: bool = False
-self_prompt_max_per_hour: int = 6
+self_prompt_enabled: bool = False  # DEPRECATED — superseded by ReflectionNode
+self_prompt_max_per_hour: int = 6  # DEPRECATED — superseded by ReflectionNode
 sdlc_mcp_enabled: bool = False
 retrieval_backend: Literal["keyword", "vector", "sqlite-vec", "sqlitevec"] = "keyword"
 embed_model: str = "openrouter/openai/text-embedding-3-small"
 swarm_loop_poll_sec: float = 2.0
-self_prompt_tick_interval_sec: float = 60.0
+self_prompt_tick_interval_sec: float = 60.0  # DEPRECATED — superseded by ReflectionNode
 planner_max_content_bytes: int = 500_000
 ```
 
@@ -603,34 +603,44 @@ Used by `src/main.py` to create an ADK session for the orchestrator.
 
 ---
 
-## 12. Self-Prompt Engine
+## 12. ReflectionNode (Supersedes Self-Prompt Engine)
 
-**File:** `src/services/self_prompt.py` (337 lines)
+**File:** `src/orchestration/reflection_node.py` (~120 lines)
 
 ```python
-from src.services.self_prompt import SelfPromptEngine
+from src.orchestration.reflection_node import ReflectionNode
 
-engine = SelfPromptEngine()
-await engine.synthesize_and_queue(write=True)   # write to prompt queue
-await engine.synthesize_and_queue(write=False)  # dry run
+node = ReflectionNode(mcp_available=True)
+result = await node.analyze_previous_step(
+    task_query="build authentication for the API",
+    previous_output={"status": "errors", "errors": ["KeyError: token"]},
+)
+# result.errors, result.retry, result.gaps, result.deliverable
 ```
 
 **How it works:**
-1. Reads `events.jsonl` and `state.json` for gap analysis
-2. Identifies failed/stalled tasks
-3. Generates new tasks via `run_planner`
-4. Writes to `prompt_queue.jsonl` for the swarm loop to pick up
+1. Attempts MCP `sequential_thinking` when `mcp_available=True`
+2. Falls back to rule-based keyword analysis when MCP unavailable
+3. Detects: errors → retry signal, missing coverage → gaps, successful build → deliverable
 
-**CLI:**
+**Migration from `self_prompt.py`:**
+All functions in `src/services/self_prompt.py` are **deprecated** and emit `DeprecationWarning` on every call:
+- `collect_coverage_signals` → ReflectionNode gap analysis
+- `collect_event_log_signals` → ReflectionNode event analysis
+- `collect_backlog_signals` → ReflectionNode backlog analysis
+- `synthesize` → ReflectionNode intent synthesis
+- `dispatch` / `run_once` → ReflectionNode analysis + GraphOrchestrator execution
+
+**CLI (deprecated):**
 ```bash
-python3 -m src.cli.swarm_cli self-prompt --dry-run   # preview only
-python3 -m src.cli.swarm_cli self-prompt            # write to queue
+python3 -m src.cli.swarm_cli self-prompt --dry-run   # emits 4 DeprecationWarnings
+python3 -m src.cli.swarm_cli self-prompt            # emits 4 DeprecationWarnings
 ```
 
-**Off-switch:**
+**Off-switch (deprecated):**
 ```python
 from src.services import self_prompt as _self_prompt
-_self_prompt.off_switch_active()   # returns True if disabled
+_self_prompt.off_switch_active()   # deprecated — use .swarm_shutdown instead
 ```
 
 ---
