@@ -286,7 +286,27 @@ async def run_swarm_loop(session_service, session, runner) -> None:
 
     initial_query = _build_autonomous_prompt("project-chimera")
     try:
-        if should_use_planner_for_autonomous_run(Config.OPENROUTER_MODEL):
+        if graph_orch is not None and hasattr(workflow, "invoke"):
+            # Graph mode: run the compiled workflow directly
+            from src.orchestration.graph_orchestrator import AgentState
+            graph_state: AgentState = {
+                "task": initial_query,
+                "phase": "",
+                "memory": {},
+                "reflection": [],
+                "blueprint": {},
+                "build_output": {},
+                "review_output": {},
+                "status": "running",
+            }
+            logger.info("graph_mode: invoking workflow", extra={"session_id": session.id})
+            result = workflow.invoke(graph_state)
+            print(f"Graph workflow completed: status={result.get('status')}")
+            logger.info(
+                f"graph_mode: workflow done status={result.get('status')}",
+                extra={"session_id": session.id, "phase": result.get("phase")},
+            )
+        elif should_use_planner_for_autonomous_run(Config.OPENROUTER_MODEL):
             response = await _run_autonomous_prompt_with_tools(initial_query)
             if response:
                 print(f"Swarm: {response}")
