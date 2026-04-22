@@ -1,5 +1,6 @@
 """Integration tests for graph orchestrator wired into main."""
 import pytest
+
 from src.config import Config
 
 
@@ -54,6 +55,7 @@ def test_langgraph_workflow_executes_to_done(monkeypatch):
     monkeypatch.setattr("src.config.Config.LANGGRAPH_ENABLED", True, raising=False)
     # Force reimport of graph orchestrator with langgraph enabled
     import importlib
+
     import src.orchestration.graph_orchestrator as go
     importlib.reload(go)
 

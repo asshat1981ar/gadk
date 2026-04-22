@@ -13,17 +13,21 @@ with identical semantics.
 """
 from __future__ import annotations
 
-from typing import Any, TypedDict
+from typing import TYPE_CHECKING, Any, TypedDict
 
 from src.config import Config
 
 LANGGRAPH_AVAILABLE = False
 if Config.LANGGRAPH_ENABLED:
     try:
-        from langgraph.graph import StateGraph, END  # type: ignore[import]
+        from langgraph.graph import END, StateGraph  # type: ignore[import]
+
         LANGGRAPH_AVAILABLE = True
     except ImportError:
         pass
+
+if TYPE_CHECKING:
+    from langgraph.graph import StateGraph  # noqa: F401
 
 
 class AgentState(TypedDict, total=False):
@@ -69,7 +73,7 @@ class GraphOrchestrator:
         }
 
     def _build_langgraph_workflow(self):
-        from langgraph.graph import StateGraph, END
+        from langgraph.graph import END, StateGraph
 
         workflow = StateGraph(AgentState)
 
