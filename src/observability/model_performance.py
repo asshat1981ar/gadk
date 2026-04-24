@@ -13,7 +13,6 @@ from dataclasses import asdict, dataclass, field
 from typing import Any
 
 from src.observability.logger import get_logger
-from src.utils.file_lock import locked_file
 
 logger = get_logger("model_performance")
 
@@ -279,6 +278,8 @@ class ModelPerformanceTracker:
                     pass
             except OSError:
                 pass
+
+        from src.utils.file_lock import locked_file  # lazy to avoid circular import
 
         try:
             with locked_file(self.filename, "r+") as f:
