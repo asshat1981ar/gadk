@@ -78,6 +78,11 @@ class Settings(BaseSettings):
 
     # Phase 0 stabilization flags
     github_mock_allowed: bool = False  # require real PyGithub in prod
+
+    # Ollama Cloud (MiniMax) backend
+    ollama_model: str = "minimax-m2.7:cloud"
+    ollama_base_url: str = "https://ollama.com"
+    ollama_api_key: str | None = None
     workspace_root: str = "."  # sandbox root for filesystem/dispatcher
 
     # Phase 1 phase-gate framework
@@ -159,6 +164,9 @@ class Config:
     LLM_TIMEOUT = _settings.llm_timeout
     LLM_RETRIES = _settings.llm_retries
     GITHUB_MOCK_ALLOWED = _settings.github_mock_allowed
+    OLLAMA_MODEL = _settings.ollama_model
+    OLLAMA_BASE_URL = _settings.ollama_base_url
+    OLLAMA_API_KEY = _settings.ollama_api_key
     WORKSPACE_ROOT = _settings.workspace_root
     PROJECT_ID = _settings.project_id
     TENANT_ID = _settings.tenant_id

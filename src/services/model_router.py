@@ -640,6 +640,26 @@ class ModelRouter:
 
         raise RuntimeError("All models failed with no exception")
 
+    def get_backend(self, model: str) -> Any:
+        """Get an OllamaCloudBackend for 'ollama/' prefixed models.
+
+        Args:
+            model: Model string, e.g. 'ollama/minimax-m2.7:cloud'
+
+        Returns:
+            OllamaCloudBackend instance for ollama/ models, None otherwise.
+        """
+        if model.startswith("ollama/"):
+            model_name = model.replace("ollama/", "")
+            from src.services.ollama_cloud_backend import OllamaCloudBackend
+
+            return OllamaCloudBackend(
+                model=model_name,
+                base_url=Config.OLLAMA_BASE_URL,
+                api_key=Config.OLLAMA_API_KEY,
+            )
+        return None
+
     def estimate_cost(self, model: str, tokens: int) -> float:
         """Estimate the cost for a request to a model.
 
