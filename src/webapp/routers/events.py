@@ -17,8 +17,8 @@ from src.webapp.services.sse_manager import SSEManager
 
 router = APIRouter(prefix="/api/events", tags=["events"])
 
-# Global SSE manager instance
-_sse_manager = SSEManager()
+# Shared SSE manager — imported by server.py lifespan to start the tailer
+sse_manager = SSEManager()
 
 # Path to events.jsonl (in gadk root)
 EVENTS_FILE = os.environ.get("EVENTS_FILE", "events.jsonl")
@@ -68,7 +68,7 @@ def list_events(limit: int = 100, offset: int = 0) -> dict[str, Any]:
 @router.get("/stream")
 async def stream_events(request: Request):
     """SSE endpoint for real-time events."""
-    q = _sse_manager.add_client()
+    q = sse_manager.add_client()
 
     async def event_generator():
         try:
@@ -86,7 +86,7 @@ async def stream_events(request: Request):
                     # Send keepalive
                     yield ": keepalive\n\n"
         finally:
-            _sse_manager.remove_client(q)
+            sse_manager.remove_client(q)
 
     return StreamingResponse(
         event_generator(),

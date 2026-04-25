@@ -19,7 +19,7 @@ from fastapi import FastAPI, HTTPException, Request  # noqa: I001
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from src.webapp.routers import metrics_router, swarm_router
+from src.webapp.routers import events_router, metrics_router, swarm_router
 
 # ---------------------------------------------------------------------------
 # Token authentication
@@ -54,9 +54,29 @@ def _require_token(request: Request) -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan: startup / shutdown."""
-    # Startup: nothing to initialise yet
+    # Startup: start the SSE event tailer as a background task
+    from src.webapp.services.event_tailer import EventTailer
+    from src.webapp.routers.events import sse_manager
+
+    tailer = EventTailer()
+    stop_event = asyncio.Event()
+
+    async def feed_events():
+        """Poll events.jsonl and broadcast new ones to all SSE clients."""
+        while not stop_event.is_set():
+            async for event in tailer.tail():
+                await sse_manager.broadcast(event)
+            await asyncio.sleep(0.5)
+
+    feed_task = asyncio.create_task(feed_events())
     yield
-    # Shutdown: nothing to clean up yet
+    # Shutdown: stop the tailer
+    stop_event.set()
+    feed_task.cancel()
+    try:
+        await feed_task
+    except asyncio.CancelledError:
+        pass
 
 
 # ---------------------------------------------------------------------------
@@ -95,6 +115,7 @@ def create_app() -> FastAPI:
         return await call_next(request)
 
     # Register routers
+    app.include_router(events_router)
     app.include_router(metrics_router)
     app.include_router(swarm_router)
 
