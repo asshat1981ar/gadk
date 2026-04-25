@@ -2,6 +2,7 @@
 """Unified CLI for interacting with the Cognitive Foundry swarm."""
 
 import argparse
+import click
 import os
 import sys
 
@@ -16,6 +17,7 @@ from src.cli.swarm_ctl import (
 )
 from src.observability.logger import configure_logging, get_logger
 from src.observability.metrics import registry
+from src.services.dbos_recovery import DBOSRecoveryManager
 from src.state import StateManager
 
 logger = get_logger("swarm_cli")
@@ -334,6 +336,19 @@ def cmd_self_prompt(args):
     return 0
 
 
+def handle_dbos_recover(args) -> int:
+    """List interrupted DBOS workflows for manual review."""
+    manager = DBOSRecoveryManager()
+    workflows = manager.list_interrupted_workflows()
+    if not workflows:
+        click.echo('No interrupted workflows.')
+        return 0
+    click.echo(f'{len(workflows)} interrupted workflow(s):')
+    for wf in workflows:
+        click.echo(f'  [{wf.status}] {wf.workflow_id}  {wf.name}  created={wf.created_at}')
+    return 0
+
+
 def main(argv=None):
     configure_logging(json_format=False)
     parser = argparse.ArgumentParser(
@@ -458,6 +473,13 @@ def main(argv=None):
     p_self_prompt.add_argument("--events-file", help="Path to events JSONL file")
     p_self_prompt.set_defaults(func=cmd_self_prompt)
 
+    # DBOS subcommand
+    dbos_parser = subparsers.add_parser('dbos', help='DBOS durable workflow operations')
+    dbos_sub = dbos_parser.add_subparsers(dest='dbos_cmd')
+
+    recover_parser = dbos_sub.add_parser('recover', help='List interrupted DBOS workflows')
+    recover_parser.set_defaults(func=handle_dbos_recover)
+
     # If no args provided, enter interactive mode
     if argv is None:
         argv = sys.argv[1:]
@@ -467,6 +489,8 @@ def main(argv=None):
         return run_interactive()
 
     args = parser.parse_args(argv)
+    if getattr(args, 'dbos_cmd', None) == 'recover':
+        return handle_dbos_recover(args)
     return args.func(args)
 
 
