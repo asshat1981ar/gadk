@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Literal
 
 from src.config import Config
 
@@ -15,9 +14,9 @@ class WorkflowStatus:
 
     workflow_id: str
     name: str
-    status: Literal["PENDING", "COMPLETED", "FAILED"]
-    created_at: datetime
-    last_updated: datetime
+    status: str
+    created_at: datetime | None
+    last_updated: datetime | None = None
     step_count: int = 0
     error: str | None = None
 
@@ -39,18 +38,22 @@ class DBOSRecoveryManager:
         import dbos
 
         workflows = dbos.DBOS.list_workflows(status="PENDING")
-        return [
-            WorkflowStatus(
-                workflow_id=wf.workflow_id,
-                name=wf.name,
-                status=wf.status,
-                created_at=wf.created_at,
-                last_updated=wf.last_updated,
-                step_count=getattr(wf, "step_count", 0),
-                error=getattr(wf, "error", None),
+        result: list[WorkflowStatus] = []
+        for wf in workflows:
+            created_ts = getattr(wf, "created_at", None)
+            updated_ts = getattr(wf, "last_updated", None)
+            result.append(
+                WorkflowStatus(
+                    workflow_id=wf.workflow_id,
+                    name=wf.name,
+                    status=wf.status,
+                    created_at=datetime.fromtimestamp(int(created_ts)) if created_ts else None,
+                    last_updated=datetime.fromtimestamp(int(updated_ts)) if updated_ts else None,
+                    step_count=getattr(wf, "step_count", 0),
+                    error=getattr(wf, "error", None),
+                )
             )
-            for wf in workflows
-        ]
+        return result
 
     def resume_workflow(self, workflow_id: str) -> dict:
         """Attempt to resume an interrupted workflow by ID."""
@@ -67,7 +70,13 @@ class DBOSRecoveryManager:
             return []
         import dbos
 
-        steps = dbos.DBOS.get_workflow_steps(workflow_id)
+        # Handle DBOS API differences - get_workflow_steps may not exist
+        if hasattr(dbos.DBOS, "get_workflow_steps"):
+            steps = dbos.DBOS.get_workflow_steps(workflow_id)
+        else:
+            steps = getattr(dbos.DBOS, "list_workflow_steps", lambda wid: [])(
+                workflow_id
+            )
         return [
             {
                 "step_index": getattr(s, "step_index", i),
@@ -75,7 +84,7 @@ class DBOSRecoveryManager:
                 "status": getattr(s, "status", ""),
                 "output": getattr(s, "output", None),
             }
-            for i, s in enumerate(steps)
+            for i, s in enumerate(steps or [])
         ]
 
     def cancel_workflow(self, workflow_id: str) -> dict:

@@ -48,16 +48,16 @@ def transition_workflow(
     Otherwise, falls back to direct PhaseController.advance().
     """
     if Config.DBOS_ENABLED:
-        import dbos
         try:
             # DBOS must be launched before workflows can be invoked directly.
             # When launched, workflows are called via DBOS.start_workflow() in production.
             # For test/integration use, we raise a helpful error instead of a cryptic one.
-            return _durable_transition_workflow(
-                item_id=item_id,
-                target_phase_str=target_phase.value,
-                current_phase_str=current_phase.value,
-            )
+            if _durable_transition_workflow is not None:
+                return _durable_transition_workflow(  # type: ignore[no-any-return]
+                    item_id=item_id,
+                    target_phase_str=target_phase.value,
+                    current_phase_str=current_phase.value,
+                )
         except Exception:
             # Fall through to non-durable on any DBOS error (e.g. not launched yet)
             pass
@@ -68,7 +68,7 @@ def transition_workflow(
 # DBOS durable workflow — registered at module load when DBOS_ENABLED=true.
 # On crash+recovery, DBOS returns cached step outputs — LLMs NOT re-called.
 # -------------------------------------------------------------------
-_durable_transition_workflow = None  # type: ignore
+_durable_transition_workflow: Any = None
 
 if Config.DBOS_ENABLED:
 
