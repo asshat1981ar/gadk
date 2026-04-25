@@ -49,6 +49,8 @@ class Settings(BaseSettings):
     instructor_enabled: bool = False
     langgraph_enabled: bool = False
     llamaindex_enabled: bool = False
+    dbos_enabled: bool = False
+    dbos_database_url: str = "sqlite:///./dbos.db"
     token_quota_per_task: int = 50000
 
     langfuse_enabled: bool = False
@@ -141,7 +143,9 @@ class Config:
     INSTRUCTOR_ENABLED = _settings.instructor_enabled
     LANGGRAPH_ENABLED = _settings.langgraph_enabled
     LLAMAINDEX_ENABLED = _settings.llamaindex_enabled
-    TOKEN_QUOTA_PER_TASK = _settings.token_quota_per_task
+    DBOS_ENABLED = _settings.dbos_enabled
+    DBOS_DATABASE_URL = _settings.dbos_database_url
+    TOKEN_QUOTA_PER_TASK=_settings.token_quota_per_task
     LANGFUSE_ENABLED = _settings.langfuse_enabled
     HELICONE_ENABLED = _settings.helicone_enabled
     AGENTOPS_ENABLED = _settings.agentops_enabled
