@@ -1,6 +1,7 @@
 import asyncio
 import json
 import os
+from typing import Any
 
 from google.adk.runners import Runner
 from google.genai import types
@@ -83,6 +84,22 @@ from src.observability.litellm_callbacks import setup_callbacks
 from src.observability.logger import configure_logging, get_logger, set_session_id, set_trace_id
 from src.services import self_prompt as _self_prompt
 from src.state import StateManager
+
+# Lazy-loaded graph orchestrator — avoids hard LangGraph dependency
+_GRAPH_ORCHESTRATOR: Any = None
+
+def _get_graph_orchestrator():
+    """Return a GraphOrchestrator if LANGGRAPH_ENABLED, else None."""
+    global _GRAPH_ORCHESTRATOR
+    if _GRAPH_ORCHESTRATOR is None:
+        if Config.LANGGRAPH_ENABLED:
+            try:
+                from src.orchestration.graph_orchestrator import GraphOrchestrator
+                _GRAPH_ORCHESTRATOR = GraphOrchestrator()
+            except ImportError:
+                logger.warning("LANGGRAPH_ENABLED=true but graph_orchestrator unavailable")
+                _GRAPH_ORCHESTRATOR = None
+    return _GRAPH_ORCHESTRATOR
 
 logger = get_logger("main")
 configure_logging(
@@ -252,10 +269,44 @@ async def run_swarm_loop(session_service, session, runner) -> None:
     broad try/except so a transient handler crash (network hiccup, mock
     seam, LiteLLM blip) doesn't silently terminate the swarm. The only
     clean-exit paths are the shutdown sentinel and KeyboardInterrupt.
+
+    When LANGGRAPH_ENABLED=true, the GraphOrchestrator takes over the
+    autonomous loop with bounded self-correction.
     """
+    graph_orch = _get_graph_orchestrator()
+    if graph_orch:
+        logger.info("graph_mode: enabled, building autonomous workflow")
+        workflow = graph_orch.build_workflow()
+        logger.info(
+            "graph_mode: workflow compiled",
+            extra={"nodes": list(workflow.nodes) if hasattr(workflow, "nodes") else "dict"},
+        )
+    else:
+        workflow = None
+
     initial_query = _build_autonomous_prompt("project-chimera")
     try:
-        if should_use_planner_for_autonomous_run(Config.OPENROUTER_MODEL):
+        if graph_orch is not None and hasattr(workflow, "invoke"):
+            # Graph mode: run the compiled workflow directly
+            from src.orchestration.graph_orchestrator import AgentState
+            graph_state: AgentState = {
+                "task": initial_query,
+                "phase": "",
+                "memory": {},
+                "reflection": [],
+                "blueprint": {},
+                "build_output": {},
+                "review_output": {},
+                "status": "running",
+            }
+            logger.info("graph_mode: invoking workflow", extra={"session_id": session.id})
+            result = workflow.invoke(graph_state)
+            print(f"Graph workflow completed: status={result.get('status')}")
+            logger.info(
+                f"graph_mode: workflow done status={result.get('status')}",
+                extra={"session_id": session.id, "phase": result.get("phase")},
+            )
+        elif should_use_planner_for_autonomous_run(Config.OPENROUTER_MODEL):
             response = await _run_autonomous_prompt_with_tools(initial_query)
             if response:
                 print(f"Swarm: {response}")

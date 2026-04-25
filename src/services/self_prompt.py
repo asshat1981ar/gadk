@@ -1,5 +1,13 @@
 """Gap-driven self-prompting research / development loop.
 
+.. deprecated::
+    This module is superseded by :class:`src.orchestration.reflection_node.ReflectionNode`.
+    All gap-collection functions (``collect_coverage_signals``,
+    ``collect_event_log_signals``, ``collect_backlog_signals``, ``run_once``,
+    ``synthesize``, ``dispatch``) now emit ``DeprecationWarning`` on every call.
+    Migrate callers to ``ReflectionNode`` which provides MCP-native reflection
+    with rule-based fallback — no gap-collection boilerplate needed.
+
 Scans a set of cheap signals (coverage gaps, unresolved event-log items,
 open GitHub issues, stalled backlog entries) and synthesizes them into
 structured prompts written to the existing ``prompt_queue.jsonl``. The
@@ -22,6 +30,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import warnings
 from collections import deque
 from collections.abc import Iterable
 from dataclasses import dataclass, field
@@ -78,6 +87,11 @@ class GapSignal:
 
 def collect_coverage_signals(coverage_xml: Path) -> list[GapSignal]:
     """Flag modules below a per-file coverage threshold."""
+    warnings.warn(
+        "collect_coverage_signals is deprecated. Use ReflectionNode instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     if not coverage_xml.exists():
         return []
     try:
@@ -107,6 +121,11 @@ def collect_coverage_signals(coverage_xml: Path) -> list[GapSignal]:
 
 def collect_event_log_signals(sm: StateManager, *, limit: int = 50) -> list[GapSignal]:
     """Turn recent blocked phase transitions into REVIEW-phase prompts."""
+    warnings.warn(
+        "collect_event_log_signals is deprecated. Use ReflectionNode instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     events = sm.get_all_events()[-limit:]
     signals: list[GapSignal] = []
     for ev in events:
@@ -128,6 +147,11 @@ def collect_event_log_signals(sm: StateManager, *, limit: int = 50) -> list[GapS
 
 def collect_backlog_signals(queue_path: Path, *, max_age_hours: float = 12.0) -> list[GapSignal]:
     """Surface stale prompts in the queue so the swarm notices its own backlog."""
+    warnings.warn(
+        "collect_backlog_signals is deprecated. Use ReflectionNode instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     if not queue_path.exists():
         return []
     now = datetime.now(UTC)
@@ -209,6 +233,11 @@ def synthesize(
     parent_generation: int = 0,
 ) -> list[SelfPrompt]:
     """Convert raw gap signals into validated :class:`SelfPrompt` objects."""
+    warnings.warn(
+        "synthesize is deprecated. Use ReflectionNode instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     if parent_generation >= MAX_GENERATION:
         logger.info("self_prompt: generation cap hit at %d; skipping", parent_generation)
         return []
@@ -243,6 +272,11 @@ def dispatch(
     limiter). Uses append-mode; atomicity is sufficient for single-writer
     usage — multi-writer access is out of scope for Phase 4.
     """
+    warnings.warn(
+        "dispatch is deprecated. Use ReflectionNode instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     accepted: list[SelfPrompt] = []
     # Append under the shared file lock (src.utils.file_lock) so the
     # background self-prompt thread can't race with the main loop's
@@ -282,6 +316,11 @@ def run_once(
     Respects ``Config.SELF_PROMPT_ENABLED`` (default False) and the off-switch.
     Safe to invoke from both CLI dry-runs and the main loop.
     """
+    warnings.warn(
+        "run_once is deprecated. Use ReflectionNode instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     if not getattr(Config, "SELF_PROMPT_ENABLED", False):
         logger.info("self_prompt: disabled via Config.SELF_PROMPT_ENABLED")
         return []
