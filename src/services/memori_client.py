@@ -9,11 +9,11 @@ No heavy ML deps — just ``requests`` + SDK for recall auth.
 
 External docs: https://memorilabs.ai/docs/memori-cloud/
 """
+
 from __future__ import annotations
 
 import logging
 import os
-import time
 import uuid
 from typing import Any
 
@@ -105,7 +105,9 @@ class MemoriCloudClient:
 
         payload = {
             "conversation": {
-                "messages": [{"role": m["role"], "content": str(m.get("content", ""))} for m in messages],
+                "messages": [
+                    {"role": m["role"], "content": str(m.get("content", ""))} for m in messages
+                ],
                 "summary": extra.pop("__summary__", None),
             },
             "meta": {
@@ -114,7 +116,13 @@ class MemoriCloudClient:
                     "process": {"id": self._process_id or ""} or None,
                 },
                 "framework": {"provider": None},
-                "llm": {"model": {"provider": None, "sdk": {"version": ""}, "version": extra.pop("model", "unknown")}},
+                "llm": {
+                    "model": {
+                        "provider": None,
+                        "sdk": {"version": ""},
+                        "version": extra.pop("model", "unknown"),
+                    }
+                },
                 "platform": {"provider": None},
                 "sdk": {"lang": "python", "version": "0.1.0"},
                 "storage": {"cockroachdb": False, "dialect": extra.pop("dialect", "sqlite")},
@@ -135,7 +143,11 @@ class MemoriCloudClient:
             logger.debug("persist OK — %d messages", len(messages))
             return data
         except requests.exceptions.HTTPError as exc:
-            logger.warning("Memori persist error %s: %s", exc.response.status_code if exc.response else "?", exc)
+            logger.warning(
+                "Memori persist error %s: %s",
+                exc.response.status_code if exc.response else "?",
+                exc,
+            )
             return {}
         except requests.exceptions.RequestException as exc:
             logger.warning("Memori persist network error: %s", exc)
@@ -202,6 +214,7 @@ class MemoriCloudClient:
 
 
 # ── helpers ────────────────────────────────────────────────────────
+
 
 def _prune_none(obj: dict | list | None) -> None:
     if isinstance(obj, dict):

@@ -10,18 +10,11 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 def _default_fallback_models() -> list[str]:
-    """Return the fallback model chain.
-
-    All entries MUST be prefixed with `openrouter/` so LiteLLM routes
-    through OpenRouter (which uses an OpenAI-compatible /chat/completions
-    endpoint) rather than dispatching to provider-native handlers
-    (which use incompatible endpoint paths like Anthropic's /v1/messages
-    and cause 404s against the OpenRouter api_base).
-    """
-    tool_model = os.getenv("OPENROUTER_TOOL_MODEL", "openrouter/openai/gpt-4o")
-    # Defensive: if the env var was set without the openrouter/ prefix, add it
-    if not tool_model.startswith("openrouter/"):
-        tool_model = f"openrouter/{tool_model}"
+    """Return the fallback model chain."""
+    tool_model = os.getenv("OPENROUTER_TOOL_MODEL", "ollama/minimax-m2.7:cloud")
+    # Defensive: add ollama/ prefix if missing
+    if not tool_model.startswith(("ollama/", "openrouter/")):
+        tool_model = f"ollama/{tool_model}"
     return [
         tool_model,
         "openrouter/google/gemini-2.5-flash",
@@ -58,6 +51,12 @@ class Settings(BaseSettings):
     agentops_enabled: bool = False
     mlflow_enabled: bool = False
     sentry_dsn: str | None = None
+
+    memori_enabled: bool = False
+    memori_api_key: str | None = None
+    memori_base_url: str = "https://api.memorilabs.ai"
+    memori_entity_id: str = "gadk-swarm"
+    memori_process_id: str | None = None
 
     openrouter_api_key: str | None = None
     openrouter_api_base: str = "https://openrouter.ai/api/v1"
@@ -156,6 +155,11 @@ class Config:
     AGENTOPS_ENABLED = _settings.agentops_enabled
     MLFLOW_ENABLED = _settings.mlflow_enabled
     SENTRY_DSN = _settings.sentry_dsn
+    MEMORI_ENABLED = _settings.memori_enabled
+    MEMORI_API_KEY = _settings.memori_api_key
+    MEMORI_BASE_URL = _settings.memori_base_url
+    MEMORI_ENTITY_ID = _settings.memori_entity_id
+    MEMORI_PROCESS_ID = _settings.memori_process_id
     OPENROUTER_API_KEY = _settings.openrouter_api_key
     OPENROUTER_API_BASE = _settings.openrouter_api_base
     OPENROUTER_MODEL = _settings.openrouter_model

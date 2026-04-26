@@ -1,11 +1,9 @@
 """Tests for the Memori Cloud client."""
+
 from __future__ import annotations
 
-import json
-import uuid
 from unittest.mock import MagicMock, patch
 
-import pytest
 import requests
 
 from src.services.memori_client import MemoriCloudClient, _prune_none
@@ -100,9 +98,7 @@ class TestMemoriCloudClient:
         """recall() delegates to Memori SDK for proper auth chain."""
         mock_m = mock_memori_cls.return_value
         mock_m.recall.return_value = {
-            "facts": [
-                {"content": "The user prefers TDD.", "rank_score": 0.95}
-            ]
+            "facts": [{"content": "The user prefers TDD.", "rank_score": 0.95}]
         }
 
         client = MemoriCloudClient(api_key="sk_test")
