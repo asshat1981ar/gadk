@@ -105,7 +105,7 @@ class TestStructuredOutputBridge:
         result = await structured_output.request_structured_output(
             messages=[{"role": "user", "content": "review this"}],
             response_model=ReviewVerdict,
-            model="openrouter/elephant-alpha",
+            model="ollama/minimax-m2.7:cloud",
             api_key=None,
             api_base=None,
             timeout=30,
@@ -134,7 +134,7 @@ class TestStructuredOutputBridge:
         result = await structured_output.request_structured_output(
             messages=[{"role": "user", "content": "review this"}],
             response_model=ReviewVerdict,
-            model="openrouter/elephant-alpha",
+            model="ollama/minimax-m2.7:cloud",
             api_key=None,
             api_base=None,
             timeout=30,

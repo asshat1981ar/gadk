@@ -30,7 +30,8 @@ def test_config_defaults():
 
     assert Config.OLLAMA_MODEL == "minimax-m2.7:cloud"
     assert Config.OLLAMA_BASE_URL == "https://ollama.com"
-    assert Config.OLLAMA_API_KEY is None
+    assert Config.LLM_MODEL == "ollama/minimax-m2.7:cloud"
+    assert Config.LLM_TOOL_MODEL == "ollama/minimax-m2.7:cloud"
 
 
 def test_model_router_ollama_prefix():
@@ -52,12 +53,3 @@ def test_model_router_ollama_prefix_custom_model():
     backend = router.get_backend("ollama/minimax-m2.5:cloud")
     assert backend is not None
     assert backend.model == "minimax-m2.5:cloud"
-
-
-def test_model_router_non_ollama_returns_none():
-    """ModelRouter returns None for non-ollama model prefixes."""
-    from src.services.model_router import ModelRouter
-
-    router = ModelRouter()
-    backend = router.get_backend("openrouter/anthropic/claude-sonnet-4")
-    assert backend is None

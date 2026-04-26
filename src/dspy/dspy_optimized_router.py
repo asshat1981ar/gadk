@@ -28,7 +28,7 @@ class DSPyOptimizedRouter:
         """Lazily initialize DSPy. Returns True if DSPy is available."""
         if self._dspy is not None:
             return True
-        if not (os.environ.get("OPENROUTER_API_KEY") or os.environ.get("OPENAI_API_KEY")):
+        if not ((os.environ.get("LLM_API_KEY") or os.environ.get("OLLAMA_API_KEY") or os.environ.get("llm_api_key") or os.environ.get("OLLAMA_API_KEY")) or os.environ.get("OPENAI_API_KEY")):
             return False
         try:
             import dspy

@@ -9,8 +9,8 @@ from src.main import _build_autonomous_prompt
 from src.services.runtime_strategy import should_use_planner_for_autonomous_run
 
 
-def test_autonomous_runtime_uses_planner_for_elephant_openrouter():
-    assert should_use_planner_for_autonomous_run("openrouter/elephant-alpha") is True
+def test_autonomous_runtime_uses_planner_for_elephant_ollama():
+    assert should_use_planner_for_autonomous_run("ollama/minimax-m2.7:cloud") is True
 
 
 def test_orchestrator_instruction_mentions_remote_repo_tools():

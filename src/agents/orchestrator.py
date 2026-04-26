@@ -19,9 +19,9 @@ from src.agents.ideator import create_structured_task, ideator_agent
 from src.agents.pulse import pulse_agent
 
 tool_model = LiteLlm(
-    model=Config.OPENROUTER_MODEL,
-    api_key=Config.OPENROUTER_API_KEY,
-    api_base=Config.OPENROUTER_API_BASE,
+    model=Config.LLM_MODEL,
+    api_key=Config.LLM_API_KEY,
+    api_base=Config.LLM_API_BASE,
 )
 
 

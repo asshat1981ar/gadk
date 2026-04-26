@@ -14,9 +14,9 @@ else:
     from google.adk.models.lite_llm import LiteLlm
 
 tool_model = LiteLlm(
-    model=Config.OPENROUTER_TOOL_MODEL,
-    api_key=Config.OPENROUTER_API_KEY,
-    api_base=Config.OPENROUTER_API_BASE,
+    model=Config.LLM_TOOL_MODEL,
+    api_key=Config.LLM_API_KEY,
+    api_base=Config.LLM_API_BASE,
 )
 
 

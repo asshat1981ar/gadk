@@ -191,7 +191,7 @@ def build_default_embedder(
     Returns ``None`` when:
     - ``Config.TEST_MODE`` is on (keep tests hermetic unless they opt in
       via their own embedder fixture);
-    - ``Config.OPENROUTER_API_KEY`` is missing (fail fast via the
+    - ``Config.LLM_API_KEY`` is missing (fail fast via the
       keyword-fallback path instead of surfacing auth errors);
     - ``Config.RETRIEVAL_BACKEND`` is not a vector name (don't pay the
       setup cost if we'll never be used);
@@ -199,8 +199,8 @@ def build_default_embedder(
     """
     if Config.TEST_MODE:
         return None
-    if not Config.OPENROUTER_API_KEY:
-        logger.debug("build_default_embedder: no OPENROUTER_API_KEY; skipping")
+    if not Config.LLM_API_KEY:
+        logger.debug("build_default_embedder: no ollama_API_KEY; skipping")
         return None
     backend = (Config.RETRIEVAL_BACKEND or "").strip().lower()
     if backend not in {"vector", "sqlite-vec", "sqlitevec"}:

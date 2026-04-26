@@ -96,50 +96,67 @@ class ModelRegistry:
     at those tasks, based on empirical performance and cost effectiveness.
     """
 
-    # Model cost estimates (USD per 1K tokens) - used for cost-based selection
+    # Ollama Cloud model costs (free tier; costs are ~$0).
+    # Values kept near-zero for cost-based routing.
     MODEL_COSTS: dict[str, float] = {
-        "openrouter/openai/gpt-4o": 0.005,
-        "openrouter/openai/gpt-4o-mini": 0.00015,
-        "openrouter/anthropic/claude-sonnet-4": 0.003,
-        "openrouter/anthropic/claude-opus-4": 0.015,
-        "openrouter/google/gemini-2.5-flash": 0.0006,
-        "openrouter/google/gemini-2.0-flash-001": 0.00035,
-        "openrouter/google/gemini-2.5-pro": 0.0035,
-        "openrouter/elephant-alpha": 0.005,  # Estimated
+        "ollama/minimax-m2.7:cloud": 0.0,
+        "ollama/kimi-k2.6:cloud": 0.0,
+        "ollama/glm-5.1:cloud": 0.0,
+        "ollama/deepseek-v4-flash:cloud": 0.0,
+        "ollama/gemma4:cloud": 0.0,
+        "ollama/qwen3-coder-next:cloud": 0.0,
+        "ollama/devstral-2:cloud": 0.0,
+        "ollama/kimi-k2.5:cloud": 0.0,
+        "ollama/nemotron-3-super:cloud": 0.0,
+        "ollama/glm-5:cloud": 0.0,
+        "ollama/minimax-m2.5:cloud": 0.0,
+        "ollama/qwen3.5:cloud": 0.0,
+        "ollama/nemotron-3-nano:cloud": 0.0,
+        "ollama/ministral-3:cloud": 0.0,
+        "ollama/rnj-1:cloud": 0.0,
+        "ollama/gemini-3-flash:cloud": 0.0,
+        "ollama/glm-4.7:cloud": 0.0,
+        "ollama/devstral-small-2:cloud": 0.0,
+        "ollama/cogito-2.1:cloud": 0.0,
+        "ollama/qwen3-next:cloud": 0.0,
     }
 
     # Default model capability mappings
     DEFAULT_CAPABILITIES: dict[ModelCapability, list[str]] = {
         ModelCapability.CODE: [
-            "openrouter/openai/gpt-4o",
-            "openrouter/anthropic/claude-sonnet-4",
-            "openrouter/google/gemini-2.5-pro",
-            "openrouter/elephant-alpha",
+            "ollama/minimax-m2.7:cloud",
+            "ollama/glm-5.1:cloud",
+            "ollama/qwen3-coder-next:cloud",
+            "ollama/devstral-2:cloud",
+            "ollama/kimi-k2.6:cloud",
+            "ollama/glm-4.7:cloud",
+            "ollama/devstral-small-2:cloud",
         ],
         ModelCapability.REVIEW: [
-            "openrouter/anthropic/claude-sonnet-4",
-            "openrouter/openai/gpt-4o",
-            "openrouter/google/gemini-2.5-pro",
-            "openrouter/elephant-alpha",
+            "ollama/kimi-k2.6:cloud",
+            "ollama/kimi-k2.5:cloud",
+            "ollama/glm-5.1:cloud",
+            "ollama/minimax-m2.7:cloud",
+            "ollama/deepseek-v4-flash:cloud",
         ],
         ModelCapability.ANALYSIS: [
-            "openrouter/anthropic/claude-sonnet-4",
-            "openrouter/openai/gpt-4o",
-            "openrouter/google/gemini-2.5-pro",
-            "openrouter/elephant-alpha",
-            "openrouter/google/gemini-2.5-flash",
+            "ollama/glm-5:cloud",
+            "ollama/kimi-k2.6:cloud",
+            "ollama/deepseek-v4-flash:cloud",
+            "ollama/gemma4:cloud",
+            "ollama/minimax-m2.7:cloud",
         ],
         ModelCapability.CREATIVE: [
-            "openrouter/openai/gpt-4o",
-            "openrouter/google/gemini-2.5-pro",
-            "openrouter/anthropic/claude-sonnet-4",
-            "openrouter/elephant-alpha",
+            "ollama/kimi-k2.5:cloud",
+            "ollama/gemma4:cloud",
+            "ollama/glm-5:cloud",
+            "ollama/qwen3.5:cloud",
         ],
         ModelCapability.QUICK: [
-            "openrouter/openai/gpt-4o-mini",
-            "openrouter/google/gemini-2.0-flash-001",
-            "openrouter/google/gemini-2.5-flash",
-            "openrouter/openai/gpt-4o",
+            "ollama/ministral-3:cloud",
+            "ollama/nemotron-3-nano:cloud",
+            "ollama/rnj-1:cloud",
+            "ollama/gemini-3-flash:cloud",
         ],
     }
 
@@ -165,7 +182,7 @@ class ModelRegistry:
         """Register a model for capabilities based on name heuristics.
 
         Args:
-            model: The model identifier (e.g., "openrouter/openai/gpt-4o")
+            model: The model identifier (e.g., "ollama/kimi-k2.6:cloud")
         """
         model_lower = model.lower()
 
@@ -422,10 +439,10 @@ class ModelRouter:
         if complexity == TaskComplexity.CRITICAL:
             # Filter to known high-capability models
             high_cap = [
-                "openrouter/openai/gpt-4o",
-                "openrouter/anthropic/claude-opus-4",
-                "openrouter/google/gemini-2.5-pro",
-                "openrouter/elephant-alpha",
+                "ollama/kimi-k2.6:cloud",
+                "ollama/deepseek-v4-flash:cloud",
+                "ollama/glm-5:cloud",
+                "ollama/minimax-m2.7:cloud",
             ]
             filtered = [m for m in candidates if m in high_cap]
             return filtered if filtered else candidates
@@ -433,9 +450,9 @@ class ModelRouter:
         # For low complexity, prefer cheaper/faster models
         if complexity == TaskComplexity.LOW:
             cheap_models = [
-                "openrouter/openai/gpt-4o-mini",
-                "openrouter/google/gemini-2.0-flash-001",
-                "openrouter/google/gemini-2.5-flash",
+                "ollama/kimi-k2.6:cloud-mini",
+                "ollama/qwen3.5:cloud",
+                "ollama/gemma4:cloud",
             ]
             # Return both cheap and regular, sorted
             cheap = [m for m in candidates if m in cheap_models]

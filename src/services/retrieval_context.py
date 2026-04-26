@@ -561,7 +561,7 @@ def retrieve_context(
             sources = _keyword_retrieve(request, resolved_root)
         except Exception as exc:  # noqa: BLE001
             # Broader safety net: sqlite-vec extension misconfigured,
-            # schema migration failures, OpenRouter transport errors, etc.
+            # schema migration failures, ollama transport errors, etc.
             # The documented contract is best-effort fallback to keyword;
             # surface the actual exception on the same `retrieval.degraded`
             # channel so it's still visible in logs.
@@ -606,7 +606,7 @@ def retrieve_context(
                 sources = _keyword_retrieve(request, resolved_root)
             except Exception as exc:  # noqa: BLE001
                 # Broader safety net: sqlite-vec extension misconfigured,
-                # schema migration failures, OpenRouter transport errors, etc.
+                # schema migration failures, ollama transport errors, etc.
                 # The documented contract is best-effort fallback to keyword;
                 # surface the actual exception on the same `retrieval.degraded`
                 # channel so it's still visible in logs.

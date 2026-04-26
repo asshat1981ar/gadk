@@ -142,9 +142,9 @@ try:  # pragma: no cover — ADK wiring is exercised by integration tests
         from google.adk.models.lite_llm import LiteLlm
 
     _model = LiteLlm(
-        model=Config.OPENROUTER_TOOL_MODEL,
-        api_key=Config.OPENROUTER_API_KEY,
-        api_base=Config.OPENROUTER_API_BASE,
+        model=Config.LLM_TOOL_MODEL,
+        api_key=Config.LLM_API_KEY,
+        api_base=Config.LLM_API_BASE,
     )
 
     architect_agent = Agent(

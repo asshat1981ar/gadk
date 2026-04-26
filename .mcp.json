@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "memori": {
+      "type": "http",
+      "url": "https://api.memorilabs.ai/mcp/",
+      "headers": {
+        "X-Memori-API-Key": "${MEMORI_API_KEY}",
+        "X-Memori-Entity-Id": "${MEMORI_ENTITY_ID}",
+        "X-Memori-Process-Id": "${MEMORI_PROCESS_ID}"
+      }
+    }
+  }
+}

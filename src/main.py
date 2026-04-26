@@ -306,7 +306,7 @@ async def run_swarm_loop(session_service, session, runner) -> None:
                 f"graph_mode: workflow done status={result.get('status')}",
                 extra={"session_id": session.id, "phase": result.get("phase")},
             )
-        elif should_use_planner_for_autonomous_run(Config.OPENROUTER_MODEL):
+        elif should_use_planner_for_autonomous_run(Config.LLM_MODEL):
             response = await _run_autonomous_prompt_with_tools(initial_query)
             if response:
                 print(f"Swarm: {response}")
@@ -451,11 +451,11 @@ async def main():
 
         logger.info("Cognitive Foundry Swarm Active (session=%s)", session.id)
 
-        # Check for API Key (OpenRouter)
-        if not os.getenv("OPENROUTER_API_KEY"):
+        # Check for API Key (ollama)
+        if not os.getenv("ollama_API_KEY"):
             raise ConfigurationError(
-                "OPENROUTER_API_KEY not found in environment",
-                config_key="OPENROUTER_API_KEY",
+                "ollama_API_KEY not found in environment",
+                config_key="ollama_API_KEY",
                 session_id=session.id,
             )
 

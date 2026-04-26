@@ -147,7 +147,7 @@ def test_build_default_embedder_skips_in_test_mode(
     sm: StateManager, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setattr(Config, "TEST_MODE", True)
-    monkeypatch.setattr(Config, "OPENROUTER_API_KEY", "sk-test")
+    monkeypatch.setattr(Config, "ollama_API_KEY", "sk-test")
     monkeypatch.setattr(Config, "RETRIEVAL_BACKEND", "vector")
     assert build_default_embedder(state_manager=sm) is None
 
@@ -156,7 +156,7 @@ def test_build_default_embedder_skips_without_api_key(
     sm: StateManager, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setattr(Config, "TEST_MODE", False)
-    monkeypatch.setattr(Config, "OPENROUTER_API_KEY", None)
+    monkeypatch.setattr(Config, "ollama_API_KEY", None)
     monkeypatch.setattr(Config, "RETRIEVAL_BACKEND", "vector")
     assert build_default_embedder(state_manager=sm) is None
 
@@ -165,7 +165,7 @@ def test_build_default_embedder_skips_for_keyword_backend(
     sm: StateManager, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setattr(Config, "TEST_MODE", False)
-    monkeypatch.setattr(Config, "OPENROUTER_API_KEY", "sk-test")
+    monkeypatch.setattr(Config, "ollama_API_KEY", "sk-test")
     monkeypatch.setattr(Config, "RETRIEVAL_BACKEND", "keyword")
     assert build_default_embedder(state_manager=sm) is None
 
@@ -174,12 +174,12 @@ def test_build_default_embedder_builds_when_conditions_met(
     sm: StateManager, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setattr(Config, "TEST_MODE", False)
-    monkeypatch.setattr(Config, "OPENROUTER_API_KEY", "sk-test")
+    monkeypatch.setattr(Config, "ollama_API_KEY", "sk-test")
     monkeypatch.setattr(Config, "RETRIEVAL_BACKEND", "vector")
-    monkeypatch.setattr(Config, "EMBED_MODEL", "openrouter/openai/text-embedding-3-small")
+    monkeypatch.setattr(Config, "EMBED_MODEL", "ollama/ministral-3:cloud")
     built = build_default_embedder(state_manager=sm)
     assert isinstance(built, LiteLLMEmbedder)
-    assert built.model == "openrouter/openai/text-embedding-3-small"
+    assert built.model == "ollama/ministral-3:cloud"
 
 
 # ---------------------------------------------------------------------------

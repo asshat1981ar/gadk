@@ -8,11 +8,11 @@ from litellm import acompletion
 @pytest.mark.asyncio
 async def test_llm_completion():
     try:
-        api_key = os.getenv("OPENROUTER_API_KEY")
-        api_base = "https://openrouter.ai/api/v1"
-        model = "openrouter/elephant-alpha"
+        api_key = os.getenv("ollama_API_KEY")
+        api_base = "https://ollama.com"
+        model = "ollama/minimax-m2.7:cloud"
 
-        print(f"Testing LiteLLM with OpenRouter ({model})...")
+        print(f"Testing LiteLLM with ollama ({model})...")
         res = await acompletion(
             model=model,
             api_key=api_key,

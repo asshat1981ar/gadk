@@ -50,43 +50,43 @@ HIGH_COST_THRESHOLD_USD = float(os.getenv("HIGH_COST_THRESHOLD", "5.00"))
 
 # Model cost estimates (per 1K tokens) - approximate values
 MODEL_COSTS = {
-    "openrouter/openai/gpt-4o": {"input": 0.005, "output": 0.015, "category": "premium"},
-    "openrouter/openai/gpt-4o-mini": {"input": 0.00015, "output": 0.0006, "category": "economy"},
-    "openrouter/anthropic/claude-sonnet-4": {
+    "ollama/kimi-k2.6:cloud": {"input": 0.005, "output": 0.015, "category": "premium"},
+    "ollama/kimi-k2.6:cloud-mini": {"input": 0.00015, "output": 0.0006, "category": "economy"},
+    "ollama/glm-5.1:cloud": {
         "input": 0.008,
         "output": 0.024,
         "category": "premium",
     },
-    "openrouter/google/gemini-2.5-flash": {
+    "ollama/gemma4:cloud": {
         "input": 0.0005,
         "output": 0.0015,
         "category": "standard",
     },
-    "openrouter/google/gemini-2.0-flash-001": {
+    "ollama/qwen3.5:cloud": {
         "input": 0.0004,
         "output": 0.0012,
         "category": "standard",
     },
-    "openrouter/elephant-alpha": {"input": 0.002, "output": 0.006, "category": "standard"},
+    "ollama/minimax-m2.7:cloud": {"input": 0.002, "output": 0.006, "category": "standard"},
 }
 
 # Cheaper model alternatives for cost optimization
 CHEAPER_ALTERNATIVES = {
-    "openrouter/openai/gpt-4o": [
-        "openrouter/openai/gpt-4o-mini",
-        "openrouter/google/gemini-2.5-flash",
+    "ollama/kimi-k2.6:cloud": [
+        "ollama/kimi-k2.6:cloud-mini",
+        "ollama/gemma4:cloud",
     ],
-    "openrouter/anthropic/claude-sonnet-4": [
-        "openrouter/openai/gpt-4o-mini",
-        "openrouter/google/gemini-2.5-flash",
-        "openrouter/elephant-alpha",
+    "ollama/glm-5.1:cloud": [
+        "ollama/kimi-k2.6:cloud-mini",
+        "ollama/gemma4:cloud",
+        "ollama/minimax-m2.7:cloud",
     ],
-    "openrouter/google/gemini-2.5-flash": [
-        "openrouter/openai/gpt-4o-mini",
+    "ollama/gemma4:cloud": [
+        "ollama/kimi-k2.6:cloud-mini",
     ],
-    "openrouter/elephant-alpha": [
-        "openrouter/openai/gpt-4o-mini",
-        "openrouter/google/gemini-2.0-flash-001",
+    "ollama/minimax-m2.7:cloud": [
+        "ollama/kimi-k2.6:cloud-mini",
+        "ollama/qwen3.5:cloud",
     ],
 }
 
@@ -747,9 +747,9 @@ try:
 
     # General-purpose model for FinOps (simple reports, no function calling needed)
     report_model = LiteLlm(
-        model=Config.OPENROUTER_MODEL,
-        api_key=Config.OPENROUTER_API_KEY,
-        api_base=Config.OPENROUTER_API_BASE,
+        model=Config.LLM_MODEL,
+        api_key=Config.LLM_API_KEY,
+        api_base=Config.LLM_API_BASE,
     )
 
     # Build the tools list for the agent

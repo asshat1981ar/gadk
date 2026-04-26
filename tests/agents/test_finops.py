@@ -69,13 +69,13 @@ class TestBudgetAlert:
 class TestModelUsage:
     def test_model_usage_creation(self) -> None:
         usage = ModelUsage(
-            model_name="openrouter/openai/gpt-4o",
+            model_name="ollama/kimi-k2.6:cloud",
             agent_name="Ideator",
             token_count=1000,
             cost_usd=0.005,
             timestamp=datetime.now(UTC),
         )
-        assert usage.model_name == "openrouter/openai/gpt-4o"
+        assert usage.model_name == "ollama/kimi-k2.6:cloud"
         assert usage.agent_name == "Ideator"
         assert usage.token_count == 1000
         assert usage.cost_usd == 0.005
@@ -244,7 +244,7 @@ class TestTrackModelUsage:
 
         with patch("src.agents.finops.MODEL_USAGE_FILE", str(usage_file)):
             result = track_model_usage(
-                model_name="openrouter/openai/gpt-4o",
+                model_name="ollama/kimi-k2.6:cloud",
                 agent_name="Ideator",
                 token_count=1000,
                 cost_usd=0.005,
@@ -252,7 +252,7 @@ class TestTrackModelUsage:
 
         assert isinstance(result, dict)
         assert result["recorded"] is True
-        assert result["model_name"] == "openrouter/openai/gpt-4o"
+        assert result["model_name"] == "ollama/kimi-k2.6:cloud"
         assert result["agent_name"] == "Ideator"
 
         # Verify file was written
@@ -260,21 +260,21 @@ class TestTrackModelUsage:
             line = f.readline().strip()
             record = json.loads(line)
 
-        assert record["model_name"] == "openrouter/openai/gpt-4o"
+        assert record["model_name"] == "ollama/kimi-k2.6:cloud"
         assert record["token_count"] == 1000
 
 
 class TestSuggestCheaperAlternative:
     def test_suggest_cheaper_alternative_for_expensive_model(self) -> None:
         result = suggest_cheaper_alternative(
-            model_name="openrouter/openai/gpt-4o",
+            model_name="ollama/kimi-k2.6:cloud",
             task_type="code_generation",
         )
 
         assert isinstance(result, dict)
         assert "current_model" in result
         assert "suggested_alternatives" in result
-        assert result["current_model"] == "openrouter/openai/gpt-4o"
+        assert result["current_model"] == "ollama/kimi-k2.6:cloud"
         assert len(result["suggested_alternatives"]) > 0
 
         for alt in result["suggested_alternatives"]:
@@ -284,7 +284,7 @@ class TestSuggestCheaperAlternative:
 
     def test_suggest_alternative_already_cheapest(self) -> None:
         result = suggest_cheaper_alternative(
-            model_name="openrouter/google/gemini-flash",
+            model_name="ollama/google/gemini-flash",
             task_type="simple_analysis",
         )
 

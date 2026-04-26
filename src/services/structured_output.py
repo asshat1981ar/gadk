@@ -175,8 +175,8 @@ def _select_instructor_mode(model: str):
     """Choose the safest Instructor mode for the current LiteLLM model."""
     if instructor is None:  # pragma: no cover - depends on optional dependency
         raise StructuredOutputError("Instructor is not installed")
-    if model.startswith("openrouter/"):
-        return instructor.Mode.OPENROUTER_STRUCTURED_OUTPUTS
+    if model.startswith("ollama/"):
+        return instructor.Mode.ollama_STRUCTURED_OUTPUTS
     return instructor.Mode.MD_JSON
 
 

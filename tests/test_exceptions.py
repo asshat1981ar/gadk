@@ -121,10 +121,10 @@ class TestConfigurationError:
         """Test config error with key and value."""
         exc = ConfigurationError(
             "Invalid configuration",
-            config_key="OPENROUTER_API_KEY",
+            config_key="ollama_API_KEY",
             config_value="invalid",
         )
-        assert exc.config_key == "OPENROUTER_API_KEY"
+        assert exc.config_key == "ollama_API_KEY"
         assert exc.config_value == "invalid"
 
 

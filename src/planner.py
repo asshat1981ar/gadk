@@ -1,6 +1,6 @@
 """Lightweight planner that parses elephant-alpha text output into tool calls.
 
-ADK's native function calling doesn't work reliably with elephant-alpha on OpenRouter.
+ADK's native function calling doesn't work reliably with elephant-alpha on ollama.
 This planner prompts the model to emit JSON tool-call blocks inside its text response,
 then parses and executes them explicitly.
 """
@@ -303,7 +303,7 @@ def _extract_response_content(response: Any) -> str:
 
 async def _llm_turn(messages: list[dict[str, str]], model: str = None, retries: int = 1) -> str:
     """Single LLM completion call via LiteLLM, with retry for empty responses."""
-    model = model or Config.OPENROUTER_MODEL
+    model = model or Config.LLM_MODEL
     attempts = max(1, retries + 1)
     try:
         async for attempt in AsyncRetrying(
@@ -315,8 +315,8 @@ async def _llm_turn(messages: list[dict[str, str]], model: str = None, retries: 
             with attempt:
                 response = await acompletion(
                     model=model,
-                    api_key=Config.OPENROUTER_API_KEY,
-                    api_base=Config.OPENROUTER_API_BASE,
+                    api_key=Config.LLM_API_KEY,
+                    api_base=Config.LLM_API_BASE,
                     messages=messages,
                     timeout=Config.LLM_TIMEOUT,
                 )
@@ -341,14 +341,14 @@ async def _llm_turn_structured(
     retries: int = 1,
 ) -> StructuredModelT:
     """Single structured LLM completion call via the Instructor bridge."""
-    model = model or Config.OPENROUTER_MODEL
+    model = model or Config.LLM_MODEL
     attempts = max(1, retries + 1)
     return await request_structured_output(
         messages=messages,
         response_model=response_model,
         model=model,
-        api_key=Config.OPENROUTER_API_KEY,
-        api_base=Config.OPENROUTER_API_BASE,
+        api_key=Config.LLM_API_KEY,
+        api_base=Config.LLM_API_BASE,
         timeout=Config.LLM_TIMEOUT,
         max_retries=attempts,
         completion=acompletion,
@@ -390,7 +390,7 @@ async def run_planner(
         user_prompt: The user's request.
         system_prompt: System instructions for the LLM.
         max_iterations: Safety limit on tool-call loops.
-        model: LiteLLM model string. Defaults to Config.OPENROUTER_MODEL.
+        model: LiteLLM model string. Defaults to Config.LLM_MODEL.
         allowed_tools: Optional set of tool names to restrict to.
 
     Returns:

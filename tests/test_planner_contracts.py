@@ -186,7 +186,7 @@ async def test_llm_turn_retries_rate_limit_errors(monkeypatch):
     monkeypatch.setattr(planner, "_PLANNER_RETRY_WAIT", wait_none())
     mocked_completion = AsyncMock(
         side_effect=[
-            RateLimitError("retry later", "openrouter", "openrouter/elephant-alpha"),
+            RateLimitError("retry later", "ollama", "ollama/minimax-m2.7:cloud"),
             _mock_response("final response"),
         ]
     )
@@ -194,7 +194,7 @@ async def test_llm_turn_retries_rate_limit_errors(monkeypatch):
 
     content = await planner._llm_turn(
         messages=[{"role": "user", "content": "hello"}],
-        model="openrouter/elephant-alpha",
+        model="ollama/minimax-m2.7:cloud",
         retries=1,
     )
 

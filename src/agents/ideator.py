@@ -20,9 +20,9 @@ else:
 
 # Tool-capable model for ideation (function calling required for batch_execute, read_repo_file, etc.)
 tool_model = LiteLlm(
-    model=Config.OPENROUTER_TOOL_MODEL,
-    api_key=Config.OPENROUTER_API_KEY,
-    api_base=Config.OPENROUTER_API_BASE,
+    model=Config.LLM_TOOL_MODEL,
+    api_key=Config.LLM_API_KEY,
+    api_base=Config.LLM_API_BASE,
 )
 
 # Initialize core services

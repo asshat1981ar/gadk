@@ -246,7 +246,7 @@ class TestModelRouter:
         """Test cost estimation."""
         router = ModelRouter()
 
-        cost = router.estimate_cost("openrouter/openai/gpt-4o", tokens=1000)
+        cost = router.estimate_cost("ollama/kimi-k2.6:cloud", tokens=1000)
         assert cost > 0
 
     def test_select_best_model_based_on_performance(self):
@@ -380,14 +380,14 @@ class TestIntegration:
 
         # Estimate costs for different models
         models = [
-            "openrouter/openai/gpt-4o",
-            "openrouter/google/gemini-2.0-flash-001",
+            "ollama/kimi-k2.6:cloud",
+            "ollama/qwen3.5:cloud",
         ]
 
         costs = {model: router.estimate_cost(model, 1000) for model in models}
 
         # Flash models should be cheaper than GPT-4
-        assert costs["openrouter/google/gemini-2.0-flash-001"] < costs["openrouter/openai/gpt-4o"]
+        assert costs["ollama/qwen3.5:cloud"] < costs["ollama/kimi-k2.6:cloud"]
 
     def test_model_capability_mapping_comprehensive(self):
         """Test that all fallback models are mapped to capabilities."""

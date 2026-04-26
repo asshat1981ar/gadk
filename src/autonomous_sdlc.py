@@ -328,7 +328,7 @@ class AutonomousSDLCEngine:
             system_prompt=builder_system,
             max_iterations=6,
             allowed_tools={"write_file"},
-            model=Config.OPENROUTER_TOOL_MODEL,
+            model=Config.LLM_TOOL_MODEL,
         )
 
         # Check if file was written via tool call DURING this build

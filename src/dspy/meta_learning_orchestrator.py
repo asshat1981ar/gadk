@@ -22,7 +22,7 @@ class MetaLearningOrchestrator:
         self._iteration_count = 0
 
     def _ensure_dspy(self) -> bool:
-        if not (os.environ.get("OPENROUTER_API_KEY") or os.environ.get("OPENAI_API_KEY")):
+        if not ((os.environ.get("LLM_API_KEY") or os.environ.get("OLLAMA_API_KEY") or os.environ.get("llm_api_key") or os.environ.get("OLLAMA_API_KEY")) or os.environ.get("OPENAI_API_KEY")):
             self._dspy = None
             self._module = None
             return False
