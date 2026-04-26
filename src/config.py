@@ -69,8 +69,8 @@ class Settings(BaseSettings):
             raise ValueError(f"openrouter_api_base must be a valid HTTP or HTTPS URL, got: {v!r}")
         return v
 
-    openrouter_model: str = "openrouter/elephant-alpha"
-    openrouter_tool_model: str = "openrouter/elephant-alpha"
+    openrouter_model: str = "ollama/minimax-m2.7:cloud"
+    openrouter_tool_model: str = "ollama/minimax-m2.7:cloud"
     fallback_models: list[str] = Field(default_factory=_default_fallback_models)
     llm_timeout: int = 30
     llm_retries: int = 3
