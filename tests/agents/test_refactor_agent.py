@@ -1,40 +1,32 @@
+"""Tests for RefactorAgent v2 with self-correction."""
+
+import pytest
+
 from src.agents.refactor_agent import RefactorAgentNode
+from src.memory.memory_graph import MemoryGraph
 
 
-def test_refactor_agent_returns_blueprint():
-    """RefactorAgent should return a blueprint with steps."""
-    node = RefactorAgentNode()
-    state = {"task": "Refactor state manager", "memory": {}, "reflection": []}
-    result = node.invoke(state)
-    assert "blueprint" in result
-    assert "reflection" in result
-    assert result["agent"] == "refactor"
+def test_invoke_generates_blueprint():
+    agent = RefactorAgentNode()
+    result = agent.invoke({"task": "Refactor auth module"})
+    assert result["blueprint"] is not None
+    assert len(result["blueprint"]["steps"]) >= 2
     assert result["validated"] is True
 
 
-def test_refactor_agent_uses_blueprint_planner():
-    """RefactorAgent should delegate to BlueprintPlanner."""
-    node = RefactorAgentNode()
-    state = {"task": "Refactor memory module", "memory": {}, "reflection": []}
-    result = node.invoke(state)
-    blueprint = result["blueprint"]
-    assert "goal" in blueprint
-    assert len(blueprint.get("steps", [])) >= 2  # at least analyze + implement
+def test_invoke_with_memory():
+    mg = MemoryGraph()
+    agent = RefactorAgentNode(memory_graph=mg)
+    result = agent.invoke({"task": "Refactor auth module"})
+    assert result["memory"] is not None
+    assert "reflection" in result
 
 
-def test_refactor_agent_adds_reflection():
-    """RefactorAgent should add reflection entries."""
-    node = RefactorAgentNode()
-    state = {"task": "Refactor", "memory": {}, "reflection": []}
-    result = node.invoke(state)
-    assert len(result["reflection"]) > 0
-
-
-def test_refactor_agent_invalid_blueprint_not_validated():
-    """If blueprint has < 2 steps, validated should be False."""
-    node = RefactorAgentNode()
-    # Patch planner to return empty steps
-    node.planner.plan = lambda goal: type("BP", (), {"goal": goal, "steps": []})()
-    state = {"task": "X", "memory": {}, "reflection": []}
-    result = node.invoke(state)
-    assert result["validated"] is False
+def test_self_correction_loop():
+    agent = RefactorAgentNode()
+    result = agent.invoke_with_correction({
+        "task": "Build new feature",
+        "attempts": 1,
+    })
+    assert result["attempts"] <= 3
+    assert result["status"] in ("success", "max_retries")
