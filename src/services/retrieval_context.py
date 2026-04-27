@@ -11,6 +11,7 @@ from typing import Any
 from pydantic import BaseModel, Field, field_validator
 
 from src.config import Config
+from src.memory.memory_graph import MemoryGraph
 from src.observability.logger import get_logger
 from src.services.vector_index import (
     SearchHit,
@@ -523,6 +524,7 @@ def retrieve_context(
     use_cache: bool = True,
     expand_query_terms: bool = False,
     domain_hints: list[str] | None = None,
+    memory_graph: MemoryGraph | None = None,
 ) -> dict[str, Any]:
     """Retrieve opt-in planning context from the approved corpus only.
 
@@ -635,7 +637,15 @@ def retrieve_context(
         logger.error("retrieval.error error=%s query=%s", exc, request.query[:50])
         raise
 
-    result = {
+    # Graph context augmentation
+    graph_context: list[dict] | None = None
+    if memory_graph is not None:
+        try:
+            graph_context = memory_graph.find_similar(request.query, max_results=request.top_k)
+        except Exception:
+            graph_context = []
+
+    result: dict[str, Any] = {
         "query": request.query,
         "corpus": request.corpus,
         "sources": sources,
@@ -645,6 +655,8 @@ def retrieve_context(
             "sources_count": len(sources),
         },
     }
+    if graph_context is not None:
+        result["graph_context"] = graph_context
 
     # Cache the result
     if use_cache:

@@ -81,6 +81,7 @@ class ReflectionNode:
             similar = self._memory.find_similar(task, max_results=3)
             for s in similar:
                 from src.memory.graph_store import NodeType
+
                 # Find agent that executed similar task via predecessors
                 # (edge direction: agent --executed_by--> task)
                 preds = self._memory._store.predecessors(s["id"])

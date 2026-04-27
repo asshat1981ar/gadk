@@ -1,9 +1,8 @@
 """Tests for structured reflection node v2."""
 
-import pytest
 
-from src.orchestration.reflection_node import ReflectionResult, ReflectionNode
 from src.memory.memory_graph import MemoryGraph, TaskOutcome
+from src.orchestration.reflection_node import ReflectionNode
 
 
 def test_evaluate_success():

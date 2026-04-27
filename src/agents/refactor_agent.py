@@ -4,17 +4,17 @@ from __future__ import annotations
 
 from typing import Any
 
+from src.memory.memory_graph import MemoryGraph, TaskOutcome
 from src.orchestration.blueprint_planner import BlueprintPlanner
 from src.orchestration.reflection_node import ReflectionNode
-from src.memory.memory_graph import MemoryGraph, TaskOutcome
 
 
 class RefactorAgentNode:
     """Autonomous Refactor Agent using the v2 graph components.
 
-    Combines BlueprintPlanner (deterministic DAG), ReflectionNode (structured
-evaluation), and MemoryGraph (persistent contextual memory) into a
-self-correcting loop: plan → execute → reflect → (if fail) replan → retry.
+        Combines BlueprintPlanner (deterministic DAG), ReflectionNode (structured
+    evaluation), and MemoryGraph (persistent contextual memory) into a
+    self-correcting loop: plan → execute → reflect → (if fail) replan → retry.
     """
 
     MAX_RETRIES = 3

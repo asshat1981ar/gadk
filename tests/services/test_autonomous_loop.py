@@ -74,9 +74,11 @@ class TestAutonomousLoopRun:
 
     def test_run_with_retries_then_success(self):
         memory = MemoryGraph()
-        planner = _make_planner(steps=[
-            WorkflowStep(id="s0", action="design", agent="Architect", expected_output="doc"),
-        ])
+        planner = _make_planner(
+            steps=[
+                WorkflowStep(id="s0", action="design", agent="Architect", expected_output="doc"),
+            ]
+        )
 
         # First reflection fails, second succeeds
         reflector = MagicMock(spec=ReflectionNode)
@@ -123,9 +125,13 @@ class TestAutonomousLoopRun:
 
     def test_run_max_retries_exceeded(self):
         memory = MemoryGraph()
-        planner = _make_planner(steps=[
-            WorkflowStep(id="s0", action="analyze", agent="RefactorAgent", expected_output="bp"),
-        ])
+        planner = _make_planner(
+            steps=[
+                WorkflowStep(
+                    id="s0", action="analyze", agent="RefactorAgent", expected_output="bp"
+                ),
+            ]
+        )
         reflector = MagicMock(spec=ReflectionNode)
         reflector.reflect.return_value = {
             "reflection": {
@@ -208,8 +214,12 @@ class TestAutonomousLoopRun:
     def test_run_returns_blueprint_steps(self):
         memory = MemoryGraph()
         steps = [
-            WorkflowStep(id="s0", action="plan", agent="Ideator", expected_output="proposal", depends_on=[]),
-            WorkflowStep(id="s1", action="code", agent="Builder", expected_output="code", depends_on=["s0"]),
+            WorkflowStep(
+                id="s0", action="plan", agent="Ideator", expected_output="proposal", depends_on=[]
+            ),
+            WorkflowStep(
+                id="s1", action="code", agent="Builder", expected_output="code", depends_on=["s0"]
+            ),
         ]
         planner = _make_planner(steps=steps)
         reflector = _make_reflector(status="success")

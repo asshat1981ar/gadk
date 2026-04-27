@@ -1,9 +1,8 @@
 """Tests for the high-level MemoryGraph API."""
 
-import pytest
 
-from src.memory.memory_graph import MemoryGraph, TaskOutcome
 from src.memory.graph_store import NodeType
+from src.memory.memory_graph import MemoryGraph, TaskOutcome
 
 
 def test_record_task_execution():
@@ -58,14 +57,16 @@ def test_record_task_deduplicates_agents():
     mg.record_task("task_a", "Builder", TaskOutcome.SUCCESS)
     mg.record_task("task_b", "Builder", TaskOutcome.SUCCESS)
 
-    from src.memory.graph_store import GraphStore
+
     gs = mg._store
     agents = gs.query_by_type(NodeType.AGENT)
     assert len(agents) == 1  # Only one "Builder" agent
 
 
 def test_persistence():
-    import tempfile, os
+    import os
+    import tempfile
+
     with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
         path = f.name
     try:

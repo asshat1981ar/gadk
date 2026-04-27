@@ -1,0 +1,89 @@
+<!-- src/webapp/static/index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GADK — Chat & Review</title>
+    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+    <script defer src="https://unpkg.com/alpinejs@3.13.10/dist/cdn.min.js"></script>
+    <link rel="stylesheet" href="/static/css/chat.css">
+</head>
+<body x-data="chatApp()">
+    <div class="sidebar" :class="{'open': sidebarOpen}">
+        <div class="sidebar-header">
+            <h2>GADK</h2>
+            <button @click="sidebarOpen = !sidebarOpen" class="toggle-btn">☰</button>
+        </div>
+        <nav class="nav-tabs">
+            <button @click="activeTab = 'chat'" :class="{'active': activeTab === 'chat'}">Chat</button>
+            <button @click="activeTab = 'review'" :class="{'active': activeTab === 'review'}">Review</button>
+            <button @click="activeTab = 'settings'" :class="{'active': activeTab === 'settings'}">Settings</button>
+        </nav>
+        <div x-show="activeTab === 'settings'" class="panel">
+            <h3>Agent Configuration</h3>
+            <div class="setting-group">
+                <label>Autonomous Mode</label>
+                <input type="checkbox" x-model="settings.autonomous">
+            </div>
+            <div class="setting-group">
+                <label>Max Retries</label>
+                <input type="number" x-model="settings.maxRetries" min="1" max="10">
+            </div>
+            <div class="setting-group">
+                <label>Reflection Threshold</label>
+                <input type="range" x-model="settings.reflectionThreshold" min="1" max="5">
+            </div>
+            <h3>Memory</h3>
+            <div class="setting-group">
+                <label>Graph Persistence</label>
+                <input type="checkbox" x-model="settings.graphPersist">
+            </div>
+        </div>
+    </div>
+    <div class="main-content">
+        <div x-show="activeTab === 'chat'" class="chat-container">
+            <div class="chat-header">
+                <span class="agent-status" :class="agentStatus">●</span>
+                <span x-text="agentStatusText"></span>
+            </div>
+            <div class="messages" id="messages">
+                <template x-for="msg in messages" :key="msg.id">
+                    <div class="message" :class="msg.role">
+                        <div class="message-header">
+                            <span class="role-badge" x-text="msg.role"></span>
+                            <span x-text="msg.agent_status || ''" class="status-tag"></span>
+                        </div>
+                        <div class="message-body" x-html="renderContent(msg)"></div>
+                        <template x-if="msg.code_blocks">
+                            <div class="code-review-panel">
+                                <template x-for="block in msg.code_blocks" :key="block.id">
+                                    <div class="code-block">
+                                        <div class="code-header">
+                                            <span x-text="block.language || 'code'"></span>
+                                            <button @click="copyCode(block)">Copy</button>
+                                        </div>
+                                        <pre><code x-text="block.code"></code></pre>
+                                    </div>
+                                </template>
+                            </div>
+                        </template>
+                    </div>
+                </template>
+            </div>
+            <div class="input-area">
+                <textarea x-model="newMessage" @keydown.enter.prevent="sendMessage()"
+                    placeholder="Describe what you want to build..."></textarea>
+                <button @click="sendMessage()" class="send-btn">Send</button>
+            </div>
+        </div>
+        <div x-show="activeTab === 'review'" class="review-container">
+            <h2>Code Review</h2>
+            <div class="diff-viewer" id="diffViewer">
+                <p class="placeholder">Select a message with code to review...</p>
+            </div>
+        </div>
+    </div>
+    <script src="/static/js/chat.js"></script>
+</body>
+</html>

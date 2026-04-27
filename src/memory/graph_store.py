@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import os
 from enum import Enum
 from pathlib import Path
 from typing import Any
@@ -59,7 +58,9 @@ class GraphStore:
         data = self._g.nodes[node_id]
         return {"id": node_id, **data}
 
-    def add_edge(self, source: str, target: str, label: str, attrs: dict[str, Any] | None = None) -> None:
+    def add_edge(
+        self, source: str, target: str, label: str, attrs: dict[str, Any] | None = None
+    ) -> None:
         """Add a labeled edge between two nodes."""
         self._g.add_edge(source, target, label=label, attrs=attrs or {})
 
@@ -87,14 +88,8 @@ class GraphStore:
         if not self._persist_path:
             return
         data = {
-            "nodes": [
-                {"id": n, **d}
-                for n, d in self._g.nodes(data=True)
-            ],
-            "edges": [
-                {"source": u, "target": v, **d}
-                for u, v, d in self._g.edges(data=True)
-            ],
+            "nodes": [{"id": n, **d} for n, d in self._g.nodes(data=True)],
+            "edges": [{"source": u, "target": v, **d} for u, v, d in self._g.edges(data=True)],
             "id_counter": self._id_counter,
         }
         Path(self._persist_path).write_text(json.dumps(data, indent=2), encoding="utf-8")
@@ -119,9 +114,7 @@ class GraphStore:
     def query_by_type(self, node_type: NodeType) -> list[dict[str, Any]]:
         """Return all nodes of a given type."""
         return [
-            {"id": n, **d}
-            for n, d in self._g.nodes(data=True)
-            if d.get("type") == node_type.value
+            {"id": n, **d} for n, d in self._g.nodes(data=True) if d.get("type") == node_type.value
         ]
 
     def predecessors(self, node_id: str) -> list[dict[str, Any]]:

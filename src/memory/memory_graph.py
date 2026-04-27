@@ -83,10 +83,12 @@ class MemoryGraph:
         for task in tasks:
             outcomes = self._store.query_related(task["id"], edge_label="produced")
             for oc in outcomes:
-                results.append({
-                    "task": task["name"],
-                    "outcome": oc["attrs"].get("result", "unknown"),
-                })
+                results.append(
+                    {
+                        "task": task["name"],
+                        "outcome": oc["attrs"].get("result", "unknown"),
+                    }
+                )
         return results
 
     def find_similar(self, query: str, max_results: int = 5) -> list[dict[str, Any]]:
@@ -96,6 +98,7 @@ class MemoryGraph:
         Placeholder for semantic retrieval (Phase 3d).
         """
         import re
+
         query_terms = set(t for t in re.split(r"[\W_]+", query.lower()) if t)
         tasks = self._store.query_by_type(NodeType.TASK)
         scored = []

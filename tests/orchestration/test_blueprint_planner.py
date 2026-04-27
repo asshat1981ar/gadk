@@ -1,8 +1,7 @@
 """Tests for deterministic DAG blueprint planner v2."""
 
-import pytest
 
-from src.orchestration.blueprint_planner import BlueprintPlanner, WorkflowStep
+from src.orchestration.blueprint_planner import BlueprintPlanner
 
 
 def test_plan_auth_workflow():

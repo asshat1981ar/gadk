@@ -1,6 +1,5 @@
 """Tests for RefactorAgent v2 with self-correction."""
 
-import pytest
 
 from src.agents.refactor_agent import RefactorAgentNode
 from src.memory.memory_graph import MemoryGraph
@@ -24,9 +23,11 @@ def test_invoke_with_memory():
 
 def test_self_correction_loop():
     agent = RefactorAgentNode()
-    result = agent.invoke_with_correction({
-        "task": "Build new feature",
-        "attempts": 1,
-    })
+    result = agent.invoke_with_correction(
+        {
+            "task": "Build new feature",
+            "attempts": 1,
+        }
+    )
     assert result["attempts"] <= 3
     assert result["status"] in ("success", "max_retries")

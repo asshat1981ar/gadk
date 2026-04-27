@@ -1,6 +1,6 @@
 """GADK Webapp FastAPI server.
 
-Provides a REST API for read-only monitoring of the Cognitive Foundry swarm.
+Provides a REST API and WebSocket chat interface for the Cognitive Foundry swarm.
 """
 
 from __future__ import annotations
@@ -22,15 +22,21 @@ try:
 except ImportError:
     FastAPI = None
     HTTPException = None
-    Request  # noqa: I001 = None
+    Request = None  # type: ignore[assignment,misc]
 try:
     from fastapi.middleware.cors import CORSMiddleware
 except ImportError:
     CORSMiddleware = None
 try:
-    from fastapi.responses import JSONResponse
+    from fastapi.responses import FileResponse, JSONResponse
 except ImportError:
+    FileResponse = None
     JSONResponse = None
+
+try:
+    from fastapi.staticfiles import StaticFiles
+except ImportError:
+    StaticFiles = None
 
 from src.webapp.routers import events_router, metrics_router, swarm_router
 
@@ -46,6 +52,8 @@ _PUBLIC_PATHS = frozenset(
         "/api/metrics/costs",
         "/api/metrics/tokens",
         "/api/swarm/health",
+        "/chat/messages",
+        "/",
     }
 )
 
@@ -68,7 +76,7 @@ def _require_token(request: Request) -> None:
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI):  # type: ignore[return]
     """Application lifespan: startup / shutdown."""
     # Startup: start the SSE event tailer as a background task
     from src.webapp.routers.events import sse_manager
@@ -104,18 +112,19 @@ def create_app() -> FastAPI:
     """Build and return the FastAPI application."""
     app = FastAPI(
         title="GADK Webapp",
-        description="Read-only REST API for the Cognitive Foundry swarm",
-        version="0.1.0",
-        lifespan=lifespan,
+        description="REST API and chat UI for the Cognitive Foundry swarm",
+        version="0.2.0",
+        lifespan=lifespan,  # type: ignore[arg-type]
     )
 
-    # CORS — allow Vite dev server (localhost:5173)
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$",
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
+    # CORS — allow any localhost origin
+    if CORSMiddleware is not None:
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$",
+            allow_methods=["*"],
+            allow_headers=["*"],
+        )
 
     # Token auth middleware on all /api/ routes except public paths
     @app.middleware("http")
@@ -125,16 +134,30 @@ def create_app() -> FastAPI:
             try:
                 _require_token(request)
             except HTTPException:
-                return JSONResponse(
-                    status_code=401,
-                    content={"detail": "Unauthorized"},
-                )
+                if JSONResponse is not None:
+                    return JSONResponse(
+                        status_code=401,
+                        content={"detail": "Unauthorized"},
+                    )
         return await call_next(request)
 
-    # Register routers
+    # Register existing routers
     app.include_router(events_router)
     app.include_router(metrics_router)
     app.include_router(swarm_router)
+
+    # Mount chat endpoints + static UI
+    if StaticFiles is not None:
+        from src.webapp.chat_server import create_chat_app as _create_chat_app
+
+        chat_app = _create_chat_app()
+        app.mount("/chat", chat_app)
+        static_dir = os.path.join(os.path.dirname(__file__), "static")
+        app.mount("/static", StaticFiles(directory=static_dir), name="static")
+
+        @app.get("/")
+        def index():
+            return FileResponse(os.path.join(static_dir, "index.html"))
 
     # Health endpoint (no auth)
     @app.get("/health")
@@ -185,10 +208,10 @@ def run(
     """Start the webapp server with uvicorn."""
     try:
         import uvicorn
-    except ImportError:
+    except ImportError as exc:
         raise SystemExit(
             f"Webapp requires uvicorn.\nInstall with: {sys.executable} -m pip install uvicorn"
-        )
+        ) from exc
     app = create_app()
     print(f"  GADK Webapp → http://{host}:{port}")
     uvicorn.run(app, host=host, port=port, log_level="info")
