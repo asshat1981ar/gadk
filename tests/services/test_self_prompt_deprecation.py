@@ -3,13 +3,11 @@
 These functions are superseded by ReflectionNode (src/orchestration/reflection_node.py).
 Once all callers are migrated, this module should be removed.
 """
+
 from __future__ import annotations
 
 import warnings
 from pathlib import Path
-from unittest.mock import MagicMock
-
-import pytest
 
 
 class TestSelfPromptDeprecation:
@@ -72,7 +70,6 @@ class TestSelfPromptDeprecation:
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
             import src.services.self_prompt as self_prompt
-
             from src.state import StateManager
 
             sm = StateManager()

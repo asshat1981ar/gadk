@@ -1,4 +1,5 @@
 """Tournament Engine — round-robin agent competition with Elo ranking."""
+
 from __future__ import annotations
 
 import random
@@ -13,6 +14,7 @@ logger = get_logger("tournament")
 @dataclass
 class MatchResult:
     """Outcome of a single head-to-head match."""
+
     agent_a: str
     agent_b: str
     winner: str | None  # None = tie
@@ -24,6 +26,7 @@ class MatchResult:
 @dataclass
 class TournamentConfig:
     """Configuration for a tournament run."""
+
     num_rounds: int = 3
     elo_k_factor: float = 32.0
     elo_initial: float = 1500.0
@@ -33,6 +36,7 @@ class TournamentConfig:
 @dataclass
 class TournamentBracket:
     """Full tournament result after all rounds."""
+
     rounds: int
     matches: list[MatchResult]
     final_rankings: list[AgentRanking]
@@ -66,8 +70,9 @@ class TournamentEngine:
     def _expected_score(self, rating_a: float, rating_b: float) -> float:
         return 1.0 / (1.0 + 10 ** ((rating_b - rating_a) / 400.0))
 
-    def _update_elo(self, winner: str | None, agent_a: str, agent_b: str,
-                    score_a: float, score_b: float) -> None:
+    def _update_elo(
+        self, winner: str | None, agent_a: str, agent_b: str, score_a: float, score_b: float
+    ) -> None:
         k = self.config.elo_k_factor
         ra = self.elo[agent_a]
         rb = self.elo[agent_b]
@@ -97,6 +102,7 @@ class TournamentEngine:
     def _play_match(self, a: AgentProfile, b: AgentProfile) -> MatchResult:
         """Simulate one head-to-head match between two agents."""
         import time
+
         start = time.monotonic()
         rounds = self.config.num_rounds
         scores: dict[str, float] = {a.identity: 0.0, b.identity: 0.0}
@@ -121,8 +127,7 @@ class TournamentEngine:
         else:
             winner = b.identity
 
-        self._update_elo(winner, a.identity, b.identity,
-                         scores[a.identity], scores[b.identity])
+        self._update_elo(winner, a.identity, b.identity, scores[a.identity], scores[b.identity])
         duration = time.monotonic() - start
 
         return MatchResult(
@@ -151,7 +156,9 @@ class TournamentEngine:
                 self.matches.append(match)
                 logger.info(
                     "tournament.match agent_a=%s agent_b=%s winner=%s",
-                    match.agent_a, match.agent_b, match.winner
+                    match.agent_a,
+                    match.agent_b,
+                    match.winner,
                 )
 
         return self.matches

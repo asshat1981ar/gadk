@@ -6,8 +6,14 @@ from collections.abc import Awaitable, Callable
 from types import SimpleNamespace
 from typing import Any, Literal, TypeVar
 
-from json_repair import repair_json
-from litellm import acompletion
+try:
+    from json_repair import repair_json
+except ImportError:
+    repair_json = None
+try:
+    from litellm import acompletion
+except ImportError:
+    acompletion = None
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from src.observability.logger import get_logger

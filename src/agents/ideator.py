@@ -2,7 +2,10 @@ import asyncio
 from datetime import datetime, timezone
 from typing import List
 
-from google.adk.agents import Agent
+try:
+    from google.adk.agents import Agent
+except ImportError:
+    Agent = None
 
 from src.config import Config
 from src.services.agent_decisions import build_task_proposal

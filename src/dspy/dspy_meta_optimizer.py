@@ -1,4 +1,5 @@
 """DSPyMetaOptimizer — automatic prompt and signature optimization."""
+
 from __future__ import annotations
 
 import os
@@ -20,7 +21,15 @@ class DSPyMetaOptimizer:
         self._module: Any = None
 
     def _ensure_dspy(self) -> bool:
-        if not ((os.environ.get("LLM_API_KEY") or os.environ.get("OLLAMA_API_KEY") or os.environ.get("llm_api_key") or os.environ.get("OLLAMA_API_KEY")) or os.environ.get("OPENAI_API_KEY")):
+        if not (
+            (
+                os.environ.get("LLM_API_KEY")
+                or os.environ.get("OLLAMA_API_KEY")
+                or os.environ.get("llm_api_key")
+                or os.environ.get("OLLAMA_API_KEY")
+            )
+            or os.environ.get("OPENAI_API_KEY")
+        ):
             self._dspy = None
             self._module = None
             return False
@@ -28,6 +37,7 @@ class DSPyMetaOptimizer:
             return True
         try:
             import dspy
+
             self._dspy = dspy
             self._lm = dspy.LM("openai/gpt-4o", api_key=None, cache=False)
             dspy.settings.configure(lm=self._lm)
@@ -45,12 +55,13 @@ class DSPyMetaOptimizer:
             self._dspy = None
             return False
 
-    def optimize_signature(self, signature: dict[str, str], tasks: list[dict[str, Any]]) -> dict[str, str]:
+    def optimize_signature(
+        self, signature: dict[str, str], tasks: list[dict[str, Any]]
+    ) -> dict[str, str]:
         inp = signature.get("input", "task description")
         out = signature.get("output", "solution")
         examples_str = "\n".join(
-            f"Input: {t.get('input', '')} -> Output: {t.get('output', '')}"
-            for t in tasks[:5]
+            f"Input: {t.get('input', '')} -> Output: {t.get('output', '')}" for t in tasks[:5]
         )
         if self._ensure_dspy():
             try:
@@ -66,7 +77,9 @@ class DSPyMetaOptimizer:
     def bootstrap(self, tasks: list[dict[str, Any]], num_demos: int = 3) -> dict[str, str]:
         if not tasks:
             return {"input": "task", "output": "solution"}
-        return self.optimize_signature({"input": "task description", "output": "task output"}, tasks)
+        return self.optimize_signature(
+            {"input": "task description", "output": "task output"}, tasks
+        )
 
 
 __all__ = ["DSPyMetaOptimizer"]

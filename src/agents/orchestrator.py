@@ -1,4 +1,18 @@
-from google.adk.agents import Agent
+"""Orchestrator agent — central router for Cognitive Foundry.
+
+Responsibilities:
+- Parse user goals
+- Route to specialist agents
+- Track state via PhaseController
+- Emit plan artifacts
+"""
+
+from __future__ import annotations
+
+try:
+    from google.adk.agents import Agent
+except ImportError:
+    Agent = None
 
 from src.config import Config
 from src.services.agent_decisions import choose_delegate

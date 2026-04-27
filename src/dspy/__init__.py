@@ -1,4 +1,5 @@
 """DSPy integration — declarative LLM programming for GADK."""
+
 from src.dspy.declarative_quality_gate import DeclarativeQualityGate, GateResult
 from src.dspy.dspy_adaptive_rag import DSPyAdaptiveRAG
 from src.dspy.dspy_code_generator import DSPyCodeGenerator

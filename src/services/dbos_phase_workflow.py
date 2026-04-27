@@ -5,6 +5,7 @@ Wraps PhaseController.advance() as a @dbos.workflow so that every SDLC phase
 transition is checkpointed to the DBOS database (SQLite by default).  On crash,
 DBOS automatically recovers from the last completed step without re-calling LLMs.
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -30,8 +31,7 @@ def _advance_phase(
         "advanced": report.advanced,
         "reason": report.reason,
         "gates": [
-            {"gate": g.gate, "passed": g.passed, "blocking": g.blocking}
-            for g in report.gates
+            {"gate": g.gate, "passed": g.passed, "blocking": g.blocking} for g in report.gates
         ],
     }
 

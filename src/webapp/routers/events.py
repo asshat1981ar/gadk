@@ -2,6 +2,7 @@
 
 Exposes event log API and real-time SSE streaming of new events.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -9,10 +10,16 @@ import json
 import os
 from typing import Any
 
-from fastapi import APIRouter, Request
-from fastapi.responses import StreamingResponse
+try:
+    from fastapi import APIRouter, Request
+except ImportError:
+    APIRouter = None
+    Request = None
+try:
+    from fastapi.responses import StreamingResponse
+except ImportError:
+    StreamingResponse = None
 
-from src.webapp.services.event_tailer import EventTailer
 from src.webapp.services.sse_manager import SSEManager
 
 router = APIRouter(prefix="/api/events", tags=["events"])
@@ -73,7 +80,7 @@ async def stream_events(request: Request):
     async def event_generator():
         try:
             # Send initial connection message
-            yield "data: {\"type\": \"connected\"}\n\n"
+            yield 'data: {"type": "connected"}\n\n'
             while True:
                 # Check if client disconnected
                 if await request.is_disconnected():

@@ -1,7 +1,10 @@
 import os
 from importlib.util import find_spec
 
-import litellm
+try:
+    import litellm
+except ImportError:
+    litellm = None
 
 from src.config import get_settings
 

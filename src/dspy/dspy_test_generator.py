@@ -1,4 +1,5 @@
 """DSPyTestGenerator — automated test generation from code."""
+
 from __future__ import annotations
 
 import os
@@ -20,7 +21,15 @@ class DSPyTestGenerator:
         self._module: Any = None
 
     def _ensure_dspy(self) -> bool:
-        if not ((os.environ.get("LLM_API_KEY") or os.environ.get("OLLAMA_API_KEY") or os.environ.get("llm_api_key") or os.environ.get("OLLAMA_API_KEY")) or os.environ.get("OPENAI_API_KEY")):
+        if not (
+            (
+                os.environ.get("LLM_API_KEY")
+                or os.environ.get("OLLAMA_API_KEY")
+                or os.environ.get("llm_api_key")
+                or os.environ.get("OLLAMA_API_KEY")
+            )
+            or os.environ.get("OPENAI_API_KEY")
+        ):
             self._dspy = None
             self._module = None
             return False
@@ -28,6 +37,7 @@ class DSPyTestGenerator:
             return True
         try:
             import dspy
+
             self._dspy = dspy
             self._lm = dspy.LM("openai/gpt-4o", api_key=None, cache=False)
             dspy.settings.configure(lm=self._lm)
@@ -49,9 +59,7 @@ class DSPyTestGenerator:
         if self._ensure_dspy():
             try:
                 pred = self._module(
-                    source_code=source_code,
-                    language=language,
-                    min_coverage=str(min_coverage)
+                    source_code=source_code, language=language, min_coverage=str(min_coverage)
                 )
                 return pred.tests.strip()
             except Exception as exc:

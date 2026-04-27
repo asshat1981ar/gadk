@@ -2,6 +2,7 @@
 
 Manages SSE client connections and broadcasts events to all connected clients.
 """
+
 from __future__ import annotations
 
 import asyncio

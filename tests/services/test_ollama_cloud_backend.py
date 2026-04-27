@@ -1,4 +1,5 @@
 """Tests for OllamaCloudBackend."""
+
 from __future__ import annotations
 
 from src.services.ollama_cloud_backend import OllamaCloudBackend

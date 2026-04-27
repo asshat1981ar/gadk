@@ -1,4 +1,5 @@
 """MultiAgentEnsemble — routes to multiple agents, selects best."""
+
 from __future__ import annotations
 
 import os
@@ -21,7 +22,15 @@ class MultiAgentEnsemble:
         self._selector: Any = None
 
     def _ensure_dspy(self) -> bool:
-        if not ((os.environ.get("LLM_API_KEY") or os.environ.get("OLLAMA_API_KEY") or os.environ.get("llm_api_key") or os.environ.get("OLLAMA_API_KEY")) or os.environ.get("OPENAI_API_KEY")):
+        if not (
+            (
+                os.environ.get("LLM_API_KEY")
+                or os.environ.get("OLLAMA_API_KEY")
+                or os.environ.get("llm_api_key")
+                or os.environ.get("OLLAMA_API_KEY")
+            )
+            or os.environ.get("OPENAI_API_KEY")
+        ):
             self._dspy = None
             self._module = None
             return False
@@ -29,6 +38,7 @@ class MultiAgentEnsemble:
             return True
         try:
             import dspy
+
             self._dspy = dspy
             self._lm = dspy.LM("openai/gpt-4o", api_key=None, cache=False)
             dspy.settings.configure(lm=self._lm)
@@ -51,7 +61,9 @@ class MultiAgentEnsemble:
         for agent in self.agents:
             try:
                 output = self._call_agent(agent, task)
-                results.append({"agent": agent, "output": output, "score": self._score_output(output)})
+                results.append(
+                    {"agent": agent, "output": output, "score": self._score_output(output)}
+                )
             except Exception as exc:
                 logger.warning("ensemble agent failed agent=%s: %s", agent, exc)
                 results.append({"agent": agent, "output": "", "score": 0.0, "error": str(exc)})
@@ -65,7 +77,9 @@ class MultiAgentEnsemble:
         if self._ensure_dspy():
             try:
                 task = results[0].get("task", "complete this task")
-                responses_str = "\n".join(f"[{r['agent']}]: {r.get('output', '')[:200]}" for r in results)
+                responses_str = "\n".join(
+                    f"[{r['agent']}]: {r.get('output', '')[:200]}" for r in results
+                )
                 pred = self._selector(responses=responses_str, task=task)
                 best_agent = pred.best_agent.strip()
                 for r in results:

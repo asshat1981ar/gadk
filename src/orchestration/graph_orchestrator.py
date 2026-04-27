@@ -11,6 +11,7 @@ bounded self-correction without a phase machine.
 When LANGGRAPH_ENABLED=false, falls back to a pure-Python dict-based workflow
 with identical semantics.
 """
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, TypedDict
@@ -20,7 +21,7 @@ from src.config import Config
 LANGGRAPH_AVAILABLE = False
 if Config.LANGGRAPH_ENABLED:
     try:
-        from langgraph.graph import END, StateGraph  # type: ignore[import]
+        from langgraph.graph import END, StateGraph  # type: ignore[import]  # noqa: F401
 
         LANGGRAPH_AVAILABLE = True
     except ImportError:
@@ -32,6 +33,7 @@ if TYPE_CHECKING:
 
 class AgentState(TypedDict, total=False):
     """Full agent state carried through the autonomous workflow graph."""
+
     task: str
     phase: str
     memory: dict[str, Any]
@@ -73,7 +75,7 @@ class GraphOrchestrator:
         }
 
     def _build_langgraph_workflow(self):
-        from langgraph.graph import END, StateGraph
+        from langgraph.graph import StateGraph
 
         workflow = StateGraph(AgentState)
 
@@ -104,9 +106,7 @@ class GraphOrchestrator:
             build_ok = state.get("build_output", {}).get("built", False)
             review_pass = state.get("review_output", {}).get("status") == "pass"
             reflection = state.get("reflection", [])
-            reflection.append(
-                f"Reflection: build_ok={build_ok}, review_pass={review_pass}"
-            )
+            reflection.append(f"Reflection: build_ok={build_ok}, review_pass={review_pass}")
             return {
                 **state,
                 "reflection": reflection,

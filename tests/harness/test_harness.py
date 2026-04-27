@@ -1,4 +1,5 @@
 """Tests for the Agent Harness System — meta-agent evaluation and tournament."""
+
 from __future__ import annotations
 
 import pytest
@@ -18,14 +19,15 @@ class TestAgentProfile:
         assert profile.identity == "TestAgent:v1.0"
 
     def test_profile_custom_capabilities(self):
-        profile = AgentProfile(name="Coder", version="2.0", capabilities=["kotlin", "python", "refactor"])
+        profile = AgentProfile(
+            name="Coder", version="2.0", capabilities=["kotlin", "python", "refactor"]
+        )
         assert "kotlin" in profile.capabilities
         assert "refactor" in profile.capabilities
 
     def test_profile_metadata(self):
         profile = AgentProfile(
-            name="MetaAgent", version="0.1",
-            metadata={"accuracy": 0.95, "tokens": 1200}
+            name="MetaAgent", version="0.1", metadata={"accuracy": 0.95, "tokens": 1200}
         )
         assert profile.metadata["accuracy"] == 0.95
 
@@ -47,8 +49,12 @@ class TestBenchmarkResult:
 
     def test_benchmark_result_pass_rate(self):
         result = BenchmarkResult(
-            agent_id="agent-x", benchmark_name="test", score=0.75,
-            tasks_attempted=8, tasks_passed=6, duration_sec=10.0
+            agent_id="agent-x",
+            benchmark_name="test",
+            score=0.75,
+            tasks_attempted=8,
+            tasks_passed=6,
+            duration_sec=10.0,
         )
         assert result.tasks_passed / result.tasks_attempted == pytest.approx(0.75)
 

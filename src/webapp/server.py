@@ -2,8 +2,10 @@
 
 Provides a REST API for read-only monitoring of the Cognitive Foundry swarm.
 """
+
 from __future__ import annotations
 
+import asyncio
 import os
 import sys
 from contextlib import asynccontextmanager
@@ -15,9 +17,20 @@ if _SRC_ROOT not in sys.path:
 
 import hmac
 
-from fastapi import FastAPI, HTTPException, Request  # noqa: I001
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+try:
+    from fastapi import FastAPI, HTTPException, Request  # noqa: I001
+except ImportError:
+    FastAPI = None
+    HTTPException = None
+    Request  # noqa: I001 = None
+try:
+    from fastapi.middleware.cors import CORSMiddleware
+except ImportError:
+    CORSMiddleware = None
+try:
+    from fastapi.responses import JSONResponse
+except ImportError:
+    JSONResponse = None
 
 from src.webapp.routers import events_router, metrics_router, swarm_router
 
@@ -26,13 +39,15 @@ from src.webapp.routers import events_router, metrics_router, swarm_router
 # ---------------------------------------------------------------------------
 
 _WEBAPP_TOKEN = os.getenv("WEBAPP_TOKEN", "")
-_PUBLIC_PATHS = frozenset({
-    "/health",
-    "/api/metrics/summary",
-    "/api/metrics/costs",
-    "/api/metrics/tokens",
-    "/api/swarm/health",
-})
+_PUBLIC_PATHS = frozenset(
+    {
+        "/health",
+        "/api/metrics/summary",
+        "/api/metrics/costs",
+        "/api/metrics/tokens",
+        "/api/swarm/health",
+    }
+)
 
 
 def _require_token(request: Request) -> None:
@@ -51,12 +66,13 @@ def _require_token(request: Request) -> None:
 # Lifespan
 # ---------------------------------------------------------------------------
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan: startup / shutdown."""
     # Startup: start the SSE event tailer as a background task
-    from src.webapp.services.event_tailer import EventTailer
     from src.webapp.routers.events import sse_manager
+    from src.webapp.services.event_tailer import EventTailer
 
     tailer = EventTailer()
     stop_event = asyncio.Event()
@@ -82,6 +98,7 @@ async def lifespan(app: FastAPI):
 # ---------------------------------------------------------------------------
 # App factory
 # ---------------------------------------------------------------------------
+
 
 def create_app() -> FastAPI:
     """Build and return the FastAPI application."""
@@ -129,6 +146,7 @@ def create_app() -> FastAPI:
     def get_status(request: Request):
         _require_token(request)
         from src.webapp.services.state_reader import StateReader
+
         reader = StateReader()
         return reader.get_status().model_dump()
 
@@ -137,6 +155,7 @@ def create_app() -> FastAPI:
     def get_tasks(request: Request, status: str | None = None):
         _require_token(request)
         from src.webapp.services.state_reader import StateReader
+
         reader = StateReader()
         tasks = reader.get_tasks(status_filter=status)
         return [t.model_dump() for t in tasks]
@@ -146,6 +165,7 @@ def create_app() -> FastAPI:
     def get_events(request: Request, task_id: str | None = None, limit: int = 100):
         _require_token(request)
         from src.webapp.services.state_reader import StateReader
+
         reader = StateReader()
         events = reader.get_events(task_id=task_id, limit=limit)
         return [e.model_dump() for e in events]
@@ -157,6 +177,7 @@ def create_app() -> FastAPI:
 # Uvicorn runner
 # ---------------------------------------------------------------------------
 
+
 def run(
     host: str = "127.0.0.1",
     port: int = 8080,
@@ -166,8 +187,7 @@ def run(
         import uvicorn
     except ImportError:
         raise SystemExit(
-            "Webapp requires uvicorn.\n"
-            f"Install with: {sys.executable} -m pip install uvicorn"
+            f"Webapp requires uvicorn.\nInstall with: {sys.executable} -m pip install uvicorn"
         )
     app = create_app()
     print(f"  GADK Webapp → http://{host}:{port}")

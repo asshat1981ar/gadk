@@ -10,9 +10,18 @@ import json
 import re
 from typing import Any, TypeVar
 
-from json_repair import repair_json
-from litellm import acompletion
-from litellm.exceptions import RateLimitError
+try:
+    from json_repair import repair_json
+except ImportError:
+    repair_json = None
+try:
+    from litellm import acompletion
+except ImportError:
+    acompletion = None
+try:
+    from litellm.exceptions import RateLimitError
+except ImportError:
+    RateLimitError = None
 from pydantic import BaseModel, Field, ValidationError
 from tenacity import AsyncRetrying, retry_if_exception_type, stop_after_attempt, wait_exponential
 

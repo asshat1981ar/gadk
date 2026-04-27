@@ -1,4 +1,5 @@
 """Tests for the 9 DSPy integration modules."""
+
 from __future__ import annotations
 
 from src.dspy.declarative_quality_gate import DeclarativeQualityGate
@@ -170,9 +171,7 @@ class TestDSPyCodeGenerator:
     def test_generate_with_context(self):
         gen = DSPyCodeGenerator()
         code = gen.generate(
-            "implement state manager",
-            language="kotlin",
-            context={"package": "com.chimera.core"}
+            "implement state manager", language="kotlin", context={"package": "com.chimera.core"}
         )
         assert isinstance(code, str)
 
@@ -216,8 +215,7 @@ class TestMetaLearningOrchestrator:
     def test_orchestrate_with_constraints(self):
         orch = MetaLearningOrchestrator()
         plan = orch.orchestrate(
-            "Optimize performance",
-            constraints={"max_tokens": 5000, "max_agents": 3}
+            "Optimize performance", constraints={"max_tokens": 5000, "max_agents": 3}
         )
         assert isinstance(plan, dict)
 

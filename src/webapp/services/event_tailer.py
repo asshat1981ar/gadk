@@ -2,6 +2,7 @@
 
 Tails events.jsonl and yields new events as they appear.
 """
+
 from __future__ import annotations
 
 import asyncio

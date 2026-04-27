@@ -2,8 +2,14 @@ from __future__ import annotations
 
 from typing import Any
 
-from mcp.server.fastmcp import FastMCP
-from mcp.types import ToolAnnotations
+try:
+    from mcp.server.fastmcp import FastMCP
+except ImportError:
+    FastMCP = None
+try:
+    from mcp.types import ToolAnnotations
+except ImportError:
+    ToolAnnotations = None
 
 from src.capabilities.registry import CapabilityRegistry
 from src.capabilities.service import CapabilityService

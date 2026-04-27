@@ -124,6 +124,13 @@ class GraphStore:
             if d.get("type") == node_type.value
         ]
 
+    def predecessors(self, node_id: str) -> list[dict[str, Any]]:
+        """Get all nodes with incoming edges TO this node."""
+        result = []
+        for u, _ in self._g.in_edges(node_id):
+            result.append(self.get_node(u))
+        return result
+
     def query_related(
         self,
         node_id: str,

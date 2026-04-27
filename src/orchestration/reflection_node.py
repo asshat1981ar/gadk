@@ -1,87 +1,111 @@
-"""Reflection node for graph-based autonomy — replaces SelfPromptEngine.
+"""Reflection node for graph-based autonomy — structured evaluation v2.
 
-Uses structured thinking (MCP sequential_thinking when available, local
-rule-based fallback) to perform gap analysis on the current workflow state.
+Replaces the stub with structured gap analysis backed by MemoryGraph.
+Uses success criteria to evaluate agent outputs, queries past failures
+for contextual feedback.
 """
+
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 from typing import Any
 
-# Try to wire MCP sequential_thinking; graceful fallback if unavailable
-try:
-    from mcp_sequential_thinking import sequentialthinking
 
-    SEQUENTIAL_THINKING_AVAILABLE = True
-except ImportError:
-    SEQUENTIAL_THINKING_AVAILABLE = False
-    sequentialthinking = None  # type: ignore[assignment]
+@dataclass
+class ReflectionResult:
+    """Structured output of a reflection evaluation."""
+
+    status: str  # success, failure, partial
+    gaps: list[str] = field(default_factory=list)
+    suggestions: list[str] = field(default_factory=list)
+    confidence: float = 1.0
 
 
 class ReflectionNode:
-    """Reflection node for graph-based autonomy.
+    """Structured reflection node with MemoryGraph integration.
 
-    Performs structured gap analysis on the current workflow state.
-    Uses MCP sequential_thinking when available, falls back to rule-based
-    gap detection otherwise.
+    Evaluates agent outputs against success criteria. If MemoryGraph is
+    available, queries historical similar failures for contextual feedback.
     """
 
-    def invoke(self, state: dict[str, Any]) -> dict[str, Any]:
-        """Perform reflection and gap analysis on current state."""
-        task = state.get("task", "Improve autonomous software creation")
-        phase = state.get("phase", "unknown")
+    def __init__(self, memory_graph=None):
+        self._memory = memory_graph
 
-        if SEQUENTIAL_THINKING_AVAILABLE and sequentialthinking:
-            # Use MCP sequential thinking for structured reflection
-            thought = (
-                f"Analyze the current autonomous software creation system for gaps. "
-                f"Task: {task}. Current phase: {phase}. "
-                f"Identify: (1) rigid phase transitions, (2) missing self-correction, "
-                f"(3) context loss between cycles. "
-                f"Memory: {state.get('memory', {})}"
+    def evaluate(
+        self,
+        task: str,
+        phase: str,
+        output_code: str | None = None,
+        success_criteria: list[str] | None = None,
+    ) -> ReflectionResult:
+        """Evaluate output against success criteria."""
+        gaps: list[str] = []
+        suggestions: list[str] = []
+
+        criteria = success_criteria or []
+        for criterion in criteria:
+            if not self._check_criterion(output_code or "", criterion):
+                gaps.append(f"Missing criterion: {criterion}")
+                suggestions.append(f"Add implementation for: {criterion}")
+
+        if gaps:
+            return ReflectionResult(
+                status="failure",
+                gaps=gaps,
+                suggestions=suggestions,
+                confidence=max(0.5, 1.0 - len(gaps) * 0.2),
             )
-            try:
-                result = sequentialthinking(
-                    thought=thought,
-                    next_thought_needed=False,
-                    thought_number=1,
-                    total_thoughts=1,
-                )
-                reflection_text = result.get("thought", self._rule_based_gap_analysis(task, phase))
-            except Exception:
-                # MCP call failed — fall back to rule-based
-                reflection_text = self._rule_based_gap_analysis(task, phase)
-        else:
-            reflection_text = self._rule_based_gap_analysis(task, phase)
+        return ReflectionResult(status="success", confidence=1.0)
 
-        reflection = [reflection_text]
+    def _check_criterion(self, output: str, criterion: str) -> bool:
+        """Check if criterion is met in output."""
+        keywords = [w.lower() for w in criterion.split() if len(w) > 3]
+        output_lower = output.lower()
+        return any(kw in output_lower for kw in keywords)
+
+    def reflect(
+        self,
+        task: str,
+        phase: str,
+        state: dict[str, Any],
+        success_criteria: dict[str, str] | None = None,
+    ) -> dict[str, Any]:
+        """Full reflection with MemoryGraph historical context."""
+        output = state.get("output", "")
+        criteria = list((success_criteria or {}).values())
+        result = self.evaluate(task, phase, output, criteria)
+
+        memory_enhanced = False
+        historical_notes: list[str] = []
+        if self._memory:
+            similar = self._memory.find_similar(task, max_results=3)
+            for s in similar:
+                from src.memory.graph_store import NodeType
+                # Find agent that executed similar task via predecessors
+                # (edge direction: agent --executed_by--> task)
+                preds = self._memory._store.predecessors(s["id"])
+                for pred in preds:
+                    if pred.get("type") == NodeType.AGENT.value:
+                        history = self._memory.get_agent_history(pred["name"])
+                        for h in history:
+                            if h.get("outcome") == "failure":
+                                historical_notes.append(
+                                    f"Similar task '{h['task']}' previously failed"
+                                )
+                                memory_enhanced = True
 
         return {
-            "reflection": reflection,
-            "memory": {
-                **state.get("memory", {}),
-                "last_reflection": reflection_text,
-                "gaps_identified": reflection_text.lower().count("gap"),
-                "reflection_phase": phase,
+            "reflection": {
+                "status": result.status,
+                "gaps": result.gaps,
+                "suggestions": result.suggestions,
+                "confidence": result.confidence,
+                "historical_notes": historical_notes,
             },
+            "memory_enhanced": memory_enhanced,
+            "phase": phase,
+            "task": task,
         }
 
-    def _rule_based_gap_analysis(self, task: str, phase: str) -> str:
-        """Rule-based fallback gap analysis when MCP is unavailable."""
-        gaps: list[str] = []
 
-        # Detect rigid phase transition issues
-        if phase in ("PLAN", "ARCHITECT"):
-            gaps.append("rigid phase transitions — consider dynamic routing")
-
-        # Detect missing self-correction
-        if phase in ("IMPLEMENT", "REVIEW"):
-            gaps.append("limited self-correction between implement and review")
-
-        # Detect context loss
-        gaps.append(f"task '{task}' may suffer from context loss between cycles")
-
-        gap_str = "; ".join(gaps) if gaps else "No critical gaps identified"
-        return f"GAP ANALYSIS [{phase}]: {gap_str}."
-
-
-__all__ = ["ReflectionNode", "SEQUENTIAL_THINKING_AVAILABLE"]
+__all__ = ["ReflectionNode", "ReflectionResult"]

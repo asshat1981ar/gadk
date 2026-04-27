@@ -1,4 +1,5 @@
 """Agent Harness System — meta-agent evaluation and tournament infrastructure."""
+
 from src.harness.agent_harness import (
     AgentHarness,
     AgentProfile,

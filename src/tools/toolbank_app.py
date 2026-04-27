@@ -3,12 +3,19 @@
 Provides a lightweight HTTP interface to the internal tool registry so the
 MCP frontend can query available tools without a stdio connection.
 """
+
 from __future__ import annotations
 
 from typing import Any
 
-from fastapi import FastAPI
-from fastapi.responses import JSONResponse
+try:
+    from fastapi import FastAPI
+except ImportError:
+    FastAPI = None
+try:
+    from fastapi.responses import JSONResponse
+except ImportError:
+    JSONResponse = None
 
 app = FastAPI(
     title="Toolbank API",

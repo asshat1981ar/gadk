@@ -2,13 +2,18 @@
 
 Exposes MetricsRegistry and CostTracker data via HTTP endpoints.
 """
+
 from __future__ import annotations
 
 import json
 import os
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+try:
+    from fastapi import APIRouter, HTTPException
+except ImportError:
+    APIRouter = None
+    HTTPException = None
 
 from src.observability.cost_tracker import CostTracker
 from src.observability.metrics import registry

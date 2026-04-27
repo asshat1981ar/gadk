@@ -1,4 +1,7 @@
-from duckduckgo_search import DDGS
+try:
+    from duckduckgo_search import DDGS
+except ImportError:
+    DDGS = None
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 _WEB_SEARCH_RETRY_WAIT = wait_exponential(multiplier=0.01, min=0, max=0.05)

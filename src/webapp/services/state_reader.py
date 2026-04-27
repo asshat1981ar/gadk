@@ -3,6 +3,7 @@
 Provides lightweight access to swarm state without importing the full
 StateManager (which carries threading locks and write concerns).
 """
+
 from __future__ import annotations
 
 import json

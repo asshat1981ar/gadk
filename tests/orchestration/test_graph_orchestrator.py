@@ -12,6 +12,7 @@ def test_graph_orchestrator_creates_workflow():
         # LangGraph path
         assert "reflection" in graph.nodes or "reflect" in graph.nodes
 
+
 def test_full_workflow_has_required_nodes():
     """Graph should have plan, build, review, reflect, deliver nodes."""
     orchestrator = GraphOrchestrator()
@@ -34,6 +35,7 @@ def test_full_workflow_has_required_nodes():
         assert "review" in node_names
         assert "reflect" in node_names
         assert "deliver" in node_names
+
 
 def test_python_workflow_edges_structure():
     """Pure-Python workflow should have proper edge structure."""

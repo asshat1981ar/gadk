@@ -3,12 +3,17 @@
 Provides task listing, detail view, phase history, and phase advance
 endpoints backed by the shared StateManager and PhaseController.
 """
+
 from __future__ import annotations
 
 from datetime import UTC, datetime
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+try:
+    from fastapi import APIRouter, HTTPException
+except ImportError:
+    APIRouter = None
+    HTTPException = None
 
 from src.services.phase_controller import PhaseController
 from src.services.sdlc_phase import Phase, PhaseHistoryEntry, WorkItem

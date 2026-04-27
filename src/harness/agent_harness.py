@@ -6,6 +6,7 @@ Provides:
 - AgentHarness: registers agents, runs benchmarks, produces leaderboards
 - TournamentEngine: round-robin + Elo-ranked competition between agents
 """
+
 from __future__ import annotations
 
 import random
@@ -21,6 +22,7 @@ logger = get_logger("harness")
 @dataclass
 class HarnessConfig:
     """Runtime configuration for benchmark execution."""
+
     max_iterations: int = 5
     timeout_sec: float = 120.0
     parallel: bool = False
@@ -30,6 +32,7 @@ class HarnessConfig:
 @dataclass
 class AgentProfile:
     """Capability and identity metadata for a meta-agent."""
+
     name: str
     version: str
     capabilities: list[str] = field(default_factory=list)
@@ -45,21 +48,21 @@ class AgentProfile:
 @dataclass
 class BenchmarkResult:
     """Scorecard from a single agent benchmark run."""
+
     agent_id: str
     benchmark_name: str
     score: float  # 0.0–1.0
     tasks_attempted: int
     tasks_passed: int
     duration_sec: float
-    timestamp: str = field(
-        default_factory=lambda: datetime.now(timezone.utc).isoformat()
-    )
+    timestamp: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     evidence: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
 class AgentRanking:
     """Elo-ranked agent standing after a tournament."""
+
     agent_id: str
     elo: float
     wins: int
@@ -85,8 +88,9 @@ class AgentHarness:
     def register_agent(self, profile: AgentProfile) -> str:
         """Register an agent profile. Returns the agent's canonical id."""
         self.agents.append(profile)
-        logger.info("harness.agent.registered id=%s capabilities=%s",
-                     profile.identity, profile.capabilities)
+        logger.info(
+            "harness.agent.registered id=%s capabilities=%s", profile.identity, profile.capabilities
+        )
         return profile.identity
 
     def run_benchmark(self, benchmark_name: str) -> list[BenchmarkResult]:
@@ -107,13 +111,13 @@ class AgentHarness:
             self.benchmark_results.append(result)
             logger.info(
                 "harness.benchmark.complete agent=%s benchmark=%s score=%.3f",
-                agent.identity, benchmark_name, result.score
+                agent.identity,
+                benchmark_name,
+                result.score,
             )
         return results
 
-    def _evaluate_agent(
-        self, agent: AgentProfile, benchmark_name: str
-    ) -> BenchmarkResult:
+    def _evaluate_agent(self, agent: AgentProfile, benchmark_name: str) -> BenchmarkResult:
         """Run one agent through one benchmark.
 
         Simulates task evaluation. In production this dispatches to
@@ -121,6 +125,7 @@ class AgentHarness:
         using the agent's capabilities as a signal.
         """
         import time
+
         start = time.monotonic()
 
         tasks = self.config.min_tasks
@@ -147,9 +152,7 @@ class AgentHarness:
             duration_sec=round(duration, 3),
         )
 
-    def get_leaderboard(
-        self, benchmark_name: str
-    ) -> list[BenchmarkResult]:
+    def get_leaderboard(self, benchmark_name: str) -> list[BenchmarkResult]:
         """Return benchmark results sorted descending by score."""
         results = [r for r in self.benchmark_results if r.benchmark_name == benchmark_name]
         results.sort(key=lambda r: r.score, reverse=True)
@@ -159,11 +162,7 @@ class AgentHarness:
         """Alias for get_leaderboard for backwards compatibility."""
         if benchmark_name:
             return self.get_leaderboard(benchmark_name)
-        return sorted(
-            self.benchmark_results,
-            key=lambda r: r.score,
-            reverse=True
-        )
+        return sorted(self.benchmark_results, key=lambda r: r.score, reverse=True)
 
 
 __all__ = [

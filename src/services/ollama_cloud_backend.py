@@ -13,6 +13,7 @@ Example:
     response = backend.chat([{"role": "user", "content": "Hello"}])
     print(response["choices"][0]["message"]["content"])
 """
+
 from __future__ import annotations
 
 import os
@@ -102,8 +103,7 @@ class OllamaCloudBackend:
             "usage": {
                 "prompt_tokens": raw.get("prompt_eval_count", 0),
                 "completion_tokens": raw.get("eval_count", 0),
-                "total_tokens": raw.get("prompt_eval_count", 0)
-                + raw.get("eval_count", 0),
+                "total_tokens": raw.get("prompt_eval_count", 0) + raw.get("eval_count", 0),
             },
             "model": self.model,
         }

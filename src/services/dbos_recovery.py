@@ -1,5 +1,6 @@
 # src/services/dbos_recovery.py
 """DBOS workflow recovery manager for resuming interrupted workflows."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -74,9 +75,7 @@ class DBOSRecoveryManager:
         if hasattr(dbos.DBOS, "get_workflow_steps"):
             steps = dbos.DBOS.get_workflow_steps(workflow_id)
         else:
-            steps = getattr(dbos.DBOS, "list_workflow_steps", lambda wid: [])(
-                workflow_id
-            )
+            steps = getattr(dbos.DBOS, "list_workflow_steps", lambda wid: [])(workflow_id)
         return [
             {
                 "step_index": getattr(s, "step_index", i),

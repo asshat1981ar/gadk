@@ -6,13 +6,18 @@ Provides:
 - POST /api/swarm/stop     — Request graceful swarm shutdown
 - POST /api/swarm/inject-prompt — Enqueue a prompt via prompt_queue.jsonl
 """
+
 from __future__ import annotations
 
 import os
 from datetime import UTC, datetime
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+try:
+    from fastapi import APIRouter, HTTPException
+except ImportError:
+    APIRouter = None
+    HTTPException = None
 
 from src.cli.swarm_ctl import SENTINEL_PATH, enqueue_prompt, get_swarm_pid, is_shutdown_requested
 from src.observability.metrics import registry
@@ -26,6 +31,7 @@ router = APIRouter(prefix="/api/swarm", tags=["swarm"])
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _state_reader() -> StateReader:
     return StateReader()
 
@@ -33,6 +39,7 @@ def _state_reader() -> StateReader:
 # ---------------------------------------------------------------------------
 # GET /api/swarm/status
 # ---------------------------------------------------------------------------
+
 
 @router.get("/status", response_model=SwarmStatus)
 def get_swarm_status() -> SwarmStatus:
@@ -48,6 +55,7 @@ def get_swarm_status() -> SwarmStatus:
 # ---------------------------------------------------------------------------
 # GET /api/swarm/health
 # ---------------------------------------------------------------------------
+
 
 @router.get("/health")
 def get_swarm_health() -> dict[str, Any]:
@@ -101,6 +109,7 @@ def get_swarm_health() -> dict[str, Any]:
 # POST /api/swarm/stop
 # ---------------------------------------------------------------------------
 
+
 @router.post("/stop")
 def stop_swarm() -> dict[str, Any]:
     """Request graceful swarm shutdown.
@@ -132,6 +141,7 @@ def stop_swarm() -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 # POST /api/swarm/inject-prompt
 # ---------------------------------------------------------------------------
+
 
 @router.post("/inject-prompt")
 def inject_prompt(prompt: str, user_id: str = "webapp") -> dict[str, Any]:

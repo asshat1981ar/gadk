@@ -1,5 +1,6 @@
 # tests/services/test_dbos_recovery.py
 """Tests for DBOSRecoveryManager."""
+
 from __future__ import annotations
 
 from src.services.dbos_recovery import DBOSRecoveryManager, WorkflowStatus

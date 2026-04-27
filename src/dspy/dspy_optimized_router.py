@@ -1,4 +1,5 @@
 """DSPyOptimizedRouter — learns optimal agent routing using MIPRO."""
+
 from __future__ import annotations
 
 import os
@@ -28,10 +29,19 @@ class DSPyOptimizedRouter:
         """Lazily initialize DSPy. Returns True if DSPy is available."""
         if self._dspy is not None:
             return True
-        if not ((os.environ.get("LLM_API_KEY") or os.environ.get("OLLAMA_API_KEY") or os.environ.get("llm_api_key") or os.environ.get("OLLAMA_API_KEY")) or os.environ.get("OPENAI_API_KEY")):
+        if not (
+            (
+                os.environ.get("LLM_API_KEY")
+                or os.environ.get("OLLAMA_API_KEY")
+                or os.environ.get("llm_api_key")
+                or os.environ.get("OLLAMA_API_KEY")
+            )
+            or os.environ.get("OPENAI_API_KEY")
+        ):
             return False
         try:
             import dspy
+
             self._dspy = dspy
             self._lm = dspy.LM("openai/gpt-4o", api_key=None, cache=False)
             dspy.settings.configure(lm=self._lm)

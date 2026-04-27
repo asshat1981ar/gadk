@@ -1,4 +1,5 @@
 """Integration tests for graph orchestrator wired into main."""
+
 import pytest
 
 from src.config import Config
@@ -50,6 +51,7 @@ def test_agent_state_is_valid_typed_dict():
     assert state["task"] == "Test workflow"
     assert state["status"] == "running"
 
+
 def test_langgraph_workflow_executes_to_done(monkeypatch):
     """When LANGGRAPH_ENABLED=true, graph should execute through all nodes."""
     monkeypatch.setattr("src.config.Config.LANGGRAPH_ENABLED", True, raising=False)
@@ -57,6 +59,7 @@ def test_langgraph_workflow_executes_to_done(monkeypatch):
     import importlib
 
     import src.orchestration.graph_orchestrator as go
+
     importlib.reload(go)
 
     orch = go.GraphOrchestrator()
@@ -66,6 +69,7 @@ def test_langgraph_workflow_executes_to_done(monkeypatch):
         pytest.skip("LangGraph not available, pure-Python path")
 
     from src.orchestration.graph_orchestrator import AgentState
+
     initial_state: AgentState = {
         "task": "Test graph execution",
         "phase": "",
@@ -81,14 +85,17 @@ def test_langgraph_workflow_executes_to_done(monkeypatch):
     assert result.get("status") == "done"
     assert result.get("phase") == "DELIVER"
 
+
 def test_langgraph_workflow_invoke(monkeypatch):
     """Compiled LangGraph workflow should execute to done with correct state."""
     # Check if LangGraph path is available
     import src.orchestration.graph_orchestrator as go
+
     if not go.LANGGRAPH_AVAILABLE:
         pytest.skip("LangGraph not available")
 
     from src.orchestration.graph_orchestrator import AgentState, GraphOrchestrator
+
     orch = GraphOrchestrator()
     compiled = orch.build_workflow()
 

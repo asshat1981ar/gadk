@@ -1,4 +1,5 @@
 """DSPyCodeGenerator — declarative code generation for Python, Kotlin, Java."""
+
 from __future__ import annotations
 
 import os
@@ -20,7 +21,15 @@ class DSPyCodeGenerator:
         self._module = None
 
     def _ensure_dspy(self) -> bool:
-        if not ((os.environ.get("LLM_API_KEY") or os.environ.get("OLLAMA_API_KEY") or os.environ.get("llm_api_key") or os.environ.get("OLLAMA_API_KEY")) or os.environ.get("OPENAI_API_KEY")):
+        if not (
+            (
+                os.environ.get("LLM_API_KEY")
+                or os.environ.get("OLLAMA_API_KEY")
+                or os.environ.get("llm_api_key")
+                or os.environ.get("OLLAMA_API_KEY")
+            )
+            or os.environ.get("OPENAI_API_KEY")
+        ):
             self._dspy = None
             self._module = None
             return False
@@ -28,6 +37,7 @@ class DSPyCodeGenerator:
             return True
         try:
             import dspy
+
             self._dspy = dspy
             self._lm = dspy.LM("openai/gpt-4o", api_key=None, cache=False)
             dspy.settings.configure(lm=self._lm)
@@ -45,7 +55,9 @@ class DSPyCodeGenerator:
             self._dspy = None
             return False
 
-    def generate(self, description: str, language: str, context: dict[str, Any] | None = None) -> str:
+    def generate(
+        self, description: str, language: str, context: dict[str, Any] | None = None
+    ) -> str:
         ctx = context or {}
         context_str = "\n".join(f"{k}: {v}" for k, v in ctx.items())
         if self._ensure_dspy():
@@ -66,14 +78,18 @@ class DSPyCodeGenerator:
             return f"# Generated Python\n# {description}\ndef stub():\n    raise NotImplementedError()\n"
         elif language == "kotlin":
             if "add" in desc_lower or "sum" in desc_lower:
-                return f"// Generated Kotlin\n// {description}\nfun add(a: Int, b: Int): Int = a + b\n"
+                return (
+                    f"// Generated Kotlin\n// {description}\nfun add(a: Int, b: Int): Int = a + b\n"
+                )
             return f"// Generated Kotlin\n// {description}\nfun main() {{}}\n"
         return f"// Generated {language}\n// {description}\n"
 
-    def generate_with_tests(self, description: str, language: str, framework: str = "pytest") -> dict[str, str]:
+    def generate_with_tests(
+        self, description: str, language: str, framework: str = "pytest"
+    ) -> dict[str, str]:
         code = self.generate(description, language)
         if language == "python" and framework == "pytest":
-            test = 'import pytest\n\nfrom stub_module import stub\n\ndef test_stub():\n    with pytest.raises(NotImplementedError):\n        stub()\n'
+            test = "import pytest\n\nfrom stub_module import stub\n\ndef test_stub():\n    with pytest.raises(NotImplementedError):\n        stub()\n"
         else:
             test = f"# Test for {description}"
         return {"code": code, "tests": test}
