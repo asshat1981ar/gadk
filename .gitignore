@@ -1,49 +1,16 @@
-# Secrets
-.env
-.env.local
-*.secret
-*.pem
-*.key
-
-# Python
+# GADK .gitignore — target repo and OS artifacts
+project-chimera/
 __pycache__/
 *.pyc
-*.pyo
 .venv/
-venv/
-.pytest_cache/
+.env
+.DS_Store
 *.egg-info/
 dist/
 build/
-
-# IDE / OS
-.vscode/
-.idea/
-*.swp
-.DS_Store
-
-# --- nested repositories: must never be mixed into gadk git history ---
-1/
-
-# --- gadk runtime artifacts (churn on every swarm run) ---
-sessions.db
-swarm.pid
-.swarm_shutdown
-.swarm_self_prompt_off
-.swarm_history
-prompt_queue.jsonl
-events.jsonl
-state.json.bak
-events.jsonl.bak
-costs.jsonl
-metrics.jsonl
-test_metrics.jsonl
-coverage.xml
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
 .coverage
-.secrets.baseline
-# Metrics snapshots — rewritten by every swarm / e2e test run.
-metrics.jsonl
-test_metrics.jsonl
-# Advisory lock tokens for cross-process state serialisation
-*.json.lock
-test_metrics.jsonl
+htmlcov/
+node_modules/
