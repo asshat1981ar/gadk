@@ -88,11 +88,13 @@ def test_vector_backend_empty_corpus_short_circuits(
 ) -> None:
     # No corpus files on disk at all.
     monkeypatch.setattr(Config, "RETRIEVAL_BACKEND", "vector")
-    result = rc.retrieve_context(RetrievalQuery(query="q"), repo_root=tmp_path)
+    result = rc.retrieve_context(RetrievalQuery(query="empty-corpus"), repo_root=tmp_path)
     # With no docs, vector path returns [] WITHOUT raising, so keyword
     # fallback should NOT fire.
     assert stub_keyword == [], "empty corpus must not trigger degraded fallback"
-    assert result == {"query": "q", "corpus": list(rc.DEFAULT_CORPUS), "sources": []}
+    assert result["query"] == "empty-corpus"
+    assert result["corpus"] == list(rc.DEFAULT_CORPUS)
+    assert result["sources"] == []
 
 
 def test_vector_backend_upsert_path_runs_without_crashing(

@@ -7,6 +7,7 @@ from src.services.session_store import SQLiteSessionService
 TEST_DB = "test_sessions.db"
 
 
+@pytest.mark.skipif(SQLiteSessionService is None, reason="google.adk not installed")
 class TestSQLiteSessionService:
     def setup_method(self):
         if os.path.exists(TEST_DB):

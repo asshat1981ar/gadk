@@ -14,3 +14,10 @@ build/
 .coverage
 htmlcov/
 node_modules/
+
+# Test artifacts
+*.db
+*.json.lock
+test_*.json
+costs.jsonl
+events.jsonl

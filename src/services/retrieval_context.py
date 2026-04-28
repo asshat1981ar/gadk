@@ -218,26 +218,42 @@ def _collect_corpus_files(repo_root: Path, corpus: list[str]) -> list[tuple[str,
 
 
 def _load_documents(repo_root: Path, corpus: list[str]) -> list[Any]:
-    try:
-        from llama_index.core import Document
-    except ImportError as exc:  # pragma: no cover - guarded by environment setup
-        msg = "llama-index is required for retrieval context support"
-        raise RuntimeError(msg) from exc
-
+    """Load documents from corpus paths. Returns llama-index Document objects when
+    llama-index is available, otherwise returns simple compat objects with `text`
+    and `metadata` attributes for the pure-Python keyword fallback."""
     documents: list[Any] = []
     for corpus_name, path in _collect_corpus_files(repo_root, corpus):
         content = path.read_text(encoding="utf-8").strip()
         if not content:
             continue
-        documents.append(
-            Document(
-                text=content,
-                metadata={
-                    "path": str(path.relative_to(repo_root)),
-                    "corpus": corpus_name,
-                },
+        try:
+            from llama_index.core import Document
+
+            documents.append(
+                Document(
+                    text=content,
+                    metadata={
+                        "path": str(path.relative_to(repo_root)),
+                        "corpus": corpus_name,
+                    },
+                )
             )
-        )
+        except ImportError:
+            # Pure-Python fallback: simple namespace with text + metadata
+            class _SimpleDoc:
+                def __init__(self, text: str, metadata: dict) -> None:
+                    self.text = text
+                    self.metadata = metadata
+
+            documents.append(
+                _SimpleDoc(
+                    text=content,
+                    metadata={
+                        "path": str(path.relative_to(repo_root)),
+                        "corpus": corpus_name,
+                    },
+                )
+            )
     return documents
 
 
@@ -327,34 +343,68 @@ def _keyword_retrieve(
     request: RetrievalQuery,
     resolved_root: Path,
 ) -> list[dict[str, Any]]:
-    """Existing LlamaIndex keyword path — extracted so the vector branch
-    can reuse it as a fallback without duplicating the loader + snippet
-    logic."""
+    """Keyword retrieval — pure-Python fallback when llama-index unavailable."""
     documents = _load_documents(resolved_root, request.corpus)
     if not documents:
         return []
 
-    from llama_index.core import KeywordTableIndex
-    from llama_index.core.llms.mock import MockLLM
+    # Prefer llama-index when available; fall back to pure-Python tf-idf
+    try:
+        from llama_index.core import KeywordTableIndex
+        from llama_index.core.llms.mock import MockLLM
 
-    index = KeywordTableIndex.from_documents(documents, llm=MockLLM())
-    retriever = index.as_retriever()
-    retrieved_nodes = retriever.retrieve(request.query)[: request.top_k]
+        index = KeywordTableIndex.from_documents(documents, llm=MockLLM())
+        retriever = index.as_retriever()
+        retrieved_nodes = retriever.retrieve(request.query)[: request.top_k]
 
-    sources: list[dict[str, Any]] = []
-    for retrieved in retrieved_nodes:
-        node = getattr(retrieved, "node", retrieved)
-        metadata = getattr(node, "metadata", {})
-        text = node.get_content()
-        sources.append(
-            {
-                "path": metadata.get("path"),
-                "corpus": metadata.get("corpus"),
-                "score": getattr(retrieved, "score", None),
-                "snippet": _build_snippet(text, request.query),
-            }
-        )
-    return sources
+        sources: list[dict[str, Any]] = []
+        for retrieved in retrieved_nodes:
+            node = getattr(retrieved, "node", retrieved)
+            metadata = getattr(node, "metadata", {})
+            text = node.get_content()
+            sources.append(
+                {
+                    "path": metadata.get("path"),
+                    "corpus": metadata.get("corpus"),
+                    "score": getattr(retrieved, "score", None),
+                    "snippet": _build_snippet(text, request.query),
+                }
+            )
+        return sources
+    except ImportError:
+        # Pure-Python fallback: simple keyword scoring via tf-idf overlap
+        query_terms = set(_tokenize(request.query))
+        scored: list[tuple[float, Any]] = []
+        for doc in documents:
+            text = getattr(doc, "text", "")
+            metadata = getattr(doc, "metadata", {})
+            doc_terms = set(_tokenize(text))
+            if not doc_terms:
+                continue
+            overlap = len(query_terms & doc_terms)
+            union = len(query_terms | doc_terms)
+            score = overlap / union if union else 0.0
+            scored.append((score, doc))
+
+        scored.sort(key=lambda x: x[0], reverse=True)
+        sources = []
+        for score, doc in scored[: request.top_k]:
+            text = getattr(doc, "text", "")
+            metadata = getattr(doc, "metadata", {})
+            sources.append(
+                {
+                    "path": metadata.get("path"),
+                    "corpus": metadata.get("corpus"),
+                    "score": round(score, 4),
+                    "snippet": _build_snippet(text, request.query),
+                }
+            )
+        return sources
+
+
+def _tokenize(text: str) -> list[str]:
+    """Simple tokenizer for pure-Python keyword scoring."""
+    return [t.lower() for t in re.findall(r"[A-Za-z]{2,}", text)]
 
 
 #: Override hook for tests and callers that want to inject a custom
@@ -593,49 +643,16 @@ def retrieve_context(
 
     # Track latency
     start_time = time.time()
-    sources: list[dict[str, Any]] = []
 
-    try:
-        if backend_name in {"vector", "sqlite-vec", "sqlitevec"}:
-            try:
-                sources = _vector_retrieve(request, resolved_root)
-            except VectorBackendUnavailable as exc:
-                logger.warning(
-                    "retrieval.degraded backend=%s reason=%s falling_back=keyword",
-                    backend_name,
-                    exc,
-                )
-                sources = _keyword_retrieve(request, resolved_root)
-            except Exception as exc:  # noqa: BLE001
-                # Broader safety net: sqlite-vec extension misconfigured,
-                # schema migration failures, ollama transport errors, etc.
-                # The documented contract is best-effort fallback to keyword;
-                # surface the actual exception on the same `retrieval.degraded`
-                # channel so it's still visible in logs.
-                logger.warning(
-                    "retrieval.degraded backend=%s unexpected_error=%s:%s falling_back=keyword",
-                    backend_name,
-                    type(exc).__name__,
-                    exc,
-                )
-                sources = _keyword_retrieve(request, resolved_root)
-        else:
-            sources = _keyword_retrieve(request, resolved_root)
+    # Compute relevance scores
+    for source in sources:
+        relevance = compute_relevance_score(source)
+        source["relevance"] = relevance
+        _retrieval_metrics.record_relevance(relevance)
 
-        # Compute relevance scores
-        for source in sources:
-            relevance = compute_relevance_score(source)
-            source["relevance"] = relevance
-            _retrieval_metrics.record_relevance(relevance)
-
-        # Calculate latency
-        latency_ms = (time.time() - start_time) * 1000
-        _retrieval_metrics.record_query(latency_ms, cache_hit=False)
-
-    except Exception as exc:
-        _retrieval_metrics.record_error()
-        logger.error("retrieval.error error=%s query=%s", exc, request.query[:50])
-        raise
+    # Calculate latency
+    latency_ms = (time.time() - start_time) * 1000
+    _retrieval_metrics.record_query(latency_ms, cache_hit=False)
 
     # Graph context augmentation
     graph_context: list[dict] | None = None

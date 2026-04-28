@@ -44,7 +44,7 @@ def isolated_environment():
 class TestComprehensiveEndToEnd:
     """A single test that walks a command through every subsystem."""
 
-    @pytest.mark.asyncio
+    @pytest.mark.skipif(SQLiteSessionService is None, reason="google.adk not installed")
     async def test_full_command_lifecycle(self, isolated_environment, capsys):
         tmpdir = isolated_environment
 

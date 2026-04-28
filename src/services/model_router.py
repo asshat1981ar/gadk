@@ -522,9 +522,10 @@ class ModelRouter:
             for candidate in ranked_candidates[1:]:
                 candidate_score = self._get_quick_preference_score(candidate)
                 # If candidate is significantly cheaper with decent score, use it
-                cost_ratio = self.registry.get_model_cost(candidate) / self.registry.get_model_cost(
-                    best
-                )
+                best_cost = self.registry.get_model_cost(best)
+                if best_cost <= 0:
+                    continue
+                cost_ratio = self.registry.get_model_cost(candidate) / best_cost
                 if cost_ratio < 0.5 and candidate_score >= best_score * 0.9:
                     return candidate
 

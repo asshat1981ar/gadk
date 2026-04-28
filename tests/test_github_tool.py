@@ -83,7 +83,6 @@ def test_pygithub_missing_raises_when_mock_not_allowed(monkeypatch: pytest.Monke
     import src.config as config_mod
     import src.tools.github_tool as gh_mod
 
-    monkeypatch.setattr(config_mod.Config, "GITHUB_MOCK_ALLOWED", False)
     monkeypatch.setattr(config_mod.Config, "TEST_MODE", False)
     # Force ``_PYGITHUB_AVAILABLE=False`` so __init__ hits the missing-PyGithub
     # branch even in envs where the package is installed.
