@@ -1,7 +1,9 @@
-import os
+import pytest
+
+pytest.importorskip("litellm")
+pytest.importorskip("google.adk")
 
 import litellm
-
 from src.observability.litellm_callbacks import setup_callbacks
 
 

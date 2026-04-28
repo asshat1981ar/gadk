@@ -2,6 +2,8 @@ import json
 
 import pytest
 
+pytest.importorskip("google.adk")
+
 import src.main as main_module
 from src.agents.ideator import ideator_agent
 from src.agents.orchestrator import orchestrator_agent

@@ -2,6 +2,8 @@ import asyncio
 import os
 
 import pytest
+
+pytest.importorskip("litellm")
 from litellm import acompletion
 
 

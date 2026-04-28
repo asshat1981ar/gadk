@@ -2,6 +2,10 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 import pytest
+
+pytest.importorskip("litellm")
+pytest.importorskip("google.adk")
+
 from litellm.exceptions import RateLimitError
 from tenacity import wait_none
 

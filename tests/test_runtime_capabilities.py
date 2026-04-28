@@ -3,6 +3,8 @@ from unittest.mock import patch
 
 import pytest
 
+pytest.importorskip("google.adk")
+
 import src.main as main_module
 from src.tools.dispatcher import batch_execute, execute_capability
 
